@@ -127,5 +127,9 @@ export async function runAllEnabledSources(): Promise<ScrapeResult[]> {
   for (const r of rows) {
     results.push(await runSourceScrape(r.id));
   }
+  // After all sources, sweep cross-posted SEO-spam clusters (e.g. one
+  // training listing per city). Hides non-canonical members; idempotent.
+  const { sweepCrossPostDuplicates } = await import("./dedup-sweep");
+  await sweepCrossPostDuplicates();
   return results;
 }
