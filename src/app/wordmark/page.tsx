@@ -234,7 +234,7 @@ function WordmarkRow({ variant }: { variant: VariantProps }) {
             <div className="flex items-center gap-3">
               <ReflectionShimmerLogo
                 className="text-ink"
-                style={{ width: "22px", height: "22px" }}
+                style={{ width: "20px", height: "20px", transform: "translateY(2px)" }}
               />
               <span className="text-ink">{variant.wordmark}</span>
             </div>
@@ -251,7 +251,7 @@ function WordmarkRow({ variant }: { variant: VariantProps }) {
             <div className="flex items-center gap-3">
               <ReflectionShimmerLogo
                 className="text-sunset-deep"
-                style={{ width: "22px", height: "22px" }}
+                style={{ width: "20px", height: "20px", transform: "translateY(2px)" }}
               />
               <span className="text-sunset-deep">{variant.wordmark}</span>
             </div>

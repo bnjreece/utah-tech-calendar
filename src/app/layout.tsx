@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ReflectionShimmerLogo } from "@/components/logos";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,13 +31,19 @@ export default function RootLayout({
       </head>
       <body className="isolate min-h-dvh flex flex-col bg-background text-foreground antialiased">
         <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/10">
-          <div className="mx-auto max-w-5xl px-6 py-3.5 flex items-baseline justify-between gap-6">
+          <div className="mx-auto max-w-5xl px-6 py-3.5 flex items-center justify-between gap-6">
             <Link
               href="/"
               aria-label="Homepage"
-              className="font-display text-base tracking-tight leading-none hover:text-sunset-deep transition-colors"
+              className="group flex items-center gap-2.5 hover:text-sunset-deep transition-colors"
             >
-              utah tech <span className="italic">events</span>
+              <ReflectionShimmerLogo
+                className="text-ink group-hover:text-sunset-deep transition-colors"
+                style={{ width: "20px", height: "20px", transform: "translateY(2px)" }}
+              />
+              <span className="font-display text-base tracking-tight leading-none">
+                utah tech <span className="italic">events</span>
+              </span>
             </Link>
             <nav className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
               <Link
@@ -62,10 +69,16 @@ export default function RootLayout({
         </header>
         <main className="flex-1">{children}</main>
         <footer className="mt-12 border-t-2 border-ink">
-          <div className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
-              compiled in cottonwood heights, utah · updated nightly
-            </p>
+          <div className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5">
+              <ReflectionShimmerLogo
+                className="text-ink"
+                style={{ width: "16px", height: "16px", transform: "translateY(2px)" }}
+              />
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+                compiled in cottonwood heights, utah · updated nightly
+              </p>
+            </div>
             <div className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
               <Link href="/api/ical" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
                 ical

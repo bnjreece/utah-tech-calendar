@@ -35,7 +35,7 @@ export default function LogosPage() {
                 <div className="flex items-center gap-3">
                   <Component
                     className="text-ink"
-                    style={{ width: "22px", height: "22px" }}
+                    style={{ width: "20px", height: "20px", transform: "translateY(2px)" }}
                   />
                   <span className="font-display text-base tracking-tight leading-none">
                     utah tech <span className="italic">events</span>
