@@ -13,7 +13,7 @@ export interface ScrapeResult {
   error?: string;
 }
 
-async function upsertEvent(item: EventItem, groupId: string | undefined) {
+async function upsertEvent(item: EventItem, groupId: string | undefined, defaultStatus: string = "approved") {
   const existing = await db
     .select({ id: events.id })
     .from(events)
@@ -46,15 +46,15 @@ async function upsertEvent(item: EventItem, groupId: string | undefined) {
     imageUrl: item.imageUrl,
     tags: item.tags,
     groupId,
-    status: "approved",
     updatedAt: new Date(),
   };
 
   if (existing[0]) {
+    /* Don't overturn an admin's manual approve/reject on re-scrape. */
     await db.update(events).set(values).where(eq(events.id, existing[0].id));
     return "updated" as const;
   }
-  await db.insert(events).values(values);
+  await db.insert(events).values({ ...values, status: defaultStatus });
   return "inserted" as const;
 }
 
@@ -96,7 +96,8 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
         if (g) groupId = g.id;
       }
 
-      const outcome = await upsertEvent(item, groupId);
+      const defaultStatus = source.requiresReview ? "pending" : "approved";
+      const outcome = await upsertEvent(item, groupId, defaultStatus);
       if (outcome === "inserted") inserted++;
       else updated++;
     }

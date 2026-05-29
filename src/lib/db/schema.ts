@@ -76,6 +76,11 @@ export const sources = pgTable("sources", {
   url: text("url").notNull(),
   groupId: uuid("group_id").references(() => groups.id),
   enabled: boolean("enabled").notNull().default(true),
+  /* When true, events from this source land as status='pending' instead
+     of 'approved' — they show up in the admin review queue until an
+     admin manually approves/rejects each one. For broad/generic sources
+     like a city-wide events calendar. */
+  requiresReview: boolean("requires_review").notNull().default(false),
   lastScrapedAt: timestamp("last_scraped_at", { withTimezone: true }),
   lastStatus: text("last_status"),
   lastError: text("last_error"),
