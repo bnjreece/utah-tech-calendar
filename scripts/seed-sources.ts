@@ -8,24 +8,35 @@ interface SeedSource {
   groupSlug?: string;
   groupExternalId?: string;
   defaultTags?: string[];
+  enabled?: boolean;
 }
 
 const SEED_SOURCES: SeedSource[] = [
-  // Meetup groups - known active Utah tech communities
+  // Meetup groups — verified active as of 2026-05-29
   { adapter: "meetup", url: "https://www.meetup.com/utahjs/", groupName: "UtahJS", groupSlug: "utahjs", groupExternalId: "utahjs", defaultTags: ["javascript", "web"] },
   { adapter: "meetup", url: "https://www.meetup.com/utah-rust/", groupName: "Utah Rust", groupSlug: "utah-rust", groupExternalId: "utah-rust", defaultTags: ["rust", "systems"] },
-  { adapter: "meetup", url: "https://www.meetup.com/utah-python-users-group/", groupName: "Utah Python Users Group", groupSlug: "utah-python", groupExternalId: "utah-python-users-group", defaultTags: ["python"] },
+  { adapter: "meetup", url: "https://www.meetup.com/utahpython/", groupName: "Utah Python", groupSlug: "utahpython", groupExternalId: "utahpython", defaultTags: ["python"] },
   { adapter: "meetup", url: "https://www.meetup.com/Utah-Software-Craftsmanship/", groupName: "Utah Software Craftsmanship", groupSlug: "utah-craftsmanship", groupExternalId: "Utah-Software-Craftsmanship", defaultTags: ["software"] },
+  { adapter: "meetup", url: "https://www.meetup.com/utah-elixir/", groupName: "Utah Elixir", groupSlug: "utah-elixir", groupExternalId: "utah-elixir", defaultTags: ["elixir"] },
+
+  // Meetup groups — kept enabled but currently no upcoming events; will pick up activity automatically
   { adapter: "meetup", url: "https://www.meetup.com/salt-lake-city-aws-user-group/", groupName: "SLC AWS User Group", groupSlug: "slc-aws", groupExternalId: "salt-lake-city-aws-user-group", defaultTags: ["aws", "cloud"] },
   { adapter: "meetup", url: "https://www.meetup.com/utahgo/", groupName: "UtahGo", groupSlug: "utahgo", groupExternalId: "utahgo", defaultTags: ["golang"] },
-  { adapter: "meetup", url: "https://www.meetup.com/utah-elixir/", groupName: "Utah Elixir", groupSlug: "utah-elixir", groupExternalId: "utah-elixir", defaultTags: ["elixir"] },
   { adapter: "meetup", url: "https://www.meetup.com/utah-iot/", groupName: "Utah IoT", groupSlug: "utah-iot", groupExternalId: "utah-iot", defaultTags: ["iot", "hardware"] },
 
-  // Luma calendars - growing fast for AI/founder events
-  { adapter: "luma", url: "https://lu.ma/slc-tech", groupName: "SLC Tech (Luma)", groupSlug: "slc-tech-luma", groupExternalId: "slc-tech", defaultTags: ["ai", "founders"] },
+  // Wrong slug, kept disabled. Real slug is `utahpython` above.
+  { adapter: "meetup", url: "https://www.meetup.com/utah-python-users-group/", groupName: "Utah Python (wrong slug)", groupSlug: "utah-python-users-group-DEPRECATED", groupExternalId: "utah-python-users-group", enabled: false },
 
-  // Eventbrite searches
-  { adapter: "eventbrite", url: "https://www.eventbrite.com/d/ut--salt-lake-city/tech--events/", groupName: "Eventbrite SLC Tech", groupSlug: "eventbrite-slc-tech", groupExternalId: "slc-tech-search", defaultTags: [] },
+  // Luma calendars
+  { adapter: "luma", url: "https://lu.ma/slc", groupName: "Luma SLC", groupSlug: "luma-slc", groupExternalId: "slc", defaultTags: ["ai", "founders"] },
+  // lu.ma/saltlakecity mirrors lu.ma/slc — skipped to avoid duplicate work, dedup would catch it anyway
+
+  // Eventbrite searches by region and topic
+  { adapter: "eventbrite", url: "https://www.eventbrite.com/d/ut--salt-lake-city/tech--events/", groupName: "Eventbrite SLC Tech", groupSlug: "eventbrite-slc-tech", groupExternalId: "slc-tech-search" },
+  { adapter: "eventbrite", url: "https://www.eventbrite.com/d/ut--provo/tech--events/", groupName: "Eventbrite Provo Tech", groupSlug: "eventbrite-provo-tech", groupExternalId: "provo-tech-search" },
+  { adapter: "eventbrite", url: "https://www.eventbrite.com/d/ut--salt-lake-city/ai--events/", groupName: "Eventbrite Utah AI", groupSlug: "eventbrite-utah-ai", groupExternalId: "utah-ai-search" },
+  { adapter: "eventbrite", url: "https://www.eventbrite.com/d/ut--salt-lake-city/startup--events/", groupName: "Eventbrite Utah Startup", groupSlug: "eventbrite-utah-startup", groupExternalId: "utah-startup-search" },
+  // Park City returned 100% duplicates of SLC tech — skipped
 ];
 
 async function main() {
@@ -56,7 +67,7 @@ async function main() {
           })
           .returning({ id: groups.id });
         groupId = inserted.id;
-        console.log(`  + group: ${seed.groupName} (${groupId})`);
+        console.log(`  + group: ${seed.groupName}`);
       }
     }
 
@@ -75,9 +86,9 @@ async function main() {
       adapter: seed.adapter,
       url: seed.url,
       groupId,
-      enabled: true,
+      enabled: seed.enabled ?? true,
     });
-    console.log(`  + source: ${seed.adapter} ${seed.url}`);
+    console.log(`  + ${seed.adapter} ${seed.url}`);
   }
 
   console.log("Done.");
