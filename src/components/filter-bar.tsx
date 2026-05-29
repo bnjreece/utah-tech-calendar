@@ -3,14 +3,26 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useTransition } from "react";
 import { UTAH_REGIONS, type UtahRegion } from "@/lib/regions";
-import { parseFilters, filtersToSearchParams, type FilterState } from "@/lib/filters";
+import {
+  parseFilters,
+  filtersToSearchParams,
+  SOURCE_LABELS,
+  type FilterState,
+} from "@/lib/filters";
+import { MultiSelectPopover } from "@/components/multi-select-popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface Props {
   cities: string[];
   tags: string[];
+  sources: string[];
 }
 
-export function FilterBar({ cities, tags }: Props) {
+export function FilterBar({ cities, tags, sources }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -25,8 +37,23 @@ export function FilterBar({ cities, tags }: Props) {
     });
   }
 
-  function toggle<T extends string>(arr: T[], item: T): T[] {
-    return arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item];
+  function clearOne(key: keyof FilterState, value?: string) {
+    if (key === "showOnline") {
+      update({ showOnline: false });
+      return;
+    }
+    if (key === "q") {
+      update({ q: "" });
+      return;
+    }
+    if (key === "from" || key === "to") {
+      update({ [key]: undefined } as Partial<FilterState>);
+      return;
+    }
+    const current = filters[key];
+    if (Array.isArray(current) && value !== undefined) {
+      update({ [key]: current.filter((v) => v !== value) } as Partial<FilterState>);
+    }
   }
 
   const activeCount =
@@ -34,12 +61,23 @@ export function FilterBar({ cities, tags }: Props) {
     filters.regions.length +
     filters.cities.length +
     filters.tags.length +
+    filters.sources.length +
+    (filters.from ? 1 : 0) +
+    (filters.to ? 1 : 0) +
     (filters.showOnline ? 1 : 0);
 
+  const sourceOptions = sources.map((s) => ({
+    value: s,
+    label: SOURCE_LABELS[s] ?? s,
+  }));
+  const regionOptions = UTAH_REGIONS.map((r) => ({ value: r, label: r }));
+  const cityOptions = cities.map((c) => ({ value: c, label: c }));
+  const tagOptions = tags.map((t) => ({ value: t, label: t }));
+
   return (
-    <div className="rounded-2xl border border-foreground/10 bg-card p-5 flex flex-col gap-5">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 min-w-0">
           <input
             type="search"
             name="q"
@@ -47,7 +85,7 @@ export function FilterBar({ cities, tags }: Props) {
             placeholder="Search title, venue, description"
             defaultValue={filters.q}
             onChange={(e) => update({ q: e.target.value })}
-            className="w-full rounded-full bg-foreground/[0.04] py-2.5 pr-4 pl-10 text-sm placeholder:text-foreground/40 focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 transition-colors hover:bg-foreground/[0.06] max-sm:text-base"
+            className="w-full rounded-full bg-foreground/[0.04] py-2.5 pr-4 pl-10 text-sm placeholder:text-foreground/40 focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 hover:bg-foreground/[0.06] transition-colors max-sm:text-base"
           />
           <svg
             viewBox="0 0 16 16"
@@ -63,151 +101,186 @@ export function FilterBar({ cities, tags }: Props) {
             />
           </svg>
         </div>
-        {activeCount > 0 && (
+
+        <div className="flex flex-wrap items-center gap-2">
+          <MultiSelectPopover
+            label="Region"
+            options={regionOptions}
+            selected={filters.regions}
+            onChange={(next) => update({ regions: next as UtahRegion[] })}
+          />
+          {cities.length > 0 && (
+            <MultiSelectPopover
+              label="City"
+              options={cityOptions}
+              selected={filters.cities}
+              onChange={(next) => update({ cities: next })}
+              searchable
+            />
+          )}
+          {tags.length > 0 && (
+            <MultiSelectPopover
+              label="Tag"
+              options={tagOptions}
+              selected={filters.tags}
+              onChange={(next) => update({ tags: next })}
+              searchable
+            />
+          )}
+          {sources.length > 0 && (
+            <MultiSelectPopover
+              label="Source"
+              options={sourceOptions}
+              selected={filters.sources}
+              onChange={(next) => update({ sources: next })}
+            />
+          )}
+          <DateRangePopover
+            from={filters.from}
+            to={filters.to}
+            onChange={(f, t) => update({ from: f, to: t })}
+          />
+          <OnlineToggle
+            on={filters.showOnline}
+            onChange={(v) => update({ showOnline: v })}
+          />
+        </div>
+      </div>
+
+      {activeCount > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          <span className="text-xs uppercase tracking-wide text-foreground/45 mr-1">
+            Filters
+          </span>
+          {filters.q && (
+            <ActiveChip label={`"${filters.q}"`} onRemove={() => clearOne("q")} />
+          )}
+          {filters.regions.map((r) => (
+            <ActiveChip key={`r-${r}`} label={r} onRemove={() => clearOne("regions", r)} />
+          ))}
+          {filters.cities.map((c) => (
+            <ActiveChip key={`c-${c}`} label={c} onRemove={() => clearOne("cities", c)} />
+          ))}
+          {filters.tags.map((t) => (
+            <ActiveChip key={`t-${t}`} label={t} onRemove={() => clearOne("tags", t)} />
+          ))}
+          {filters.sources.map((s) => (
+            <ActiveChip
+              key={`s-${s}`}
+              label={SOURCE_LABELS[s] ?? s}
+              onRemove={() => clearOne("sources", s)}
+            />
+          ))}
+          {filters.from && (
+            <ActiveChip label={`from ${filters.from}`} onRemove={() => clearOne("from")} />
+          )}
+          {filters.to && (
+            <ActiveChip label={`to ${filters.to}`} onRemove={() => clearOne("to")} />
+          )}
+          {filters.showOnline && (
+            <ActiveChip label="Including online" onRemove={() => clearOne("showOnline")} />
+          )}
           <button
             type="button"
             onClick={() => router.push(pathname)}
             disabled={pending}
-            className="shrink-0 text-sm text-foreground/55 hover:text-foreground transition-colors"
+            className="ml-1 text-xs text-foreground/55 hover:text-foreground transition-colors"
           >
-            Clear {activeCount}
+            Clear all
           </button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="group inline-flex items-center gap-2 cursor-pointer select-none">
-          <span className="relative inline-flex w-9 shrink-0 rounded-full p-0.5 inset-ring inset-ring-foreground/10 bg-foreground/[0.06] outline-brand outline-offset-2 has-checked:bg-brand has-focus-visible:outline-2 transition-colors duration-200">
-            <span className="aspect-square w-1/2 rounded-full bg-white shadow-xs ring-1 ring-foreground/5 transition-transform duration-200 ease-in-out [.group:has(input:checked)_&]:translate-x-full" />
-            <input
-              type="checkbox"
-              checked={filters.showOnline}
-              onChange={(e) => update({ showOnline: e.target.checked })}
-              className="absolute inset-0 size-full appearance-none focus:outline-hidden"
-            />
-          </span>
-          <span className="text-sm text-foreground/75">
-            Show online events
-          </span>
-        </label>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs uppercase tracking-wide text-foreground/45 mr-1">Region</span>
-          {UTAH_REGIONS.map((r) => {
-            const on = filters.regions.includes(r);
-            return (
-              <button
-                key={r}
-                type="button"
-                onClick={() => update({ regions: toggle(filters.regions, r) as UtahRegion[] })}
-                className={
-                  on
-                    ? "inline-flex items-center rounded-full bg-brand px-3 py-1 text-xs font-medium text-brand-foreground hover:bg-brand-deep transition-colors"
-                    : "inline-flex items-center rounded-full bg-foreground/[0.04] px-3 py-1 text-xs font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors"
-                }
-              >
-                {r}
-              </button>
-            );
-          })}
         </div>
-
-        {cities.length > 0 && (
-          <FilterRow
-            label="City"
-            options={cities}
-            selected={filters.cities}
-            onToggle={(c) => update({ cities: toggle(filters.cities, c) })}
-          />
-        )}
-
-        {tags.length > 0 && (
-          <FilterRow
-            label="Tag"
-            options={tags}
-            selected={filters.tags}
-            onToggle={(t) => update({ tags: toggle(filters.tags, t) })}
-          />
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-foreground/10 text-sm">
-        <span className="text-xs uppercase tracking-wide text-foreground/45">When</span>
-        <DateInput
-          label="From"
-          name="from"
-          value={filters.from ?? ""}
-          onChange={(v) => update({ from: v || undefined })}
-        />
-        <DateInput
-          label="To"
-          name="to"
-          value={filters.to ?? ""}
-          onChange={(v) => update({ to: v || undefined })}
-        />
-      </div>
+      )}
     </div>
   );
 }
 
-function FilterRow({
-  label,
-  options,
-  selected,
-  onToggle,
-}: {
-  label: string;
-  options: string[];
-  selected: string[];
-  onToggle: (s: string) => void;
-}) {
+function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs uppercase tracking-wide text-foreground/45 mr-1">{label}</span>
-      {options.map((o) => {
-        const on = selected.includes(o);
-        return (
-          <button
-            key={o}
-            type="button"
-            onClick={() => onToggle(o)}
-            className={
-              on
-                ? "inline-flex items-center rounded-full bg-foreground px-3 py-1 text-xs font-medium text-background hover:bg-foreground/85 transition-colors"
-                : "inline-flex items-center rounded-full bg-foreground/[0.04] px-3 py-1 text-xs font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors"
-            }
-          >
-            {o}
-          </button>
-        );
-      })}
-    </div>
+    <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-xs text-brand-deep">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${label}`}
+        className="-mr-1 inline-flex size-4 items-center justify-center rounded-full hover:bg-brand/20 transition-colors"
+      >
+        <svg viewBox="0 0 10 10" aria-hidden className="size-2.5">
+          <path d="M1 1l8 8M9 1l-8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
+    </span>
   );
 }
 
-function DateInput({
-  label,
-  name,
-  value,
+function OnlineToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="inline-flex items-center gap-2 rounded-full bg-foreground/[0.04] px-3 py-1.5 cursor-pointer select-none hover:bg-foreground/[0.08] transition-colors">
+      <span className="relative inline-flex w-8 shrink-0 rounded-full p-0.5 inset-ring inset-ring-foreground/10 bg-foreground/10 has-checked:bg-brand transition-colors duration-200">
+        <span className="aspect-square w-1/2 rounded-full bg-white shadow-xs ring-1 ring-foreground/5 transition-transform duration-200 ease-in-out [.group:has(input:checked)_&,&:has(+input:checked)]:translate-x-full" />
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={(e) => onChange(e.target.checked)}
+          aria-label="Include online events"
+          className="absolute inset-0 size-full appearance-none focus:outline-hidden"
+        />
+      </span>
+      <span className="text-sm text-foreground/75">Online</span>
+    </label>
+  );
+}
+
+function DateRangePopover({
+  from,
+  to,
   onChange,
 }: {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (v: string) => void;
+  from?: string;
+  to?: string;
+  onChange: (from?: string, to?: string) => void;
 }) {
+  const active = Boolean(from || to);
+  const buttonClass = active
+    ? "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+    : "inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+
   return (
-    <label className="inline-flex items-center gap-2 text-sm text-foreground/70">
-      <span>{label}</span>
-      <input
-        type="date"
-        name={name}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-md bg-foreground/[0.04] px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 hover:bg-foreground/[0.06] transition-colors max-sm:text-base"
-      />
-    </label>
+    <Popover>
+      <PopoverTrigger className={buttonClass}>
+        <span>Date</span>
+        <svg viewBox="0 0 10 6" aria-hidden className="size-2.5">
+          <path d="M.5.5 5 5l4.5-4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-3 flex flex-col gap-3">
+        <label className="flex flex-col gap-1 text-xs text-foreground/55">
+          From
+          <input
+            type="date"
+            value={from ?? ""}
+            onChange={(e) => onChange(e.target.value || undefined, to)}
+            className="rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 max-sm:text-base"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-foreground/55">
+          To
+          <input
+            type="date"
+            value={to ?? ""}
+            onChange={(e) => onChange(from, e.target.value || undefined)}
+            className="rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 max-sm:text-base"
+          />
+        </label>
+        {(from || to) && (
+          <button
+            type="button"
+            onClick={() => onChange(undefined, undefined)}
+            className="text-xs text-foreground/55 hover:text-foreground self-start"
+          >
+            Clear dates
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

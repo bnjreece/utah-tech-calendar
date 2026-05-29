@@ -47,6 +47,10 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
     conditions.push(sql`${events.tags} && ${filters.tags}`);
   }
 
+  if (filters.sources.length) {
+    conditions.push(inArray(events.source, filters.sources));
+  }
+
   const rows = await db
     .select({
       event: events,
@@ -146,4 +150,12 @@ export async function getDistinctTags(): Promise<string[]> {
 
 export async function getAllGroups(): Promise<Group[]> {
   return db.select().from(groups).where(eq(groups.status, "active")).orderBy(asc(groups.name));
+}
+
+export async function getDistinctSources(): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ source: events.source })
+    .from(events)
+    .where(eq(events.status, "approved"));
+  return rows.map((r) => r.source).filter(Boolean).sort();
 }

@@ -5,11 +5,21 @@ export interface FilterState {
   regions: UtahRegion[];
   cities: string[];
   tags: string[];
+  sources: string[];
   groups: string[];
   from?: string;
   to?: string;
   showOnline: boolean;
 }
+
+export const SOURCE_LABELS: Record<string, string> = {
+  meetup: "Meetup",
+  luma: "Luma",
+  eventbrite: "Eventbrite",
+  manual: "Community",
+  silicon_slopes: "Silicon Slopes",
+  forge_utah: "Forge Utah",
+};
 
 export function parseFilters(searchParams: URLSearchParams | Record<string, string | string[] | undefined>): FilterState {
   const get = (k: string): string | undefined => {
@@ -32,6 +42,7 @@ export function parseFilters(searchParams: URLSearchParams | Record<string, stri
     regions: csv("regions") as UtahRegion[],
     cities: csv("cities"),
     tags: csv("tags"),
+    sources: csv("sources"),
     groups: csv("groups"),
     from: get("from"),
     to: get("to"),
@@ -45,6 +56,7 @@ export function filtersToSearchParams(f: FilterState): URLSearchParams {
   if (f.regions.length) sp.set("regions", f.regions.join(","));
   if (f.cities.length) sp.set("cities", f.cities.join(","));
   if (f.tags.length) sp.set("tags", f.tags.join(","));
+  if (f.sources.length) sp.set("sources", f.sources.join(","));
   if (f.groups.length) sp.set("groups", f.groups.join(","));
   if (f.from) sp.set("from", f.from);
   if (f.to) sp.set("to", f.to);
