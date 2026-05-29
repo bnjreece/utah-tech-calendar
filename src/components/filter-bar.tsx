@@ -9,6 +9,7 @@ import {
   SOURCE_LABELS,
   type FilterState,
 } from "@/lib/filters";
+import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
 import {
   Popover,
@@ -75,6 +76,7 @@ export function FilterBar({ cities, tags, sources }: Props) {
     value: s.value,
     label: SOURCE_LABELS[s.value] ?? s.value,
     count: s.count,
+    dotClass: STRATUM_CLASSES[stratumForEvent(s.value)].bar,
   }));
   const regionOptions = UTAH_REGIONS.map((r) => ({ value: r, label: r }));
   const cityOptions = cities.map((c) => ({ value: c.value, label: c.value, count: c.count }));

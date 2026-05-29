@@ -11,6 +11,7 @@ interface Option {
   value: string;
   label: string;
   count?: number;
+  dotClass?: string;
 }
 
 interface Props {
@@ -88,7 +89,12 @@ export function MultiSelectPopover({
                   onClick={() => toggle(opt.value)}
                   className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-foreground/[0.04] transition-colors"
                 >
-                  <span className="truncate flex-1">{opt.label}</span>
+                  <span className="truncate flex-1 inline-flex items-center gap-2">
+                    {opt.dotClass && (
+                      <span aria-hidden className={`size-2 rounded-full shrink-0 ${opt.dotClass}`} />
+                    )}
+                    <span className="truncate">{opt.label}</span>
+                  </span>
                   <span className="flex items-center gap-2 shrink-0">
                     {opt.count !== undefined && (
                       <span className="tabular-nums text-xs text-ink-soft">

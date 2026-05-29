@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { EventWithGroup } from "@/lib/queries";
+import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 
 const SOURCE_LABELS: Record<string, string> = {
   meetup: "Meetup",
@@ -79,7 +80,9 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
   const source = SOURCE_LABELS[event.source] ?? event.source;
-  const metaParts = [event.venueName, event.city, `via ${source.toLowerCase()}`].filter(Boolean);
+  const stratum = stratumForEvent(event.source);
+  const colors = STRATUM_CLASSES[stratum];
+  const placeParts = [event.venueName, event.city].filter(Boolean);
   return (
     <Link
       href={`/event/${event.id}`}
@@ -95,11 +98,18 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
         <h3 className="font-display text-xl sm:text-2xl leading-[1.2] -tracking-[0.005em] text-pretty text-ink group-hover:text-sunset-deep group-hover:underline decoration-1 underline-offset-4 transition-colors">
           {event.title}
         </h3>
-        {metaParts.length > 0 && (
-          <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">
-            {metaParts.join(" · ")}
-          </p>
-        )}
+        <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">
+          {placeParts.length > 0 && (
+            <>
+              {placeParts.join(" · ")}
+              <span aria-hidden> · </span>
+            </>
+          )}
+          <span className={`inline-flex items-baseline gap-1.5 ${colors.text}`}>
+            <span aria-hidden className={`inline-block size-1.5 rounded-full ${colors.bar} translate-y-px`} />
+            via {source.toLowerCase()}
+          </span>
+        </p>
       </div>
     </Link>
   );

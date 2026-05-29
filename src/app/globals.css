@@ -340,7 +340,13 @@
   --color-ink-soft: oklch(0.4 0.012 30);
   --color-sunset: oklch(0.36 0.18 18);
   --color-sunset-deep: oklch(0.3 0.18 18);
-  --color-dusk-deep: oklch(0.14 0.008 30);
+  /* Stratum accents (used in source color-coding). Muted for editorial. */
+  --color-dusk: oklch(0.42 0.15 280);
+  --color-dusk-deep: oklch(0.32 0.13 280);
+  --color-terracotta: oklch(0.5 0.16 32);
+  --color-terracotta-deep: oklch(0.4 0.15 32);
+  --color-sage: oklch(0.5 0.1 145);
+  --color-sage-deep: oklch(0.4 0.1 145);
   --radius: 0;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
 }
