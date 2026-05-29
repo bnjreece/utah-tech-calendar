@@ -1,5 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400..700&family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap");
-@import url("https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap");
+/* Fonts loaded via <link> tags in layout.tsx <head>
+   (Tailwind v4 / Turbopack strips @import url() statements) */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -325,7 +325,10 @@
   font-family: var(--font-sans);
 }
 
-/* Editorial — restrained Apartamento/Vinh/Curtis distillation */
+/* Editorial — restrained Apartamento/Vinh/Curtis distillation
+   NOTE: Tailwind v4 `@theme inline` bakes font tokens at build time,
+   so --font-* overrides don't propagate to `font-sans`/`font-display`
+   utility classes. We override font-family directly with element selectors. */
 .theme-editorial {
   --background: oklch(0.975 0.006 80);
   --foreground: oklch(0.14 0.008 30);
@@ -335,21 +338,35 @@
   --color-paper-deep: oklch(0.93 0.01 80);
   --color-ink: oklch(0.14 0.008 30);
   --color-ink-soft: oklch(0.4 0.012 30);
-  /* Burgundy used ONLY on hover/link states. Never as a fill. */
   --color-sunset: oklch(0.36 0.18 18);
   --color-sunset-deep: oklch(0.3 0.18 18);
   --color-dusk-deep: oklch(0.14 0.008 30);
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --radius: 0;
-  font-family: var(--font-sans);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
 }
+.theme-editorial * {
+  font-family: inherit;
+}
+.theme-editorial h1,
+.theme-editorial h2,
+.theme-editorial h3 {
+  font-family: "Fraunces", ui-serif, Georgia, serif !important;
+}
+.theme-editorial .font-mono,
+.theme-editorial code,
+.theme-editorial pre {
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
+}
+
 /* Type variant: PT Serif display + Switzer body */
-.type-ptserif {
-  --font-sans: "Switzer", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "PT Serif", ui-serif, Georgia, serif;
-  font-family: var(--font-sans);
+.type-ptserif,
+.type-ptserif.theme-editorial {
+  font-family: "Switzer", ui-sans-serif, system-ui, sans-serif !important;
+}
+.type-ptserif h1,
+.type-ptserif h2,
+.type-ptserif h3 {
+  font-family: "PT Serif", ui-serif, Georgia, serif !important;
 }
 
 /* Old theme-apartment alias kept for any back-refs */
