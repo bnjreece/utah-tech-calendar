@@ -3,99 +3,91 @@ import type { SVGProps } from "react";
 type Props = SVGProps<SVGSVGElement>;
 
 /* ──────────────────────────────────────────────────────────────
-   Final 3 mountain marks — v6.
-   Striped Crest + Sunburst dropped. Each remaining mark
-   browser-verified by inspecting actual rendered child bboxes.
+   Three Reflection variants — v7.
+   Same composition (mountain + horizon + reflection + ripples),
+   refined in three directions: refined classic, two peaks, and
+   striped shimmer reflection.
    ────────────────────────────────────────────────────────────── */
 
-// 1. Topo Crest — sun positioned to PEEK ABOVE the mountain peak
-//    (not floating beside it). Mountain bites into the bottom of
-//    the sun, sun's top half emerges. Three contour-line chevrons
-//    stroked in paper color cut into the mountain face.
-export function TopoCrestLogo(props: Props) {
+// A. Reflection Calm — single mountain with more breathing room
+//    above (peak at y=10 instead of y=6), 5 ripples fading and
+//    stepping inward. The most refined version of the current.
+export function ReflectionCalmLogo(props: Props) {
   return (
-    <svg viewBox="0 0 48 48" aria-hidden {...props}>
-      {/* Sun centered at the peak. Mountain will bite into its bottom. */}
-      <circle cx="24" cy="6" r="6" fill="currentColor" />
-      {/* Mountain — filled, taller so its peak intrudes into the sun */}
-      <path d="M 2 44 L 24 8 L 46 44 Z" fill="currentColor" />
-      {/* Topographic V-chevron contour lines as cut-outs on the
-          mountain face. Paper-color stroke. */}
-      <g
-        fill="none"
-        stroke="var(--color-paper-deep)"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      >
-        <path d="M 9 39 L 24 17 L 39 39" />
-        <path d="M 14 33 L 24 22 L 34 33" />
-        <path d="M 18 27 L 24 25 L 30 27" />
-      </g>
+    <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
+      <path d="M 4 26 L 24 10 L 44 26 Z" />
+      <rect x="0" y="26" width="48" height="0.75" />
+      <path d="M 4 27 L 24 41 L 44 27 Z" opacity="0.32" />
+      <rect x="4" y="30" width="40" height="0.4" opacity="0.5" />
+      <rect x="7" y="33" width="34" height="0.4" opacity="0.45" />
+      <rect x="11" y="36" width="26" height="0.4" opacity="0.4" />
+      <rect x="15" y="39" width="18" height="0.4" opacity="0.35" />
+      <rect x="20" y="42" width="8" height="0.4" opacity="0.3" />
     </svg>
   );
 }
 
-// 2. Layered Range — three peaks repositioned so each visibly
-//    extends above the one behind it. Pure landscape, no sun.
-//    Stepped opacities create atmospheric depth.
-export function LayeredRangeLogo(props: Props) {
+// B. Reflection Range — asymmetric two-peak Wasatch silhouette
+//    above + the same silhouette reflected below. Range character
+//    enters the reflection composition.
+export function ReflectionRangeLogo(props: Props) {
   return (
     <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
-      {/* Back peak: tallest, centered, anchors most of the width */}
-      <path d="M 2 44 L 24 6 L 46 44 Z" />
-      {/* Middle peak: apex left of back-peak's left slope so it
-          peeks above. Mid opacity. */}
-      <path d="M 0 44 L 10 16 L 26 44 Z" opacity="0.55" />
-      {/* Front peak: apex right of back-peak's right slope so it
-          peeks above on the right. Lower opacity. */}
-      <path d="M 22 44 L 38 18 L 48 44 Z" opacity="0.35" />
+      {/* Two-peak mountain: left taller, right shorter, with a saddle between */}
+      <path d="M 0 26 L 14 8 L 24 18 L 34 14 L 48 26 Z" />
+      <rect x="0" y="26" width="48" height="0.75" />
+      {/* Reflected: same shape flipped */}
+      <path d="M 0 27 L 14 41 L 24 33 L 34 37 L 48 27 Z" opacity="0.32" />
+      {/* Three ripples */}
+      <rect x="4" y="31" width="40" height="0.4" opacity="0.5" />
+      <rect x="8" y="35" width="32" height="0.4" opacity="0.45" />
+      <rect x="14" y="39" width="20" height="0.4" opacity="0.4" />
     </svg>
   );
 }
 
-// 3. Reflection — mountain + horizon + reflection + water ripples.
-//    No sun (both removed per user). Salt-flats minimalism.
-export function ReflectionLogo(props: Props) {
+// C. Reflection Shimmer — single mountain above + reflection
+//    broken into 4 trapezoidal stripes following the inverted
+//    slope, fading as they descend. Water shimmer texture.
+export function ReflectionShimmerLogo(props: Props) {
   return (
     <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
-      {/* Mountain above horizon */}
-      <path d="M 4 24 L 24 6 L 44 24 Z" />
-      {/* Horizon hairline */}
-      <rect x="0" y="24" width="48" height="0.75" />
-      {/* Reflection: mountain flipped below */}
-      <path d="M 4 25 L 24 43 L 44 25 Z" opacity="0.32" />
-      {/* Three water ripple hairlines, getting shorter */}
-      <rect x="6" y="30" width="36" height="0.4" opacity="0.5" />
-      <rect x="10" y="34" width="28" height="0.4" opacity="0.5" />
-      <rect x="14" y="38" width="20" height="0.4" opacity="0.5" />
+      <path d="M 4 26 L 24 10 L 44 26 Z" />
+      <rect x="0" y="26" width="48" height="0.75" />
+      {/* Trapezoidal stripes inside the reflection's inverted triangle.
+          Slope: 20/16 = 1.25 x-units per y-unit from the inverted peak. */}
+      <polygon points="6,28 42,28 40,29.5 8,29.5" opacity="0.5" />
+      <polygon points="12,31 36,31 34,32.5 14,32.5" opacity="0.4" />
+      <polygon points="17,34 31,34 29,35.5 19,35.5" opacity="0.32" />
+      <polygon points="21,37 27,37 25,38.5 23,38.5" opacity="0.26" />
     </svg>
   );
 }
 
 export const ALL_LOGOS = [
   {
-    id: "topo-crest",
-    name: "Topo Crest",
-    category: "mountain · cartography",
+    id: "reflection-calm",
+    name: "Reflection Calm",
+    category: "reflection · refined",
     description:
-      "Sun now PEEKS ABOVE the mountain peak (was floating beside it). Mountain bites into the bottom of the sun where they intersect. Three V-chevron contour lines stroked in paper-color cut into the mountain face — USGS topographic chart compressed.",
-    Component: TopoCrestLogo,
+      "The current direction, polished. Mountain peak at y=10 (8 units of breathing room above the peak, was 6). Five ripple lines instead of three, stepping inward and fading as they recede. Most conservative iteration.",
+    Component: ReflectionCalmLogo,
   },
   {
-    id: "layered-range",
-    name: "Layered Range",
-    category: "mountain · depth",
+    id: "reflection-range",
+    name: "Reflection Range",
+    category: "reflection · range",
     description:
-      "Sun removed. Three peaks now visibly distinct: back-center (tallest, full opacity), middle-left peeks above the back's left slope (55%), front-right peeks above the back's right slope (35%). Pure atmospheric depth via opacity stacking — Hokusai compression.",
-    Component: LayeredRangeLogo,
+      "Asymmetric two-peak Wasatch silhouette above and reflected below. Saddle between the peaks. Adds range personality while staying inside the reflection composition. Three ripples.",
+    Component: ReflectionRangeLogo,
   },
   {
-    id: "reflection",
-    name: "Reflection",
-    category: "mountain · sunset",
+    id: "reflection-shimmer",
+    name: "Reflection Shimmer",
+    category: "reflection · shimmer",
     description:
-      "Both suns removed. Mountain + horizon + reflected mountain + three water ripple hairlines, getting shorter as they recede. Salt-flats minimalism.",
-    Component: ReflectionLogo,
+      "Mountain solid above; reflection broken into 4 trapezoidal stripes following the inverted slope, fading as they descend. Water shimmer texture — most 70s-poster of the three.",
+    Component: ReflectionShimmerLogo,
   },
 ] as const;
 
