@@ -1,54 +1,66 @@
 import { EventCard } from "./event-card";
 import type { EventWithGroup } from "@/lib/queries";
 
-function isoDay(d: Date): string {
+function dayLabel(d: Date): string {
   return d.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
-    year: "numeric",
   });
 }
 
-export function EventList({ events, grouped = false }: { events: EventWithGroup[]; grouped?: boolean }) {
+export function EventList({
+  events,
+  grouped = false,
+}: {
+  events: EventWithGroup[];
+  grouped?: boolean;
+}) {
   if (!events.length) {
     return (
-      <div className="text-center text-muted-foreground py-16 text-sm">
-        No events match these filters. Try widening your date range or clearing filters.
+      <div className="border-t border-foreground/10 py-24 text-center">
+        <p className="font-display text-2xl text-foreground/40">No events here.</p>
+        <p className="mt-2 text-sm text-foreground/55">
+          Try a wider date range or clearing some filters.
+        </p>
       </div>
     );
   }
 
   if (!grouped) {
     return (
-      <div className="flex flex-col gap-2">
+      <ul role="list" className="divide-y divide-foreground/10 border-t border-foreground/10">
         {events.map((e) => (
-          <EventCard key={e.id} event={e} />
+          <li key={e.id}>
+            <EventCard event={e} />
+          </li>
         ))}
-      </div>
+      </ul>
     );
   }
 
   const buckets = new Map<string, EventWithGroup[]>();
   for (const e of events) {
-    const key = isoDay(new Date(e.startsAt));
+    const key = dayLabel(new Date(e.startsAt));
     const arr = buckets.get(key) ?? [];
     arr.push(e);
     buckets.set(key, arr);
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       {Array.from(buckets.entries()).map(([day, items]) => (
         <section key={day}>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+          <h2 className="font-display text-3xl text-foreground/85 tracking-tight">
             {day}
           </h2>
-          <div className="flex flex-col gap-2">
+          <ul role="list" className="mt-2 divide-y divide-foreground/10 border-t border-foreground/10">
             {items.map((e) => (
-              <EventCard key={e.id} event={e} />
+              <li key={e.id}>
+                <EventCard event={e} />
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       ))}
     </div>
