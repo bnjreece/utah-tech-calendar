@@ -49,8 +49,8 @@ export function MultiSelectPopover({
       <PopoverTrigger
         className={
           count > 0
-            ? "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            : "inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            ? "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+            : "inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
         }
       >
         <span>{label}</span>
@@ -71,7 +71,7 @@ export function MultiSelectPopover({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             aria-label={`Search ${label}`}
-            className="mb-2 w-full rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm placeholder:text-foreground/40 focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 max-sm:text-base"
+            className="mb-2 w-full rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm placeholder:text-foreground/40 focus-visible:outline-2 focus-visible:outline-sunset-deep -outline-offset-1 max-sm:text-base"
           />
         )}
         <ul role="list" className="max-h-64 overflow-auto flex flex-col gap-px">
@@ -89,7 +89,7 @@ export function MultiSelectPopover({
                 >
                   <span className="truncate">{opt.label}</span>
                   {on && (
-                    <svg viewBox="0 0 14 14" aria-hidden className="size-4 text-brand shrink-0">
+                    <svg viewBox="0 0 14 14" aria-hidden className="size-4 text-sunset-deep shrink-0">
                       <path
                         d="M3 8L6 11L11 3.5"
                         fill="none"

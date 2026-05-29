@@ -85,7 +85,7 @@ export function FilterBar({ cities, tags, sources }: Props) {
             placeholder="Search title, venue, description"
             defaultValue={filters.q}
             onChange={(e) => update({ q: e.target.value })}
-            className="w-full rounded-full bg-foreground/[0.04] py-2.5 pr-4 pl-10 text-sm placeholder:text-foreground/40 focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 hover:bg-foreground/[0.06] transition-colors max-sm:text-base"
+            className="w-full rounded-full bg-foreground/[0.04] py-2.5 pr-4 pl-10 text-sm placeholder:text-foreground/40 focus-visible:outline-2 focus-visible:outline-sunset-deep -outline-offset-1 hover:bg-foreground/[0.06] transition-colors max-sm:text-base"
           />
           <svg
             viewBox="0 0 16 16"
@@ -196,13 +196,13 @@ export function FilterBar({ cities, tags, sources }: Props) {
 
 function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-xs text-brand-deep">
+    <span className="inline-flex items-center gap-1 rounded-full bg-sunset/15 px-2.5 py-1 text-xs text-sunset-deep">
       {label}
       <button
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${label}`}
-        className="-mr-1 inline-flex size-4 items-center justify-center rounded-full hover:bg-brand/20 transition-colors"
+        className="-mr-1 inline-flex size-4 items-center justify-center rounded-full hover:bg-sunset/20 transition-colors"
       >
         <svg viewBox="0 0 10 10" aria-hidden className="size-2.5">
           <path d="M1 1l8 8M9 1l-8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -215,7 +215,7 @@ function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }
 function OnlineToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="inline-flex items-center gap-2 rounded-full bg-foreground/[0.04] px-3 py-1.5 cursor-pointer select-none hover:bg-foreground/[0.08] transition-colors">
-      <span className="relative inline-flex w-8 shrink-0 rounded-full p-0.5 inset-ring inset-ring-foreground/10 bg-foreground/10 has-checked:bg-brand transition-colors duration-200">
+      <span className="relative inline-flex w-8 shrink-0 rounded-full p-0.5 inset-ring inset-ring-foreground/10 bg-foreground/10 has-checked:bg-sunset transition-colors duration-200">
         <span className="aspect-square w-1/2 rounded-full bg-white shadow-xs ring-1 ring-foreground/5 transition-transform duration-200 ease-in-out [.group:has(input:checked)_&,&:has(+input:checked)]:translate-x-full" />
         <input
           type="checkbox"
@@ -241,8 +241,8 @@ function DateRangePopover({
 }) {
   const active = Boolean(from || to);
   const buttonClass = active
-    ? "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-    : "inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+    ? "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+    : "inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep";
 
   return (
     <Popover>
@@ -259,7 +259,7 @@ function DateRangePopover({
             type="date"
             value={from ?? ""}
             onChange={(e) => onChange(e.target.value || undefined, to)}
-            className="rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 max-sm:text-base"
+            className="rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-sunset-deep -outline-offset-1 max-sm:text-base"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-foreground/55">
@@ -268,7 +268,7 @@ function DateRangePopover({
             type="date"
             value={to ?? ""}
             onChange={(e) => onChange(from, e.target.value || undefined)}
-            className="rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-brand -outline-offset-1 max-sm:text-base"
+            className="rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-sunset-deep -outline-offset-1 max-sm:text-base"
           />
         </label>
         {(from || to) && (

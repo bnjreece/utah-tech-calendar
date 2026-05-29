@@ -16,28 +16,30 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className="isolate min-h-dvh flex flex-col bg-background text-foreground antialiased">
-        <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-foreground/5">
-          <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between gap-6">
-            <Link href="/" aria-label="Homepage" className="flex items-baseline gap-2">
-              <span className="font-display text-2xl leading-none">Utah Tech</span>
-              <span className="font-display text-2xl italic leading-none text-brand">events</span>
+        <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/5">
+          <div className="mx-auto max-w-6xl px-6 py-3.5 flex items-center justify-between gap-6">
+            <Link href="/" aria-label="Homepage" className="flex items-center gap-2.5">
+              <span aria-hidden className="block size-4 rounded-full strata-divider" />
+              <span className="font-semibold tracking-tight text-base">
+                Utah Tech Events
+              </span>
             </Link>
             <nav className="flex items-center gap-1 text-sm">
               <Link
                 href="/"
-                className="px-3 py-1.5 text-foreground/70 hover:text-foreground transition-colors"
+                className="px-3 py-1.5 text-ink-soft hover:text-ink transition-colors"
               >
                 Events
               </Link>
               <Link
                 href="/api/ical"
-                className="px-3 py-1.5 text-foreground/70 hover:text-foreground transition-colors"
+                className="px-3 py-1.5 text-ink-soft hover:text-ink transition-colors"
               >
                 Subscribe
               </Link>
               <Link
                 href="/submit"
-                className="ml-2 inline-flex items-center rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background hover:bg-foreground/85 transition-colors"
+                className="ml-2 inline-flex items-center rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-paper hover:bg-ink/85 transition-colors"
               >
                 Submit
               </Link>
@@ -45,15 +47,28 @@ export default function RootLayout({
           </div>
         </header>
         <main className="flex-1">{children}</main>
-        <footer className="border-t border-foreground/5 mt-16">
-          <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm text-foreground/55">
+        <footer className="mt-16 border-t border-ink/5">
+          <div className="mx-auto max-w-6xl px-6 py-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <span className="font-display text-lg leading-none">Utah Tech</span>{" "}
-              <span className="font-display italic text-lg leading-none">events</span>
+              <div className="flex items-center gap-2.5">
+                <span aria-hidden className="block size-3 rounded-full strata-divider" />
+                <span className="font-semibold tracking-tight">Utah Tech Events</span>
+              </div>
+              <p className="mt-2 text-sm text-ink-soft text-pretty max-w-md">
+                Real, in-person Utah tech events. Online events filtered out by default — toggle them on when you want them.
+              </p>
             </div>
-            <p className="text-pretty max-w-md">
-              In-person Utah tech events, curated. Online events are filtered out by default — toggle them on if you want.
-            </p>
+            <div className="flex items-center gap-4 text-sm">
+              <Link href="/api/ical" className="text-ink-soft hover:text-ink transition-colors">
+                iCal
+              </Link>
+              <Link href="/api/rss" className="text-ink-soft hover:text-ink transition-colors">
+                RSS
+              </Link>
+              <Link href="/submit" className="text-ink-soft hover:text-ink transition-colors">
+                Submit
+              </Link>
+            </div>
           </div>
         </footer>
       </body>

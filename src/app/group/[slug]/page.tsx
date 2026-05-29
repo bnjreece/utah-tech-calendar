@@ -16,46 +16,51 @@ export default async function GroupPage({
   const events = await getUpcomingEventsForGroup(group.id);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-6 py-10">
       <Link
         href="/"
-        className="text-sm text-foreground/55 hover:text-foreground transition-colors"
+        className="text-sm text-ink-soft hover:text-ink transition-colors"
       >
         ← All events
       </Link>
 
-      <p className="mt-8 text-sm uppercase tracking-wide text-brand-deep font-medium">
-        Group
-      </p>
-      <h1 className="mt-2 font-display text-5xl sm:text-6xl leading-[1.05] tracking-tight text-balance">
-        {group.name}
-      </h1>
-      {group.description && (
-        <p className="mt-4 text-base text-foreground/65 text-pretty max-w-[62ch]">
-          {group.description}
-        </p>
-      )}
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-foreground/55">
-        {group.source && <span>{group.source}</span>}
-        {group.website && (
-          <>
-            <span aria-hidden>·</span>
-            <a
-              href={group.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors"
-            >
-              Website ↗
-            </a>
-          </>
-        )}
+      <div className="mt-8 rounded-3xl overflow-hidden bg-card ring-1 ring-ink/5 shadow-sm">
+        <div aria-hidden className="h-3 strata-divider" />
+        <div className="p-8 sm:p-10">
+          <p className="text-sm uppercase tracking-[0.18em] text-ink-soft font-medium">
+            Group
+          </p>
+          <h1 className="mt-3 font-semibold text-4xl sm:text-5xl leading-[1.05] tracking-tight text-balance">
+            {group.name}
+          </h1>
+          {group.description && (
+            <p className="mt-4 text-base text-ink-soft text-pretty max-w-[62ch]">
+              {group.description}
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-ink-soft">
+            {group.source && <span>{group.source}</span>}
+            {group.website && (
+              <>
+                <span aria-hidden>·</span>
+                <a
+                  href={group.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-ink transition-colors"
+                >
+                  Website ↗
+                </a>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      <h2 className="mt-12 font-display text-3xl tracking-tight">
+      <h2 className="mt-10 font-semibold text-2xl tracking-tight">
         {events.length} upcoming
       </h2>
-      <div className="mt-4">
+      <div className="mt-5">
         <EventList events={events} />
       </div>
     </div>
