@@ -23,6 +23,85 @@ function fmtDate(d: Date) {
 }
 
 /* ============================================================
+   Editorial Strip — Apartamento/Vinh stripped hairline row
+   ============================================================ */
+export function EditorialStripCard({ event }: { event: EventWithGroup }) {
+  const start = new Date(event.startsAt);
+  const d = fmtDate(start);
+  const source = SOURCE_LABELS[event.source] ?? event.source;
+  return (
+    <Link
+      href={`/event/${event.id}`}
+      className="group grid grid-cols-[--spacing(20)_1fr] sm:grid-cols-[--spacing(28)_1fr] gap-6 sm:gap-10 items-baseline py-8 sm:py-10 border-t border-ink/15 first:border-t-0 transition-colors"
+    >
+      <div className="flex flex-col">
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+          {d.weekday}
+        </span>
+        <span className="mt-1 font-display text-5xl sm:text-6xl leading-none text-ink tabular-nums">
+          {d.day}
+        </span>
+        <span className="mt-1 font-display italic text-base sm:text-lg text-ink-soft">
+          {d.monthFull.toLowerCase()}
+        </span>
+      </div>
+      <div className="min-w-0">
+        <h3 className="font-display text-3xl sm:text-4xl leading-[1.05] tracking-tight text-balance text-ink group-hover:text-sunset-deep transition-colors">
+          {event.title}
+        </h3>
+        {event.description && (
+          <p className="mt-3 text-base text-ink-soft text-pretty line-clamp-2 max-w-[60ch] leading-relaxed">
+            {event.description}
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-xs uppercase tracking-[0.16em] text-ink-soft">
+          <span className="tabular-nums">{d.time}</span>
+          {(event.venueName || event.city) && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{[event.venueName, event.city].filter(Boolean).join(" · ")}</span>
+            </>
+          )}
+          <span aria-hidden>·</span>
+          <span>via {source.toLowerCase()}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ============================================================
+   Editorial Linear — Curtis pure index list
+   ============================================================ */
+export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
+  const start = new Date(event.startsAt);
+  const d = fmtDate(start);
+  const source = SOURCE_LABELS[event.source] ?? event.source;
+  return (
+    <Link
+      href={`/event/${event.id}`}
+      className="group block py-5 border-t border-ink/12 first:border-t-0 transition-colors"
+    >
+      <div className="flex items-baseline gap-3 flex-wrap">
+        <span className="font-mono text-xs tabular-nums text-ink-soft uppercase tracking-wide w-32 shrink-0">
+          {d.weekday} {d.month} {d.day}
+        </span>
+        <h3 className="font-display text-xl sm:text-2xl leading-snug text-balance text-ink group-hover:text-sunset-deep group-hover:underline decoration-1 underline-offset-4 transition-colors min-w-0">
+          {event.title}
+        </h3>
+      </div>
+      <div className="mt-1.5 ml-32 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
+        <span className="tabular-nums">{d.time}</span>
+        {event.venueName && (<><span aria-hidden> · </span><span>{event.venueName}</span></>)}
+        {event.city && (<><span aria-hidden> · </span><span>{event.city}</span></>)}
+        <span aria-hidden> · </span>
+        <span>via {source.toLowerCase()}</span>
+      </div>
+    </Link>
+  );
+}
+
+/* ============================================================
    Wasatch — outdoor field guide
    ============================================================ */
 export function WasatchCard({ event }: { event: EventWithGroup }) {
