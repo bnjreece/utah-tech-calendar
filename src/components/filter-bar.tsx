@@ -16,10 +16,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+interface CountedOption {
+  value: string;
+  count: number;
+}
+
 interface Props {
-  cities: string[];
-  tags: string[];
-  sources: string[];
+  cities: CountedOption[];
+  tags: CountedOption[];
+  sources: CountedOption[];
 }
 
 export function FilterBar({ cities, tags, sources }: Props) {
@@ -67,12 +72,13 @@ export function FilterBar({ cities, tags, sources }: Props) {
     (filters.showOnline ? 1 : 0);
 
   const sourceOptions = sources.map((s) => ({
-    value: s,
-    label: SOURCE_LABELS[s] ?? s,
+    value: s.value,
+    label: SOURCE_LABELS[s.value] ?? s.value,
+    count: s.count,
   }));
   const regionOptions = UTAH_REGIONS.map((r) => ({ value: r, label: r }));
-  const cityOptions = cities.map((c) => ({ value: c, label: c }));
-  const tagOptions = tags.map((t) => ({ value: t, label: t }));
+  const cityOptions = cities.map((c) => ({ value: c.value, label: c.value, count: c.count }));
+  const tagOptions = tags.map((t) => ({ value: t.value, label: t.value, count: t.count }));
 
   return (
     <div className="flex flex-col gap-3">

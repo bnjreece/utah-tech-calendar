@@ -159,3 +159,45 @@ export async function getDistinctSources(): Promise<string[]> {
     .where(eq(events.status, "approved"));
   return rows.map((r) => r.source).filter(Boolean).sort();
 }
+
+export async function getSourceCounts(): Promise<Array<{ source: string; count: number }>> {
+  const rows = await db
+    .select({ source: events.source, count: sql<number>`count(*)::int` })
+    .from(events)
+    .where(and(eq(events.status, "approved"), gte(events.startsAt, new Date())))
+    .groupBy(events.source);
+  return rows
+    .filter((r) => r.source)
+    .sort((a, b) => b.count - a.count);
+}
+
+export async function getCityCounts(): Promise<Array<{ city: string; count: number }>> {
+  const rows = await db
+    .select({ city: events.city, count: sql<number>`count(*)::int` })
+    .from(events)
+    .where(
+      and(
+        eq(events.status, "approved"),
+        eq(events.isOnline, false),
+        gte(events.startsAt, new Date()),
+      ),
+    )
+    .groupBy(events.city);
+  return rows
+    .filter((r): r is { city: string; count: number } => Boolean(r.city))
+    .sort((a, b) => b.count - a.count);
+}
+
+export async function getTagCounts(): Promise<Array<{ tag: string; count: number }>> {
+  const rows = await db
+    .select({ tags: events.tags })
+    .from(events)
+    .where(and(eq(events.status, "approved"), gte(events.startsAt, new Date())));
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    for (const t of r.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count);
+}

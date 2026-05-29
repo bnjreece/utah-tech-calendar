@@ -26,10 +26,10 @@ export function EventCard({ event }: { event: EventWithGroup }) {
   return (
     <Link
       href={`/event/${event.id}`}
-      className="group block overflow-hidden rounded-3xl bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-sm ring-1 ring-ink/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+      className="group flex h-full flex-col overflow-hidden rounded-3xl bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-sm ring-1 ring-ink/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
     >
       <div className={`h-2 ${colors.bar}`} aria-hidden />
-      <div className="p-5 flex flex-col gap-4">
+      <div className="p-5 flex flex-1 flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col items-start tabular-nums">
             <span className="text-xs uppercase tracking-wide text-ink-soft">
@@ -49,7 +49,7 @@ export function EventCard({ event }: { event: EventWithGroup }) {
           </span>
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-lg leading-snug text-balance group-hover:text-sunset-deep transition-colors">
             {event.title}
           </h3>
@@ -60,7 +60,7 @@ export function EventCard({ event }: { event: EventWithGroup }) {
           )}
         </div>
 
-        <div className="text-sm text-ink-soft flex flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
+        <div className="mt-auto text-sm text-ink-soft flex flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
           <span className={colors.text}>{time}</span>
           {event.venueName && (
             <>

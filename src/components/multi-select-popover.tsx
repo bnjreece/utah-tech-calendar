@@ -10,6 +10,7 @@ import {
 interface Option {
   value: string;
   label: string;
+  count?: number;
 }
 
 interface Props {
@@ -87,19 +88,26 @@ export function MultiSelectPopover({
                   onClick={() => toggle(opt.value)}
                   className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-foreground/[0.04] transition-colors"
                 >
-                  <span className="truncate">{opt.label}</span>
-                  {on && (
-                    <svg viewBox="0 0 14 14" aria-hidden className="size-4 text-sunset-deep shrink-0">
-                      <path
-                        d="M3 8L6 11L11 3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
+                  <span className="truncate flex-1">{opt.label}</span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    {opt.count !== undefined && (
+                      <span className="tabular-nums text-xs text-ink-soft">
+                        {opt.count}
+                      </span>
+                    )}
+                    {on && (
+                      <svg viewBox="0 0 14 14" aria-hidden className="size-4 text-sunset-deep">
+                        <path
+                          d="M3 8L6 11L11 3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </span>
                 </button>
               </li>
             );
