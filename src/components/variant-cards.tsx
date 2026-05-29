@@ -72,30 +72,34 @@ export function EditorialStripCard({ event }: { event: EventWithGroup }) {
 
 /* ============================================================
    Editorial Linear — Curtis pure index list
+   Strict 2-col grid, both rows live in same right column for
+   pixel-perfect alignment of title + metadata.
    ============================================================ */
 export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
   const source = SOURCE_LABELS[event.source] ?? event.source;
+  const metaParts = [event.venueName, event.city, `via ${source.toLowerCase()}`].filter(Boolean);
   return (
     <Link
       href={`/event/${event.id}`}
-      className="group block py-5 border-t border-ink/12 first:border-t-0 transition-colors"
+      className="group grid grid-cols-[--spacing(20)_1fr] sm:grid-cols-[--spacing(22)_1fr] gap-x-6 sm:gap-x-8 items-baseline py-6 border-t border-ink/15 first:border-t-0 transition-colors"
     >
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <span className="font-mono text-xs tabular-nums text-ink-soft uppercase tracking-wide w-32 shrink-0">
-          {d.weekday} {d.month} {d.day}
-        </span>
-        <h3 className="font-display text-xl sm:text-2xl leading-snug text-balance text-ink group-hover:text-sunset-deep group-hover:underline decoration-1 underline-offset-4 transition-colors min-w-0">
+      <div className="self-start pt-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft tabular-nums">
+        <div>{d.month} {String(d.day).padStart(2, "0")}</div>
+        <div className="mt-1 text-ink/40 normal-case tracking-[0.14em]">
+          {d.time.toLowerCase().replace(/\s/g, "")}
+        </div>
+      </div>
+      <div className="min-w-0">
+        <h3 className="font-display text-xl sm:text-2xl leading-[1.2] -tracking-[0.005em] text-pretty text-ink group-hover:text-sunset-deep group-hover:underline decoration-1 underline-offset-4 transition-colors">
           {event.title}
         </h3>
-      </div>
-      <div className="mt-1.5 ml-32 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-        <span className="tabular-nums">{d.time}</span>
-        {event.venueName && (<><span aria-hidden> · </span><span>{event.venueName}</span></>)}
-        {event.city && (<><span aria-hidden> · </span><span>{event.city}</span></>)}
-        <span aria-hidden> · </span>
-        <span>via {source.toLowerCase()}</span>
+        {metaParts.length > 0 && (
+          <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">
+            {metaParts.join(" · ")}
+          </p>
+        )}
       </div>
     </Link>
   );

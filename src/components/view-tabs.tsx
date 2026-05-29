@@ -14,35 +14,32 @@ export function ViewTabs({ current }: { current: "list" | "calendar" }) {
     router.push(`${pathname}${sp.toString() ? `?${sp.toString()}` : ""}`);
   }
 
-  const tabBase =
-    "rounded-full px-3.5 py-1 text-sm font-medium transition-colors";
-  const tabOn = "bg-foreground text-background";
-  const tabOff = "text-foreground/55 hover:text-foreground";
+  const on =
+    "text-ink underline decoration-1 underline-offset-4";
+  const off =
+    "text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors";
 
   return (
-    <div
-      role="tablist"
-      aria-label="View mode"
-      className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.04] p-1"
-    >
+    <span role="tablist" aria-label="View mode" className="inline-flex items-baseline gap-2 font-mono text-[11px] uppercase tracking-[0.18em]">
       <button
         type="button"
         role="tab"
         aria-selected={current === "list"}
         onClick={() => go("list")}
-        className={`${tabBase} ${current === "list" ? tabOn : tabOff}`}
+        className={current === "list" ? on : off}
       >
-        List
+        list
       </button>
+      <span aria-hidden className="text-ink/25">·</span>
       <button
         type="button"
         role="tab"
         aria-selected={current === "calendar"}
         onClick={() => go("calendar")}
-        className={`${tabBase} ${current === "calendar" ? tabOn : tabOff}`}
+        className={current === "calendar" ? on : off}
       >
-        By date
+        by date
       </button>
-    </div>
+    </span>
   );
 }

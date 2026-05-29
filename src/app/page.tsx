@@ -7,10 +7,7 @@ import {
 } from "@/lib/queries";
 import { FilterBar } from "@/components/filter-bar";
 import { ViewTabs } from "@/components/view-tabs";
-import {
-  EditorialStripBlock,
-  EditorialLinearBlock,
-} from "@/components/variant-blocks";
+import { EditorialLinearBlock } from "@/components/variant-blocks";
 
 export const dynamic = "force-dynamic";
 
@@ -38,43 +35,15 @@ export default async function HomePage({
   const sources = sourceCounts.map((s) => ({ value: s.source, count: s.count }));
 
   const feedQuery = filtersToSearchParams(filters).toString();
-  const filterBarSlot = <FilterBar cities={cities} tags={tags} sources={sources} />;
-  const viewSlot = <ViewTabs current={view} />;
-
-  const props = { events, filterBarSlot, viewSlot, feedQuery };
 
   return (
-    <div data-uidotsh-pick="Editorial system" className="contents">
-      <div
-        data-uidotsh-option="A. Fraunces + Inter · strip cards (recommended)"
-        className="contents theme-editorial"
-      >
-        <EditorialStripBlock {...props} />
-      </div>
-
-      <div
-        data-uidotsh-option="B. PT Serif + Switzer · strip cards"
-        className="contents theme-editorial type-ptserif"
-        hidden
-      >
-        <EditorialStripBlock {...props} />
-      </div>
-
-      <div
-        data-uidotsh-option="C. Fraunces + Inter · pure linear list"
-        className="contents theme-editorial"
-        hidden
-      >
-        <EditorialLinearBlock {...props} />
-      </div>
-
-      <div
-        data-uidotsh-option="D. PT Serif + Switzer · pure linear list"
-        className="contents theme-editorial type-ptserif"
-        hidden
-      >
-        <EditorialLinearBlock {...props} />
-      </div>
+    <div className="theme-editorial">
+      <EditorialLinearBlock
+        events={events}
+        filterBarSlot={<FilterBar cities={cities} tags={tags} sources={sources} />}
+        viewSlot={<ViewTabs current={view} />}
+        feedQuery={feedQuery}
+      />
     </div>
   );
 }

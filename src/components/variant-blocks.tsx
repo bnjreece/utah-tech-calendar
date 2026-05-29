@@ -89,15 +89,17 @@ export function EditorialStripBlock({ events, filterBarSlot, viewSlot, feedQuery
 }
 
 export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuery }: VariantProps) {
+  const month = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
   return (
     <>
-      <EditorialMasthead events={events} />
-      <section className="mx-auto max-w-5xl px-6 py-8">{filterBarSlot}</section>
-      <section className="mx-auto max-w-5xl px-6 pb-16">
-        <div className="mt-4 mb-2 pb-3 border-b-2 border-ink flex items-baseline justify-between gap-4">
-          <h2 className="font-display text-2xl tracking-tight italic">The Schedule</h2>
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-            {events.length} entries
+      <section className="mx-auto max-w-5xl px-6 pt-10 pb-2">{filterBarSlot}</section>
+      <section className="mx-auto max-w-5xl px-6 pt-10 pb-16">
+        <div className="pb-3 border-b-2 border-ink flex items-baseline justify-between gap-4">
+          <h2 className="font-display text-2xl sm:text-3xl tracking-tight italic">
+            The Schedule
+          </h2>
+          <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft tabular-nums">
+            {events.length} entries · {month}
           </span>
         </div>
         <ul role="list" className="flex flex-col">

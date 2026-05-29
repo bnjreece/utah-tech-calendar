@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full theme-editorial">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -30,58 +29,52 @@ export default function RootLayout({
         />
       </head>
       <body className="isolate min-h-dvh flex flex-col bg-background text-foreground antialiased">
-        <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/5">
-          <div className="mx-auto max-w-6xl px-6 py-3.5 flex items-center justify-between gap-6">
-            <Link href="/" aria-label="Homepage" className="flex items-center gap-2.5">
-              <span aria-hidden className="block size-4 rounded-full strata-divider" />
-              <span className="font-semibold tracking-tight text-base">
-                Utah Tech Events
-              </span>
+        <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/10">
+          <div className="mx-auto max-w-5xl px-6 py-3.5 flex items-baseline justify-between gap-6">
+            <Link
+              href="/"
+              aria-label="Homepage"
+              className="font-display text-base tracking-tight leading-none hover:text-sunset-deep transition-colors"
+            >
+              utah tech <span className="italic">events</span>
             </Link>
-            <nav className="flex items-center gap-1 text-sm">
+            <nav className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
               <Link
                 href="/"
-                className="px-3 py-1.5 text-ink-soft hover:text-ink transition-colors"
+                className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
               >
-                Events
+                events
               </Link>
               <Link
                 href="/api/ical"
-                className="px-3 py-1.5 text-ink-soft hover:text-ink transition-colors"
+                className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
               >
-                Subscribe
+                subscribe
               </Link>
               <Link
                 href="/submit"
-                className="ml-2 inline-flex items-center rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-paper hover:bg-ink/85 transition-colors"
+                className="text-ink hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors"
               >
-                Submit
+                submit
               </Link>
             </nav>
           </div>
         </header>
         <main className="flex-1">{children}</main>
-        <Script src="https://ui.sh/ui-picker.js" strategy="afterInteractive" />
-        <footer className="mt-16 border-t border-ink/5">
-          <div className="mx-auto max-w-6xl px-6 py-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <span aria-hidden className="block size-3 rounded-full strata-divider" />
-                <span className="font-semibold tracking-tight">Utah Tech Events</span>
-              </div>
-              <p className="mt-2 text-sm text-ink-soft text-pretty max-w-md">
-                Real, in-person Utah tech events. Online events filtered out by default — toggle them on when you want them.
-              </p>
-            </div>
-            <div className="flex items-center gap-4 text-sm">
-              <Link href="/api/ical" className="text-ink-soft hover:text-ink transition-colors">
-                iCal
+        <footer className="mt-12 border-t-2 border-ink">
+          <div className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+              compiled in cottonwood heights, utah · updated nightly
+            </p>
+            <div className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
+              <Link href="/api/ical" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                ical
               </Link>
-              <Link href="/api/rss" className="text-ink-soft hover:text-ink transition-colors">
-                RSS
+              <Link href="/api/rss" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                rss
               </Link>
-              <Link href="/submit" className="text-ink-soft hover:text-ink transition-colors">
-                Submit
+              <Link href="/submit" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                submit
               </Link>
             </div>
           </div>
