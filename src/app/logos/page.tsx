@@ -4,17 +4,19 @@ export const metadata = {
   title: "Logo studies - Utah Tech Events",
 };
 
+const FAVICON_SIZES = [16, 32, 48, 64] as const;
+
 export default function LogosPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
-        Logo studies
+        Logo studies · v2
       </p>
       <h1 className="mt-3 font-display text-4xl sm:text-5xl tracking-tight italic">
         Six marks for utahtech.events.
       </h1>
-      <p className="mt-4 max-w-[62ch] text-pretty text-ink-soft">
-        Three from my own creative direction. Three with ui.sh design discipline plus my take. Each shown in the actual header context, at favicon sizes, and in the burgundy hover state. Tell me which one (or which to combine) and I&apos;ll lock it into the header, favicon, social card, and `apple-touch-icon`.
+      <p className="mt-4 max-w-[62ch] text-pretty text-ink-soft leading-relaxed">
+        All marks now square so they survive favicon use. Each shown in the actual editorial header, at every favicon size in a bounded box, and at display size in both ink and burgundy. Tell me which one (or which to combine) and I&apos;ll wire it into the header, favicon, apple-touch-icon, and og:image.
       </p>
 
       <ul role="list" className="mt-14 flex flex-col gap-14">
@@ -27,11 +29,14 @@ export default function LogosPage() {
               </span>
             </div>
 
-            {/* Header mockup: the actual editorial header bar */}
+            {/* Header mockup — actual editorial header */}
             <div className="border border-ink/15 bg-paper">
               <div className="px-6 py-3.5 flex items-center justify-between gap-6 border-b border-ink/10">
                 <div className="flex items-center gap-3">
-                  <Component className="text-ink" style={{ height: "20px", width: "auto" }} />
+                  <Component
+                    className="text-ink"
+                    style={{ width: "22px", height: "22px" }}
+                  />
                   <span className="font-display text-base tracking-tight leading-none">
                     utah tech <span className="italic">events</span>
                   </span>
@@ -44,26 +49,51 @@ export default function LogosPage() {
               </div>
             </div>
 
-            {/* Size studies */}
-            <div className="mt-6 flex items-end flex-wrap gap-8">
-              <SizeStudy label="16">
-                <Component className="text-ink" style={{ width: "16px", height: "auto" }} />
-              </SizeStudy>
-              <SizeStudy label="32">
-                <Component className="text-ink" style={{ width: "32px", height: "auto" }} />
-              </SizeStudy>
-              <SizeStudy label="64">
-                <Component className="text-ink" style={{ width: "64px", height: "auto" }} />
-              </SizeStudy>
-              <SizeStudy label="128">
-                <Component className="text-ink" style={{ width: "128px", height: "auto" }} />
-              </SizeStudy>
-              <SizeStudy label="128 · burgundy">
-                <Component className="text-sunset-deep" style={{ width: "128px", height: "auto" }} />
-              </SizeStudy>
+            {/* Favicon-size studies (square bounded boxes, like actual browser favicons) */}
+            <div className="mt-6">
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-soft mb-3">
+                favicon sizes (bounded square)
+              </p>
+              <div className="flex items-end flex-wrap gap-4">
+                {FAVICON_SIZES.map((size) => (
+                  <FaviconBox key={size} size={size}>
+                    <Component
+                      className="text-ink"
+                      style={{ width: `${size}px`, height: `${size}px` }}
+                    />
+                  </FaviconBox>
+                ))}
+              </div>
             </div>
 
-            <p className="mt-5 text-sm text-pretty text-ink-soft max-w-[68ch] leading-relaxed">
+            {/* Display + burgundy hover preview */}
+            <div className="mt-6">
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-soft mb-3">
+                display + hover state
+              </p>
+              <div className="flex items-end gap-8">
+                <div className="flex flex-col items-start gap-2">
+                  <Component
+                    className="text-ink"
+                    style={{ width: "128px", height: "128px" }}
+                  />
+                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-soft">
+                    128 · ink
+                  </span>
+                </div>
+                <div className="flex flex-col items-start gap-2">
+                  <Component
+                    className="text-sunset-deep"
+                    style={{ width: "128px", height: "128px" }}
+                  />
+                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-soft">
+                    128 · burgundy
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-6 text-sm text-pretty text-ink-soft max-w-[68ch] leading-relaxed">
               {description}
             </p>
           </li>
@@ -77,12 +107,17 @@ export default function LogosPage() {
   );
 }
 
-function SizeStudy({ label, children }: { label: string; children: React.ReactNode }) {
+function FaviconBox({ size, children }: { size: number; children: React.ReactNode }) {
   return (
     <div className="flex flex-col items-start gap-2">
-      <div className="flex items-end min-h-[128px]">{children}</div>
+      <div
+        className="border border-ink/15 flex items-center justify-center bg-paper"
+        style={{ width: `${size}px`, height: `${size}px` }}
+      >
+        {children}
+      </div>
       <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-soft">
-        {label}
+        {size}
       </span>
     </div>
   );
