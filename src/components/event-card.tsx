@@ -25,10 +25,11 @@ export function EventCard({ event }: { event: EventWithGroup }) {
 
   return (
     <Link
+      data-event-card
       href={`/event/${event.id}`}
       className="group flex h-full flex-col overflow-hidden rounded-3xl bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-sm ring-1 ring-ink/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
     >
-      <div className={`h-2 ${colors.bar}`} aria-hidden />
+      <div data-card-bar className={`h-2 ${colors.bar}`} aria-hidden />
       <div className="p-5 flex flex-1 flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col items-start tabular-nums">
@@ -43,6 +44,7 @@ export function EventCard({ event }: { event: EventWithGroup }) {
             </span>
           </div>
           <span
+            data-source-chip
             className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${colors.chip}`}
           >
             {sourceLabel}
