@@ -3,171 +3,107 @@ import type { SVGProps } from "react";
 type Props = SVGProps<SVGSVGElement>;
 
 /* ──────────────────────────────────────────────────────────────
-   v2 — all marks now square (48×48) so they survive favicon use.
-   Heavier weights, denser composition, tested at 16/32/48/64px.
+   Five mountain variants. Saul Bass discipline:
+   each is a single composition of geometric primitives,
+   distinct from the others, scales clean from 16px to 192px.
    ────────────────────────────────────────────────────────────── */
 
-/* ─── MY TAKE ────────────────────────────────────────────────── */
-
-// 1. Wasatch Peaks — three sharp peaks edge-to-edge in the square,
-//    hairline horizon, peaks taller so the silhouette dominates.
-export function WasatchLogo(props: Props) {
+// 1. Crest — sun rising behind a mountain triangle.
+//    Two primitives overlapping create depth. The warmth move.
+export function CrestLogo(props: Props) {
   return (
     <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
-      <path d="M 0 44 L 13 12 L 21 22 L 24 3 L 27 22 L 35 12 L 48 44 Z" />
-      <rect x="0" y="44" width="48" height="1.25" />
+      <circle cx="24" cy="18" r="12" />
+      <path d="M 0 44 L 24 14 L 48 44 Z" />
     </svg>
   );
 }
 
-// 2. Beehive — actual domed silhouette in the Utah state seal style:
-//    horizontal bands narrowing toward the top, on a base.
-export function BeehiveLogo(props: Props) {
+// 2. Range — two overlapping triangle peaks.
+//    Back peak taller, front peak shifted. Reads as a range, not a singular mountain.
+export function RangeLogo(props: Props) {
   return (
     <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
-      {/* Stacked bands narrowing toward top, classic beehive form */}
-      <rect x="20" y="6"  width="8"  height="5" rx="2" />
-      <rect x="16" y="13" width="16" height="5" rx="2" />
-      <rect x="12" y="20" width="24" height="5" rx="2" />
-      <rect x="8"  y="27" width="32" height="5" rx="2" />
-      {/* Base platform */}
-      <rect x="4"  y="36" width="40" height="4" />
-      <rect x="2"  y="42" width="44" height="1" />
+      {/* Back peak: tallest, anchors right */}
+      <path d="M 8 44 L 28 4 L 48 44 Z" />
+      {/* Front peak: shorter, shifted left */}
+      <path d="M 0 44 L 14 18 L 28 44 Z" />
     </svg>
   );
 }
 
-// 3. Sun, horizon, range — half-sun above horizon with a faint
-//    mountain ridge in the foreground. Earns the square frame.
-export function SunHorizonLogo(props: Props) {
+// 3. Notch — single mountain with a Fuji-style V-notch at the summit.
+//    The notch is the refinement; everything else is silence.
+export function NotchLogo(props: Props) {
   return (
     <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
-      {/* Sun: top half of a disc, sitting on the horizon */}
-      <path d="M 8 26 A 16 16 0 0 1 40 26 Z" />
-      {/* Horizon */}
-      <rect x="0" y="26" width="48" height="1.25" />
-      {/* Distant mountain ridge in the foreground */}
-      <path d="M 0 38 L 7 32 L 13 36 L 22 30 L 32 35 L 41 30 L 48 34 L 48 42 L 0 42 Z" opacity="0.35" />
+      <path d="M 4 44 L 22 8 L 24 14 L 26 8 L 44 44 Z" />
     </svg>
   );
 }
 
-/* ─── UI.SH + MY TAKE ────────────────────────────────────────── */
-
-// 4. UTE — Fraunces italic, weight 600, centered, tight tracking.
-//    Periodical mark feel; warned to user re: U-of-U Utes overlap.
-export function UteMonogramLogo(props: Props) {
+// 4. Peak — single bold isoceles triangle. The most minimal mountain.
+//    Nothing earns its keep here that doesn't have to be there.
+export function PeakLogo(props: Props) {
   return (
     <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
-      <text
-        x="24"
-        y="33"
-        textAnchor="middle"
-        fontFamily='"Fraunces", ui-serif, Georgia, serif'
-        fontSize="30"
-        fontStyle="italic"
-        fontWeight="600"
-        letterSpacing="-0.04em"
-      >
-        ute
-      </text>
-      {/* Editorial hairline beneath, signals "periodical mark" */}
-      <rect x="14" y="40" width="20" height="1" />
+      <path d="M 4 44 L 24 6 L 44 44 Z" />
     </svg>
   );
 }
 
-// 5. Asterisk & Rule — bold Fraunces asterisk fully contained in viewBox,
-//    generous rule below. Section-break mark from a print magazine.
-export function AsteriskLogo(props: Props) {
+// 5. Crest Outline — line-art version of #1.
+//    Lighter visual weight; same composition. Works when the ink mark
+//    would be too heavy (small headers, watermarks, footers).
+export function CrestOutlineLogo(props: Props) {
   return (
-    <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
-      <text
-        x="24"
-        y="32"
-        textAnchor="middle"
-        dominantBaseline="alphabetic"
-        fontFamily='"Fraunces", ui-serif, Georgia, serif'
-        fontSize="30"
-        fontWeight="600"
-      >
-        *
-      </text>
-      <rect x="10" y="40" width="28" height="1.5" />
-    </svg>
-  );
-}
-
-// 6. Italic e — vertically centered via dominantBaseline.
-//    The italic e from the wordmark, isolated as a single mark.
-export function EMarkLogo(props: Props) {
-  return (
-    <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden {...props}>
-      <text
-        x="24"
-        y="26"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontFamily='"Fraunces", ui-serif, Georgia, serif'
-        fontSize="32"
-        fontStyle="italic"
-        fontWeight="600"
-        letterSpacing="-0.03em"
-      >
-        e
-      </text>
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" aria-hidden {...props}>
+      <circle cx="24" cy="18" r="11" />
+      <path d="M 2 43 L 24 15 L 46 43 Z" />
     </svg>
   );
 }
 
 export const ALL_LOGOS = [
   {
-    id: "wasatch",
-    name: "Wasatch Peaks",
-    category: "my take",
+    id: "crest",
+    name: "Crest",
+    category: "mountain",
     description:
-      "Three Wasatch peaks repacked into a square frame. Center peak tallest. Hairline horizon. Reads as Utah at 32px and up; at 16px the peaks blur — survivable as favicon but UTE / italic-e are stronger at that size.",
-    Component: WasatchLogo,
+      "Sun rising behind a single mountain triangle. Two primitives overlapping create depth without complexity. The warmth move — references the original strata identity through the sun. The composition I'd default to for the favicon.",
+    Component: CrestLogo,
   },
   {
-    id: "beehive",
-    name: "Beehive",
-    category: "my take",
+    id: "range",
+    name: "Range",
+    category: "mountain",
     description:
-      "Actual domed silhouette built from stacked bands narrowing toward the top, on a base. Now reads as the Utah state seal beehive. Strong civic-symbol authority; works at all sizes.",
-    Component: BeehiveLogo,
+      "Two overlapping triangle peaks. Back peak taller, front peak shifted left. Reads as a range, not a singular mountain. More Wasatch-specific than the lone Crest.",
+    Component: RangeLogo,
   },
   {
-    id: "sun",
-    name: "Sun, Horizon, Range",
-    category: "my take",
+    id: "notch",
+    name: "Notch",
+    category: "mountain",
     description:
-      "Half-sun above a horizon with a faint mountain ridge in the foreground. Earns the square frame by adding the ridge. Carries warmth from the original strata identity.",
-    Component: SunHorizonLogo,
+      "Single mountain with a Fuji-style V-notch at the summit. The notch is the entire refinement; everything else is silence. Strongest at display sizes; the notch closes up at 16px.",
+    Component: NotchLogo,
   },
   {
-    id: "ute",
-    name: "UTE Monogram",
-    category: "ui.sh + my take",
+    id: "peak",
+    name: "Peak",
+    category: "mountain",
     description:
-      "Fraunces italic ute at weight 600 with a hairline rule beneath. Periodical mark feel. Risk: shares letters with U of U's Utes; at favicon size three letters get squished.",
-    Component: UteMonogramLogo,
+      "Single bold isoceles triangle. The most minimal mountain — nothing earns its keep that doesn't have to be there. Survives at any size, including 16px. The most disciplined option.",
+    Component: PeakLogo,
   },
   {
-    id: "asterisk",
-    name: "Asterisk & Rule",
-    category: "ui.sh + my take",
+    id: "crest-outline",
+    name: "Crest Outline",
+    category: "mountain",
     description:
-      "Bolder Fraunces asterisk above a generous rule. The mark a New Yorker section opener would carry. Pure print discipline. Holds up at favicon size because the asterisk has high recognizability.",
-    Component: AsteriskLogo,
-  },
-  {
-    id: "e-mark",
-    name: "Italic e",
-    category: "ui.sh + my take",
-    description:
-      "The single italic Fraunces e from the wordmark, isolated. Weight 600, tight tracking. Maximum brand alignment, maximum minimalism. Strongest at favicon size of any in the set.",
-    Component: EMarkLogo,
+      "Line-art version of Crest. Lighter visual weight, same composition. For places the ink mark would be too heavy (small headers, watermarks, footers, og:image with a body of text alongside).",
+    Component: CrestOutlineLogo,
   },
 ] as const;
 
