@@ -1,0 +1,53 @@
+import type { UtahRegion } from "./regions";
+
+export interface FilterState {
+  q: string;
+  regions: UtahRegion[];
+  cities: string[];
+  tags: string[];
+  groups: string[];
+  from?: string;
+  to?: string;
+  showOnline: boolean;
+}
+
+export function parseFilters(searchParams: URLSearchParams | Record<string, string | string[] | undefined>): FilterState {
+  const get = (k: string): string | undefined => {
+    if (searchParams instanceof URLSearchParams) {
+      return searchParams.get(k) ?? undefined;
+    }
+    const v = searchParams[k];
+    if (Array.isArray(v)) return v[0];
+    return v;
+  };
+
+  const csv = (k: string): string[] => {
+    const raw = get(k);
+    if (!raw) return [];
+    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  };
+
+  return {
+    q: get("q") ?? "",
+    regions: csv("regions") as UtahRegion[],
+    cities: csv("cities"),
+    tags: csv("tags"),
+    groups: csv("groups"),
+    from: get("from"),
+    to: get("to"),
+    showOnline: get("online") === "show",
+  };
+}
+
+export function filtersToSearchParams(f: FilterState): URLSearchParams {
+  const sp = new URLSearchParams();
+  if (f.q) sp.set("q", f.q);
+  if (f.regions.length) sp.set("regions", f.regions.join(","));
+  if (f.cities.length) sp.set("cities", f.cities.join(","));
+  if (f.tags.length) sp.set("tags", f.tags.join(","));
+  if (f.groups.length) sp.set("groups", f.groups.join(","));
+  if (f.from) sp.set("from", f.from);
+  if (f.to) sp.set("to", f.to);
+  if (f.showOnline) sp.set("online", "show");
+  return sp;
+}
