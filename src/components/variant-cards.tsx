@@ -86,8 +86,9 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   return (
     <Link
       href={`/event/${event.id}`}
-      className="group grid grid-cols-[--spacing(20)_1fr] sm:grid-cols-[--spacing(22)_1fr] gap-x-6 sm:gap-x-8 items-baseline py-6 border-t border-ink/15 first:border-t-0 transition-colors"
+      className="group grid grid-cols-[3px_--spacing(20)_1fr] sm:grid-cols-[3px_--spacing(22)_1fr] gap-x-5 sm:gap-x-7 items-baseline py-6 border-t border-ink/15 first:border-t-0 transition-colors"
     >
+      <div className={`self-stretch ${colors.bar} opacity-80 group-hover:opacity-100 transition-opacity`} aria-hidden />
       <div className="self-start pt-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft tabular-nums">
         <div>{d.month} {String(d.day).padStart(2, "0")}</div>
         <div className="mt-1 text-ink/40 normal-case tracking-[0.14em]">
@@ -105,10 +106,7 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
               <span aria-hidden> · </span>
             </>
           )}
-          <span className={`inline-flex items-baseline gap-1.5 ${colors.text}`}>
-            <span aria-hidden className={`inline-block size-1.5 rounded-full ${colors.bar} translate-y-px`} />
-            via {source.toLowerCase()}
-          </span>
+          <span>via {source.toLowerCase()}</span>
         </p>
       </div>
     </Link>

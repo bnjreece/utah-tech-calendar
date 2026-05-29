@@ -53,7 +53,7 @@ export default function RootLayout({
                 events
               </Link>
               <Link
-                href="/api/ical"
+                href="/subscribe"
                 className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
               >
                 subscribe
