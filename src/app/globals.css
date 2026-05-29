@@ -1,5 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=Lora:ital,wght@0,400..700;1,400..700&family=Mona+Sans:wght@400..900&family=Geist+Mono:wght@400..600&display=swap");
-@import url("https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=Fraunces:opsz,wght@9..144,300..900&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400..700&family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -298,6 +297,93 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* ============================================================
+   "Real" design system variants — each is a full identity
+   ============================================================ */
+
+/* Wasatch — outdoor field guide / USGS topo */
+.theme-wasatch {
+  --background: oklch(0.96 0.018 85);
+  --foreground: oklch(0.2 0.025 130);
+  --card: oklch(0.98 0.014 85);
+  --muted: oklch(0.92 0.022 85);
+  --color-paper: oklch(0.96 0.018 85);
+  --color-paper-deep: oklch(0.9 0.025 85);
+  --color-ink: oklch(0.2 0.025 130);
+  --color-ink-soft: oklch(0.42 0.025 130);
+  --color-sunset: oklch(0.52 0.16 40);
+  --color-sunset-deep: oklch(0.4 0.15 38);
+  --color-dusk-deep: oklch(0.32 0.08 145);
+  --color-sage: oklch(0.42 0.1 145);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius: 0.875rem;
+  font-family: var(--font-sans);
+}
+
+/* Apartment — Apartamento / T Magazine editorial */
+.theme-apartment {
+  --background: oklch(0.97 0.008 85);
+  --foreground: oklch(0.15 0.01 30);
+  --card: oklch(0.97 0.008 85);
+  --muted: oklch(0.93 0.012 85);
+  --color-paper: oklch(0.97 0.008 85);
+  --color-paper-deep: oklch(0.92 0.012 85);
+  --color-ink: oklch(0.15 0.01 30);
+  --color-ink-soft: oklch(0.42 0.012 30);
+  --color-sunset: oklch(0.38 0.18 15);
+  --color-sunset-deep: oklch(0.3 0.18 15);
+  --color-dusk-deep: oklch(0.6 0.18 75);
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius: 0;
+  font-family: var(--font-sans);
+}
+
+/* Mainframe — VT100 / lo-fi terminal */
+.theme-mainframe {
+  --background: oklch(0.13 0.015 145);
+  --foreground: oklch(0.86 0.18 145);
+  --card: oklch(0.16 0.02 145);
+  --muted: oklch(0.22 0.025 145);
+  --color-paper: oklch(0.13 0.015 145);
+  --color-paper-deep: oklch(0.18 0.022 145);
+  --color-ink: oklch(0.86 0.18 145);
+  --color-ink-soft: oklch(0.6 0.12 145);
+  --color-sunset: oklch(0.78 0.18 75);
+  --color-sunset-deep: oklch(0.65 0.18 75);
+  --color-dusk-deep: oklch(0.65 0.18 75);
+  --font-sans: "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: "IBM Plex Mono", ui-monospace, monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 0;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Glacier — Linear/Vercel cool techno */
+.theme-glacier {
+  --background: oklch(0.99 0.003 230);
+  --foreground: oklch(0.16 0.02 240);
+  --card: oklch(1 0 0);
+  --muted: oklch(0.96 0.005 230);
+  --color-paper: oklch(0.99 0.003 230);
+  --color-paper-deep: oklch(0.95 0.008 230);
+  --color-ink: oklch(0.16 0.02 240);
+  --color-ink-soft: oklch(0.5 0.02 240);
+  --color-sunset: oklch(0.78 0.18 210);
+  --color-sunset-deep: oklch(0.55 0.2 220);
+  --color-dusk-deep: oklch(0.55 0.2 220);
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --radius: 0.5rem;
+  font-family: var(--font-sans);
 }
 
 /* Bench Mono — Geist Mono, white bg, 1px ink wireframe, safety-orange accent */

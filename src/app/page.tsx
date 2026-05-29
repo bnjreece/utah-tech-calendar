@@ -9,6 +9,12 @@ import {
 import { EventList } from "@/components/event-list";
 import { FilterBar } from "@/components/filter-bar";
 import { ViewTabs } from "@/components/view-tabs";
+import {
+  WasatchBlock,
+  ApartmentBlock,
+  MainframeBlock,
+  GlacierBlock,
+} from "@/components/variant-blocks";
 
 export const dynamic = "force-dynamic";
 
@@ -36,15 +42,13 @@ export default async function HomePage({
   const sources = sourceCounts.map((s) => ({ value: s.source, count: s.count }));
 
   const feedQuery = filtersToSearchParams(filters).toString();
+  const filterBarSlot = <FilterBar cities={cities} tags={tags} sources={sources} />;
+  const viewSlot = <ViewTabs current={view} />;
 
-  const inner = (
+  const currentInner = (
     <>
       <div aria-hidden className="h-px strata-divider opacity-70" />
-
-      <section className="mx-auto max-w-6xl px-6 pt-8 pb-2">
-        <FilterBar cities={cities} tags={tags} sources={sources} />
-      </section>
-
+      <section className="mx-auto max-w-6xl px-6 pt-8 pb-2">{filterBarSlot}</section>
       <section className="mx-auto max-w-6xl px-6 pb-16">
         <div className="flex items-baseline justify-between gap-4 mb-5">
           <h2 className="font-semibold text-2xl tracking-tight">
@@ -63,7 +67,7 @@ export default async function HomePage({
             >
               RSS
             </Link>
-            <ViewTabs current={view} />
+            {viewSlot}
           </div>
         </div>
         <EventList events={events} grouped={view === "calendar"} />
@@ -74,23 +78,39 @@ export default async function HomePage({
   return (
     <div data-uidotsh-pick="Visual identity" className="contents">
       <div data-uidotsh-option="Sunset Strata (current)" className="contents">
-        {inner}
+        {currentInner}
       </div>
 
-      <div data-uidotsh-option="Editorial Print (ui.sh)" className="contents theme-print" hidden>
-        {inner}
+      <div
+        data-uidotsh-option="Wasatch — field guide"
+        className="contents theme-wasatch"
+        hidden
+      >
+        <WasatchBlock events={events} filterBarSlot={filterBarSlot} viewSlot={viewSlot} feedQuery={feedQuery} />
       </div>
 
-      <div data-uidotsh-option="Mona Industrial (ui.sh)" className="contents theme-mona" hidden>
-        {inner}
+      <div
+        data-uidotsh-option="Apartment — magazine"
+        className="contents theme-apartment"
+        hidden
+      >
+        <ApartmentBlock events={events} filterBarSlot={filterBarSlot} viewSlot={viewSlot} feedQuery={feedQuery} />
       </div>
 
-      <div data-uidotsh-option="Riso Press (my take)" className="contents theme-riso" hidden>
-        {inner}
+      <div
+        data-uidotsh-option="Mainframe — terminal"
+        className="contents theme-mainframe"
+        hidden
+      >
+        <MainframeBlock events={events} filterBarSlot={filterBarSlot} viewSlot={viewSlot} feedQuery={feedQuery} />
       </div>
 
-      <div data-uidotsh-option="Bench Mono (my take)" className="contents theme-bench" hidden>
-        {inner}
+      <div
+        data-uidotsh-option="Glacier — Linear/Vercel"
+        className="contents theme-glacier"
+        hidden
+      >
+        <GlacierBlock events={events} filterBarSlot={filterBarSlot} viewSlot={viewSlot} feedQuery={feedQuery} />
       </div>
     </div>
   );
