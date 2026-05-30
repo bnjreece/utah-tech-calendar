@@ -18,7 +18,20 @@ const MONTHS: Record<string, number> = {
   sept: 8, oct: 9, nov: 10, dec: 11,
 };
 
-const MOUNTAIN_OFFSET_MIN = 6 * 60;
+/* Return the Mountain-time UTC offset in minutes for a given month/day/year.
+   Uses Intl over America/Denver so DST is honored (MDT = -6h Mar-Nov,
+   MST = -7h Nov-Mar). The previous hardcoded -6h misplaced winter events
+   by an hour. */
+function denverOffsetMin(year: number, month: number, day: number): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Denver",
+    timeZoneName: "short",
+  });
+  const sample = new Date(Date.UTC(year, month, day, 18));
+  const parts = dtf.formatToParts(sample);
+  const tz = parts.find((p) => p.type === "timeZoneName")?.value ?? "MST";
+  return tz === "MDT" ? 6 * 60 : 7 * 60;
+}
 
 interface SubstackPost {
   title: string;
@@ -89,38 +102,57 @@ function parseRssItems(xml: string): SubstackPost[] {
    (already happened relative to now) are also skipped so historical posts
    in the feed don't pollute the schedule. */
 function parseEventDetails(body: string, pubDate: Date): { startsAt: Date; venue?: string } | null {
-  const dateMatch = body.match(
-    /(\bjanuary|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b[,\s]+(\d{1,2})(?:st|nd|rd|th)?[\s,]+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i,
-  );
-  if (!dateMatch) return null;
-  const [, monStr, dayStr, hourStr, minStr, ampm] = dateMatch;
-  const month = MONTHS[monStr.toLowerCase()];
-  if (month === undefined) return null;
-  const day = Number(dayStr);
-  let hour = Number(hourStr);
-  const minute = minStr ? Number(minStr) : 0;
-  if (ampm.toLowerCase() === "pm" && hour !== 12) hour += 12;
-  if (ampm.toLowerCase() === "am" && hour === 12) hour = 0;
+  /* Use matchAll so a post that recaps last month's event AND announces
+     the next one doesn't pick the recap (past) and silently lose the
+     upcoming one. We pick the FUTURE candidate first, then the closest
+     to post date if all candidates are past. */
+  const dateRe =
+    /(\bjanuary|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b[,\s]+(\d{1,2})(?:st|nd|rd|th)?[\s,]+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)/gi;
+  const matches = [...body.matchAll(dateRe)];
+  if (matches.length === 0) return null;
 
-  /* Anchor year to the post date, then nudge ±1 year if needed to land
-     within a ~6-month window of the post (covers posts written about
-     events 0-90 days ahead). */
   const postMs = pubDate.getTime();
-  const candidates = [
-    Date.UTC(pubDate.getUTCFullYear(), month, day, hour, minute) + MOUNTAIN_OFFSET_MIN * 60_000,
-    Date.UTC(pubDate.getUTCFullYear() + 1, month, day, hour, minute) + MOUNTAIN_OFFSET_MIN * 60_000,
-    Date.UTC(pubDate.getUTCFullYear() - 1, month, day, hour, minute) + MOUNTAIN_OFFSET_MIN * 60_000,
-  ];
-  const best = candidates
-    .map((utc) => ({ utc, diff: Math.abs(utc - postMs) }))
-    .sort((a, b) => a.diff - b.diff)[0];
-  if (best.diff > 180 * 86_400_000) return null;
+  const nowMs = Date.now();
 
-  /* Drop past events. The schedule is forward-looking only. */
-  if (best.utc < Date.now() - 12 * 60 * 60 * 1000) return null;
+  type Candidate = { utc: number; diff: number };
+  const allCandidates: Candidate[] = [];
 
+  for (const m of matches) {
+    const [, monStr, dayStr, hourStr, minStr, ampm] = m;
+    const month = MONTHS[monStr.toLowerCase()];
+    if (month === undefined) continue;
+    const day = Number(dayStr);
+    let hour = Number(hourStr);
+    const minute = minStr ? Number(minStr) : 0;
+    if (ampm.toLowerCase() === "pm" && hour !== 12) hour += 12;
+    if (ampm.toLowerCase() === "am" && hour === 12) hour = 0;
+
+    for (const yearOffset of [0, 1, -1]) {
+      const year = pubDate.getUTCFullYear() + yearOffset;
+      const offsetMin = denverOffsetMin(year, month, day);
+      const utc = Date.UTC(year, month, day, hour, minute) + offsetMin * 60_000;
+      const diff = Math.abs(utc - postMs);
+      if (diff <= 180 * 86_400_000) allCandidates.push({ utc, diff });
+    }
+  }
+
+  if (allCandidates.length === 0) return null;
+
+  /* Prefer the soonest FUTURE candidate; fall back to closest-to-post
+     if no candidates are future. Past-event filter at the bottom drops
+     a no-future-match result so we never poison the schedule with
+     historical dates. */
+  const futureCandidates = allCandidates
+    .filter((c) => c.utc >= nowMs - 12 * 60 * 60 * 1000)
+    .sort((a, b) => a.utc - b.utc);
+  const best = futureCandidates[0];
+  if (!best) return null;
+
+  /* Venue heuristic: a capitalized phrase followed by " - " or " — "
+     and a street number. Tightened to ~30 chars and anchored to a
+     sentence boundary so it doesn't grab mid-clause prose. */
   let venue: string | undefined;
-  const venueMatch = body.match(/([A-Z][A-Za-z0-9 '&-]{2,40})\s*[-—]\s*\d+\s+\w/);
+  const venueMatch = body.match(/(?:^|[.!?]\s+)([A-Z][A-Za-z0-9 '&]{2,30}?)\s*[-—]\s*\d+\s+[A-Z]/);
   if (venueMatch) venue = venueMatch[1].trim();
 
   return { startsAt: new Date(best.utc), venue };

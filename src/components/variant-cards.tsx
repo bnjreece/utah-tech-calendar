@@ -102,7 +102,7 @@ export function EditorialLinearCardCompact({ event }: { event: EventWithGroup })
       href={`/event/${event.id}`}
       className={`group grid ${isHighlight ? "grid-cols-[6px_--spacing(14)_1fr] sm:grid-cols-[6px_--spacing(16)_1fr]" : "grid-cols-[3px_--spacing(14)_1fr] sm:grid-cols-[3px_--spacing(16)_1fr]"} gap-x-3 sm:gap-x-4 items-baseline py-1.5 border-t border-ink/10 first:border-t-0 transition-colors`}
     >
-      <div className={`self-stretch ${colors.bar} ${isHighlight ? "opacity-100" : "opacity-70"} ${event.isTentative ? "opacity-50" : ""} group-hover:opacity-100 transition-opacity`} aria-hidden />
+      <div className={`self-stretch ${colors.bar} ${event.isTentative ? "opacity-50" : isHighlight ? "opacity-100" : "opacity-70"} group-hover:opacity-100 transition-opacity`} aria-hidden />
       <div className="self-baseline font-mono text-[10px] tracking-[0.12em] text-ink-soft tabular-nums normal-case">
         {event.isTentative ? `[${timeText}]` : timeText}
       </div>
@@ -147,7 +147,7 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
       href={`/event/${event.id}`}
       className={`group grid ${isHighlight ? "grid-cols-[6px_--spacing(16)_1fr] sm:grid-cols-[6px_--spacing(18)_1fr]" : "grid-cols-[3px_--spacing(16)_1fr] sm:grid-cols-[3px_--spacing(18)_1fr]"} gap-x-5 sm:gap-x-6 items-baseline py-5 border-t border-ink/15 first:border-t-0 transition-colors`}
     >
-      <div className={`self-stretch ${colors.bar} ${isHighlight ? "opacity-100" : "opacity-80"} ${event.isTentative ? "opacity-50" : ""} group-hover:opacity-100 transition-opacity`} aria-hidden />
+      <div className={`self-stretch ${colors.bar} ${event.isTentative ? "opacity-50" : isHighlight ? "opacity-100" : "opacity-80"} group-hover:opacity-100 transition-opacity`} aria-hidden />
       <div className="self-start pt-1.5 font-mono text-[11px] tracking-[0.14em] text-ink-soft tabular-nums normal-case">
         {event.isTentative ? `[${timeText}]` : timeText}
       </div>

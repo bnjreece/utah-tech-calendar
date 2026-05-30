@@ -220,7 +220,7 @@ export function FilterBar({ cities, tags, sources }: Props) {
             onClick={() => {
               /* Same idea as update(): nuke filter state but preserve
                  density/view so Clear all doesn't change the view mode. */
-              const FILTER_KEYS = new Set(["q", "regions", "cities", "tags", "sources", "from", "to", "online"]);
+              const FILTER_KEYS = new Set(["q", "regions", "cities", "tags", "sources", "groups", "types", "from", "to", "online"]);
               const sp = new URLSearchParams();
               for (const [k, v] of searchParams.entries()) {
                 if (!FILTER_KEYS.has(k)) sp.set(k, v);

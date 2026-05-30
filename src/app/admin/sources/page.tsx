@@ -13,13 +13,26 @@ type HealthStatus = "working" | "stale" | "broken" | "empty" | "disabled" | "nev
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
+/* Pulls the item count out of the runner's "ok: N items" lastStatus
+   format. Returns null if the status string isn't ok-shaped, so a
+   later format change reads as "unknown" rather than silently
+   defaulting to "working". */
+function parseOkItemCount(lastStatus: string | null): number | null {
+  if (!lastStatus) return null;
+  const trimmed = lastStatus.trim();
+  if (!/^ok:/i.test(trimmed)) return null;
+  const m = trimmed.match(/^ok:\s*(\d+)\b/i);
+  return m ? Number(m[1]) : null;
+}
+
 function classifySource(s: SourceRow): HealthStatus {
   if (!s.enabled) return "disabled";
   if (s.lastError) return "broken";
   if (!s.lastScrapedAt) return "never";
   const sinceMs = Date.now() - new Date(s.lastScrapedAt).getTime();
   if (sinceMs > STALE_MS) return "stale";
-  if (/ok: 0 items/i.test(s.lastStatus?.trim() ?? "")) return "empty";
+  const count = parseOkItemCount(s.lastStatus);
+  if (count === 0) return "empty";
   return "working";
 }
 
