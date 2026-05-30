@@ -13,6 +13,9 @@ interface SourceAlert {
 
 /* Tied to the exact format scrape-runner writes: `ok: ${N} items`. */
 const ZERO_ITEMS = /^ok: 0 items$/i;
+/* Silicon Slopes adapter now throws on 401/403 with this exact suffix
+   (silicon-slopes.ts:91), which the runner persists as lastError. */
+const SS_COOKIE_EXPIRED_RE = /session cookie likely expired/i;
 
 function detectAlerts(sourceRows: typeof sources.$inferSelect[]): SourceAlert[] {
   const alerts: SourceAlert[] = [];
@@ -22,12 +25,16 @@ function detectAlerts(sourceRows: typeof sources.$inferSelect[]): SourceAlert[] 
   const staleEnabled: typeof enabled = [];
 
   for (const s of enabled) {
-    /* Silicon Slopes returning 0 = cookie expired (most common failure). */
-    if (s.adapter === "siliconSlopes" && ZERO_ITEMS.test((s.lastStatus ?? "").trim())) {
+    /* Silicon Slopes cookie expired - matches either the legacy "ok: 0
+       items" path (kept in case the adapter ever stops throwing) and the
+       current "Circle API 401/403" thrown-error path. */
+    const ssZero = s.adapter === "siliconSlopes" && ZERO_ITEMS.test((s.lastStatus ?? "").trim());
+    const ssAuthErr = s.adapter === "siliconSlopes" && SS_COOKIE_EXPIRED_RE.test(s.lastError ?? "");
+    if (ssZero || ssAuthErr) {
       alerts.push({
         level: "urgent",
-        title: "Silicon Slopes scraper returned 0 events",
-        body: `Last scrape: ${s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "never"}. The session cookie likely expired.`,
+        title: "Silicon Slopes cookie expired",
+        body: `Last scrape: ${s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "never"}. ${ssAuthErr ? "Circle API rejected the session cookie." : "Scraper returned 0 events - likely cookie expiry."}`,
         action: "Sign in at siliconslopes.com, then ask Claude to rotate the cookie.",
       });
       continue;

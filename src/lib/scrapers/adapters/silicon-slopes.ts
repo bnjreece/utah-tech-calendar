@@ -70,12 +70,16 @@ export const siliconSlopesAdapter: Adapter<EventItem> = {
   name: "siliconSlopes",
   runtime: "fetch",
   async scrape({ maxItems = 50 }) {
-    const cookie = process.env.SILICON_SLOPES_SESSION_COOKIE;
-    if (!cookie) {
+    const rawCookie = process.env.SILICON_SLOPES_SESSION_COOKIE;
+    if (!rawCookie) {
       throw new Error(
         "SILICON_SLOPES_SESSION_COOKIE missing - rotate via 1Password",
       );
     }
+    /* Strip CR/LF in case a paste from 1Password picks up trailing
+       whitespace - protects against header-injection if the env value
+       is ever corrupted upstream. */
+    const cookie = rawCookie.replace(/[\r\n]/g, "");
     const perPage = Math.min(Math.max(maxItems, 10), 50);
     const res = await fetch(`${ENDPOINT}?page=1&per_page=${perPage}`, {
       headers: {
