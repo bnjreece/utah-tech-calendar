@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "src/app/api/cron/scrape/route.ts": {
+      "memory": 1024,
+      "maxDuration": 300
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/scrape",
