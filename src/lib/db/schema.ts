@@ -56,6 +56,9 @@ export const events = pgTable(
     tags: text("tags").array(),
     groupId: uuid("group_id").references(() => groups.id),
     status: text("status").notNull().default("approved"),
+    /* Surfaces a thicker bar + "Conference" eyebrow in the schedule.
+       Flagged manually via admin (or by future heuristic at scrape time). */
+    isConference: boolean("is_conference").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
