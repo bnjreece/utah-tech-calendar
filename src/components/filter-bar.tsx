@@ -38,8 +38,13 @@ export function FilterBar({ cities, tags, sources }: Props) {
   function update(next: Partial<FilterState>) {
     const merged: FilterState = { ...filters, ...next };
     const sp = filtersToSearchParams(merged);
+    /* Preserve non-filter URL params (density, view) so changing a filter
+       doesn't bounce the user back to the default weekly/list view. */
+    for (const [k, v] of searchParams.entries()) {
+      if (!sp.has(k)) sp.set(k, v);
+    }
     startTransition(() => {
-      router.push(`${pathname}?${sp.toString()}`);
+      router.push(`${pathname}${sp.toString() ? `?${sp.toString()}` : ""}`);
     });
   }
 
@@ -190,7 +195,16 @@ export function FilterBar({ cities, tags, sources }: Props) {
           )}
           <button
             type="button"
-            onClick={() => router.push(pathname)}
+            onClick={() => {
+              /* Same idea as update(): nuke filter state but preserve
+                 density/view so Clear all doesn't change the view mode. */
+              const FILTER_KEYS = new Set(["q", "regions", "cities", "tags", "sources", "from", "to", "online"]);
+              const sp = new URLSearchParams();
+              for (const [k, v] of searchParams.entries()) {
+                if (!FILTER_KEYS.has(k)) sp.set(k, v);
+              }
+              router.push(`${pathname}${sp.toString() ? `?${sp.toString()}` : ""}`);
+            }}
             disabled={pending}
             className="ml-1 text-xs text-foreground/55 hover:text-foreground transition-colors"
           >
