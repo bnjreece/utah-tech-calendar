@@ -3,6 +3,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { SITE_URL } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
+import { listUpcomingPeriodSlugs } from "@/lib/period";
 
 /* Dynamic sitemap. Pulls every approved upcoming event so Google can
    crawl each detail page (using the canonical slug URL); also includes
@@ -92,6 +93,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}/group/${g.slug}`,
       lastModified: now,
       changeFrequency: "daily",
+      priority: 0.6,
+    });
+  }
+
+  /* Tag landing pages - one per unique tag on upcoming approved events. */
+  const tagRows = await db.execute<{ tag: string }>(sql`
+    SELECT DISTINCT lower(tag) AS tag
+    FROM events, unnest(tags) AS tag
+    WHERE status = 'approved' AND starts_at >= now()
+  `);
+  const tags = (Array.isArray(tagRows) ? tagRows : tagRows.rows ?? []) as Array<{ tag: string }>;
+  for (const t of tags) {
+    routes.push({
+      url: `${SITE_URL}/tag/${toSlug(t.tag)}`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.6,
+    });
+  }
+
+  /* Date archive pages for the next 12 months + 4 seasons. */
+  for (const slug of listUpcomingPeriodSlugs(now)) {
+    routes.push({
+      url: `${SITE_URL}/events/${slug}`,
+      lastModified: now,
+      changeFrequency: "weekly",
       priority: 0.6,
     });
   }

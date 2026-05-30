@@ -13,6 +13,38 @@ export interface ScrapeResult {
   error?: string;
 }
 
+/* Heuristic - detect conferences from title + duration so the badge
+   shows up automatically on freshly-scraped events. Manually-set flags
+   are preserved on re-scrape (we never overwrite them with false). */
+const CONFERENCE_TITLE_RE =
+  /\b(summit|conference|conf\b|expo|convention|congress|symposium)\b/i;
+const CONFERENCE_FALSE_POSITIVE_RE =
+  /\b(manifest|infest|fest meetup|summited|summiting)\b/i;
+
+function detectConference(item: EventItem): boolean {
+  if (CONFERENCE_FALSE_POSITIVE_RE.test(item.title)) return false;
+  if (CONFERENCE_TITLE_RE.test(item.title)) return true;
+  /* Multi-day stretch (>8h) on a single-occurrence event is almost
+     always a conference - meetups are <4h. */
+  if (item.endsAt) {
+    const durationHours = (item.endsAt.getTime() - item.startsAt.getTime()) / 3_600_000;
+    if (durationHours > 8) return true;
+  }
+  return false;
+}
+
+/* Detect paid events at scrape time. Conservative: only flag the
+   obvious training/cert spam keywords - real paid conferences like
+   KubeCon already get is_paid via the manual seed in research-dump
+   commits. Avoids false positives on community events that mention
+   "training" casually. */
+const PAID_TITLE_RE =
+  /\b(certification training|training program|exam prep|bootcamp|cissp|capm|pmp|isc²|ceh|comptia|isaca|itil)\b/i;
+
+function detectPaid(item: EventItem): boolean {
+  return PAID_TITLE_RE.test(item.title);
+}
+
 async function upsertEvent(item: EventItem, groupId: string | undefined, defaultStatus: string = "approved") {
   const existing = await db
     .select({ id: events.id })
@@ -27,7 +59,7 @@ async function upsertEvent(item: EventItem, groupId: string | undefined, default
   });
   void region;
 
-  const values = {
+  const baseValues = {
     title: item.title,
     description: item.description,
     link: item.link,
@@ -50,11 +82,20 @@ async function upsertEvent(item: EventItem, groupId: string | undefined, default
   };
 
   if (existing[0]) {
-    /* Don't overturn an admin's manual approve/reject on re-scrape. */
-    await db.update(events).set(values).where(eq(events.id, existing[0].id));
+    /* Don't overturn an admin's manual approve/reject on re-scrape, and
+       don't overwrite is_conference/is_paid back to false if a heuristic
+       missed but admin flagged. */
+    await db.update(events).set(baseValues).where(eq(events.id, existing[0].id));
     return "updated" as const;
   }
-  await db.insert(events).values({ ...values, status: defaultStatus });
+  const isConference = detectConference(item);
+  const isPaid = detectPaid(item);
+  await db.insert(events).values({
+    ...baseValues,
+    status: defaultStatus,
+    isConference,
+    isPaid,
+  });
   return "inserted" as const;
 }
 
