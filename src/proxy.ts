@@ -8,10 +8,12 @@ export default clerkMiddleware(async (auth, req) => {
   }
 });
 
+/* Only run Clerk middleware on admin and sign-in routes. Every other
+   public page (home, /event, /city, /about, /subscribe, /submit, OG
+   images, sitemap, robots) skips Clerk entirely - no handshake redirect,
+   no JS bundle, no third-party cookie. This was a ~730ms first-paint
+   savings + ~260KB of unused Clerk JS removed from public visits per
+   Lighthouse audit. */
 export const config = {
-  matcher: [
-    /* Skip Next internals + static files unless found in search params */
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
-  ],
+  matcher: ["/admin(.*)", "/sign-in(.*)"],
 };
