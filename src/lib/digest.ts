@@ -1,6 +1,25 @@
 import type { EventWithGroup } from "./queries";
+import type { FilterState } from "./filters";
+import { SOURCE_LABELS, TYPE_LABELS } from "./filters";
 import { SITE_URL, absoluteUrl } from "./seo";
 import { eventSlug } from "./slugs";
+
+/* Human-readable filter description for the digest header + subject.
+   Returns null when the slice is "everything" so the caller can fall
+   back to the generic copy. Order: regions > cities > tags > sources >
+   types; one bucket each, joined with "·". Truncates to keep the
+   subject sane. */
+export function describeFilters(f: FilterState): string | null {
+  const parts: string[] = [];
+  if (f.regions.length) parts.push(f.regions.join(", "));
+  if (f.cities.length) parts.push(f.cities.join(", "));
+  if (f.tags.length) parts.push(f.tags.join(", "));
+  if (f.sources.length) parts.push(f.sources.map((s) => SOURCE_LABELS[s] ?? s).join(", "));
+  if (f.types.length) parts.push(f.types.map((t) => TYPE_LABELS[t]).join(", "));
+  if (!parts.length) return null;
+  const joined = parts.join(" · ");
+  return joined.length > 80 ? `${joined.slice(0, 77)}…` : joined;
+}
 
 /* Weekly digest content builder. Plain text + HTML versions of the same
    message: subject line, header, ranked list of next 7 days of events,
@@ -75,6 +94,10 @@ export interface BuildDigestInput {
   unsubscribeUrl: string;
   weekStart: Date;
   weekEnd: Date;
+  /* Optional human-readable filter slice e.g. "Salt Lake County · ai".
+     Shows in the subject and as an eyebrow above the date range so a
+     filtered subscriber sees their slice reflected in the email. */
+  filterLabel?: string | null;
 }
 
 export interface DigestContent {
@@ -84,12 +107,12 @@ export interface DigestContent {
 }
 
 export function buildDigest(input: BuildDigestInput): DigestContent {
-  const { events, unsubscribeUrl, weekStart, weekEnd } = input;
+  const { events, unsubscribeUrl, weekStart, weekEnd, filterLabel } = input;
   const range = `${fmtWindow(weekStart)} - ${fmtWindow(weekEnd)}`;
   const count = events.length;
   const subject = count === 0
-    ? `Utah tech this week: a quiet one (${range})`
-    : `${count} Utah tech event${count === 1 ? "" : "s"} this week (${range})`;
+    ? `Utah tech this week: a quiet one${filterLabel ? ` for ${filterLabel}` : ""} (${range})`
+    : `${count} Utah tech event${count === 1 ? "" : "s"} this week${filterLabel ? ` (${filterLabel})` : ""}`;
 
   const days = groupByDay(events);
 
@@ -194,7 +217,7 @@ export function buildDigest(input: BuildDigestInput): DigestContent {
         </tr>
         <tr>
           <td style="padding-bottom:24px;">
-            <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${INK_SOFT};">${escapeHtml(range)}</span>
+            <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${INK_SOFT};">${escapeHtml(range)}${filterLabel ? ` · ${escapeHtml(filterLabel)}` : ""}</span>
           </td>
         </tr>
         ${count === 0 ? emptyState : dayHtml}

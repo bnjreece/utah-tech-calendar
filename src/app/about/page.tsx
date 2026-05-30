@@ -98,8 +98,8 @@ export default function AboutPage() {
           Subscribe
         </h2>
         <p>
-          The schedule is available as an iCal feed, RSS, or curated calendar
-          presets at{" "}
+          Build your own filter slice and subscribe via Apple Calendar,
+          Google Calendar, iCal, RSS, or the weekly Monday morning email at{" "}
           <Link
             href="/subscribe"
             className="text-sunset-deep hover:underline decoration-1 underline-offset-4"

@@ -134,9 +134,14 @@ export const emailSubscriptions = pgTable(
     /* Outbound digest tracking - prevents duplicate sends within the
        same week if the cron fires twice (e.g. a manual retry). */
     lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
-    /* Caller-supplied tag filter or region preference for future
-       slicing. Empty means "all events". */
+    /* Legacy column kept for future per-topic tagging - unused by the
+       current digest. The active filter mechanism is `feedQuery`. */
     topics: text("topics").array(),
+    /* URL search string captured at signup time (e.g.
+       `regions=Salt+Lake+County&tags=ai`). The digest cron parses this
+       and runs `queryEvents` per subscriber so everyone gets the same
+       slice they'd see on the website. NULL or empty = full digest. */
+    feedQuery: text("feed_query"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

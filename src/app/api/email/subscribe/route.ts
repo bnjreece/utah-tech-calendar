@@ -9,9 +9,31 @@ import { absoluteUrl } from "@/lib/seo";
 
 const Body = z.object({
   email: z.string().email().max(254),
+  /* Optional URL search string captured from the FeedBuilder, e.g.
+     "regions=Salt+Lake+County&tags=ai". The digest cron uses this to
+     slice each subscriber's send to their declared filters. Empty or
+     missing = full digest. We cap it short to keep the column from
+     storing pathological values. */
+  feedQuery: z.string().max(2048).optional(),
   /* honeypot - real users won't fill this */
   website: z.string().max(0).optional(),
 });
+
+/* Reject obviously-invalid filter strings before they hit the DB.
+   parseFilters is permissive (drops unknown keys) so we don't need a
+   full reparse; the size cap + a basic structural check is enough. */
+function normalizeFeedQuery(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.replace(/^\?+/, "").trim();
+  if (!trimmed) return null;
+  try {
+    const sp = new URLSearchParams(trimmed);
+    const cleaned = sp.toString();
+    return cleaned || null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: Request) {
   let parsed: z.infer<typeof Body>;
@@ -28,6 +50,7 @@ export async function POST(req: Request) {
   }
 
   const email = parsed.email.trim().toLowerCase();
+  const feedQuery = normalizeFeedQuery(parsed.feedQuery);
 
   /* Idempotent + anti-bomb. We return `ok:true` in every legitimate
      branch so an attacker who knows a victim's email can't distinguish
@@ -43,8 +66,17 @@ export async function POST(req: Request) {
      an attacker could POST repeatedly with a known victim email and
      either (a) flood their inbox with confirm-your-subscription emails,
      or (b) silently reset `verifiedAt: null` and stop their digests
-     until they re-click. */
+     until they re-click. A verified subscriber can update their
+     feedQuery by hitting POST again - they don't need to re-confirm,
+     and an attacker can't steal the slot because the email column is
+     unique and the verifiedAt check guards. */
   if (existing && existing.verifiedAt && !existing.unsubscribedAt) {
+    if (feedQuery !== existing.feedQuery) {
+      await db
+        .update(emailSubscriptions)
+        .set({ feedQuery })
+        .where(eq(emailSubscriptions.id, existing.id));
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -66,15 +98,16 @@ export async function POST(req: Request) {
     subscriptionId = existing.id;
     /* Resurrecting an unsubscribed row, or re-issuing a verify token to
        a stale unverified row. Reset state + bump createdAt so the
-       cooldown window restarts. */
+       cooldown window restarts. Persist the new feedQuery now so the
+       verification page doesn't have to know about it. */
     await db
       .update(emailSubscriptions)
-      .set({ unsubscribedAt: null, verifiedAt: null, createdAt: new Date() })
+      .set({ unsubscribedAt: null, verifiedAt: null, createdAt: new Date(), feedQuery })
       .where(eq(emailSubscriptions.id, existing.id));
   } else {
     const [created] = await db
       .insert(emailSubscriptions)
-      .values({ email })
+      .values({ email, feedQuery })
       .returning({ id: emailSubscriptions.id });
     subscriptionId = created.id;
   }

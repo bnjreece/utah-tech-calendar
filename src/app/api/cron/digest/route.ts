@@ -2,9 +2,10 @@ import { NextRequest } from "next/server";
 import { and, isNull, isNotNull, eq } from "drizzle-orm";
 import { db, emailSubscriptions } from "@/lib/db";
 import { queryEvents } from "@/lib/queries";
+import { parseFilters, type FilterState } from "@/lib/filters";
 import { createSubscriptionToken } from "@/lib/subscription-token";
 import { sendEmail } from "@/lib/email";
-import { buildDigest } from "@/lib/digest";
+import { buildDigest, describeFilters } from "@/lib/digest";
 import { absoluteUrl } from "@/lib/seo";
 
 export const runtime = "nodejs";
@@ -38,6 +39,42 @@ function thisWeekAnchorUTC(now: Date): Date {
   return d;
 }
 
+function baseFilters(weekStart: Date, weekEnd: Date): FilterState {
+  return {
+    q: "",
+    regions: [],
+    cities: [],
+    tags: [],
+    sources: [],
+    groups: [],
+    types: [],
+    from: weekStart.toISOString(),
+    to: weekEnd.toISOString(),
+    showOnline: false,
+  };
+}
+
+/* Merge the subscriber's saved feed_query on top of the base window so
+   their preferred slice (regions, tags, etc.) is respected without
+   them needing to also encode date bounds. */
+function filtersForSub(weekStart: Date, weekEnd: Date, feedQuery: string | null): FilterState {
+  const base = baseFilters(weekStart, weekEnd);
+  if (!feedQuery) return base;
+  const parsed = parseFilters(new URLSearchParams(feedQuery));
+  return {
+    ...base,
+    regions: parsed.regions,
+    cities: parsed.cities,
+    tags: parsed.tags,
+    sources: parsed.sources,
+    groups: parsed.groups,
+    types: parsed.types,
+    /* respect their online toggle if they saved one; otherwise default
+       to hiding online events same as the website */
+    showOnline: parsed.showOnline,
+  };
+}
+
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) return new Response("Unauthorized", { status: 401 });
 
@@ -46,22 +83,6 @@ export async function GET(request: NextRequest) {
      calendar week so the email is useful whatever day it lands. */
   const weekStart = new Date();
   const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  const events = await queryEvents(
-    {
-      q: "",
-      regions: [],
-      cities: [],
-      tags: [],
-      sources: [],
-      groups: [],
-      types: [],
-      from: weekStart.toISOString(),
-      to: weekEnd.toISOString(),
-      showOnline: false,
-    },
-    200,
-  );
 
   /* Skip people who unsubscribed or never verified. lastSentAt guard
      prevents accidental duplicate sends within the same 24h - useful
@@ -80,6 +101,10 @@ export async function GET(request: NextRequest) {
   const weekAnchor = thisWeekAnchorUTC(now);
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
 
+  /* One query per subscriber so each gets the events that match their
+     own filter slice. For 50 subs that's 50 lightweight queries; well
+     under the 300s timeout. If we ever scale past a few thousand subs
+     this becomes a group-by-feedQuery cache. */
   let sent = 0;
   let skipped = 0;
   let failed = 0;
@@ -88,9 +113,17 @@ export async function GET(request: NextRequest) {
       skipped++;
       continue;
     }
+    const filters = filtersForSub(weekStart, weekEnd, sub.feedQuery);
+    const events = await queryEvents(filters, 200);
     const unsubToken = createSubscriptionToken("unsubscribe", sub.id);
     const unsubscribeUrl = absoluteUrl(`/unsubscribe/${unsubToken}`);
-    const content = buildDigest({ events, unsubscribeUrl, weekStart, weekEnd });
+    const content = buildDigest({
+      events,
+      unsubscribeUrl,
+      weekStart,
+      weekEnd,
+      filterLabel: describeFilters(filters),
+    });
     if (dryRun) {
       sent++;
       continue;
@@ -117,7 +150,6 @@ export async function GET(request: NextRequest) {
     ok: true,
     weekStart,
     weekEnd,
-    eventCount: events.length,
     subscriberCount: subs.length,
     sent,
     skipped,

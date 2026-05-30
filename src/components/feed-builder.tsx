@@ -199,7 +199,7 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
         </div>
       </div>
 
-      {/* Live count + clear + subscribe */}
+      {/* Live count + reset */}
       <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-ink/15">
         <div>
           <p className="font-display text-2xl italic tracking-tight">
@@ -216,23 +216,133 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
             {loading ? "Updating…" : activeCount === 0 ? "No filters - everything" : `${activeCount} filter${activeCount === 1 ? "" : "s"} applied`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {activeCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setFilters(EMPTY)}
-              className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink underline decoration-1 underline-offset-4"
-            >
-              Reset
-            </button>
-          )}
-          <SubscribePopover
-            feedQuery={feedQuery}
-            triggerLabel="Subscribe to this view"
-            variant="card"
-          />
+        {activeCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setFilters(EMPTY)}
+            className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink underline decoration-1 underline-offset-4"
+          >
+            Reset filters
+          </button>
+        )}
+      </div>
+
+      {/* Two delivery channels for the same filter slice */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <div className="border border-ink/15 rounded-2xl p-5 bg-paper">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+            Calendar
+          </p>
+          <h3 className="mt-2 font-display text-xl italic tracking-tight">
+            Pipe it into your calendar.
+          </h3>
+          <p className="mt-2 text-sm text-ink-soft leading-relaxed">
+            Apple Calendar, Google Calendar, or any reader that speaks iCal.
+            Updates as soon as we scrape.
+          </p>
+          <div className="mt-4">
+            <SubscribePopover
+              feedQuery={feedQuery}
+              triggerLabel="Subscribe to this view"
+              variant="card"
+            />
+          </div>
+        </div>
+        <div className="border border-ink/15 rounded-2xl p-5 bg-paper">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+            Email
+          </p>
+          <h3 className="mt-2 font-display text-xl italic tracking-tight">
+            Or get it Monday mornings.
+          </h3>
+          <p className="mt-2 text-sm text-ink-soft leading-relaxed">
+            A weekly email of just these events. Same filters, every Monday.
+          </p>
+          <div className="mt-4">
+            <EmailSignupInline feedQuery={feedQuery} />
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/* Inlined email signup that carries the current feedQuery to the
+   subscribe API so the user's filter slice is what they get emailed.
+   Kept here (rather than as a separate file) because the standalone
+   EmailSignup component is no longer rendered anywhere else. */
+function EmailSignupInline({ feedQuery }: { feedQuery: string }) {
+  const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [state, setState] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setState("loading");
+    setError(null);
+    try {
+      const res = await fetch("/api/email/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), feedQuery, website }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        setState("error");
+        setError(json.error || "Couldn't subscribe");
+        return;
+      }
+      setState("ok");
+      setEmail("");
+    } catch {
+      setState("error");
+      setError("Network error - try again");
+    }
+  }
+
+  if (state === "ok") {
+    return (
+      <p className="rounded-md border-l-[3px] border-sage-deep bg-sage/[0.08] px-3 py-2 text-sm text-ink">
+        Check your inbox for the one-click confirm.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
+      <span aria-hidden style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+        <input
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          aria-label="Leave blank"
+        />
+      </span>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          type="email"
+          required
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="flex-1 min-w-0 rounded-full border border-ink/20 bg-paper px-4 py-2.5 text-sm outline-none focus:border-ink"
+          disabled={state === "loading"}
+        />
+        <button
+          type="submit"
+          disabled={state === "loading" || !email}
+          className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-ink/85 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {state === "loading" ? "Sending…" : "Email me"}
+        </button>
+      </div>
+      {state === "error" && <p className="text-xs text-sunset-deep">{error}</p>}
+    </form>
   );
 }
