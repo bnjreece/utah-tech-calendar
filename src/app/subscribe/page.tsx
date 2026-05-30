@@ -1,5 +1,7 @@
 import { SubscribePopover } from "@/components/subscribe-popover";
 import { EmailSignup } from "@/components/email-signup";
+import { FeedBuilder } from "@/components/feed-builder";
+import { getCityCounts, getTagCounts, getSourceCounts } from "@/lib/queries";
 
 export const metadata = {
   title: "Subscribe - Utah Tech Events",
@@ -64,7 +66,16 @@ const PRESETS: Preset[] = [
   },
 ];
 
-export default function SubscribePage() {
+export default async function SubscribePage() {
+  const [cityRows, tagRows, sourceRows] = await Promise.all([
+    getCityCounts(),
+    getTagCounts(),
+    getSourceCounts(),
+  ]);
+  const cities = cityRows.map((r) => ({ value: r.city, count: r.count }));
+  const tags = tagRows.map((r) => ({ value: r.tag, count: r.count }));
+  const sources = sourceRows.map((r) => ({ value: r.source, count: r.count }));
+
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
@@ -74,12 +85,29 @@ export default function SubscribePage() {
         Get the schedule in your calendar.
       </h1>
       <p className="mt-4 max-w-[62ch] text-pretty text-ink-soft leading-relaxed">
-        Subscribe once and the events flow into your calendar. Pick a curated
-        view below, or apply any filter on the schedule page and use{" "}
-        <em>Subscribe to this view</em> to build a custom URL. We update nightly.
+        Subscribe once and the events flow into your calendar. Build your own
+        view below, get one email a week, or grab a starter preset further
+        down. The site updates daily.
       </p>
 
-      <section className="mt-14 border-y-2 border-ink py-10">
+      <section className="mt-12">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+          Build your view
+        </p>
+        <h2 className="mt-3 font-display text-3xl sm:text-4xl italic tracking-tight">
+          Filter, then subscribe.
+        </h2>
+        <p className="mt-3 max-w-[58ch] text-pretty text-ink-soft leading-relaxed">
+          Stack any combination of regions, cities, tags, sources, and types.
+          The Subscribe button hands you an Apple Calendar / Google Calendar
+          link with those exact filters baked in.
+        </p>
+        <div className="mt-8">
+          <FeedBuilder cities={cities} tags={tags} sources={sources} />
+        </div>
+      </section>
+
+      <section className="mt-16 border-y-2 border-ink py-10">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
           Weekly digest
         </p>
@@ -95,7 +123,15 @@ export default function SubscribePage() {
         </div>
       </section>
 
-      <ul role="list" className="mt-12 flex flex-col">
+      <h2 className="mt-16 font-display text-2xl sm:text-3xl italic tracking-tight text-ink-soft">
+        Starter presets
+      </h2>
+      <p className="mt-2 max-w-[58ch] text-pretty text-ink-soft leading-relaxed">
+        Hand-picked filter combinations for common cases. Each one is just a
+        shortcut for what you can build above.
+      </p>
+
+      <ul role="list" className="mt-6 flex flex-col">
         {PRESETS.map((preset) => (
           <li
             key={preset.id}

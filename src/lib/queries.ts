@@ -44,7 +44,15 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
   }
 
   if (filters.tags.length) {
-    conditions.push(sql`${events.tags} && ${filters.tags}`);
+    /* Build an explicit ARRAY[…]::text[] literal because the neon-http
+       driver serializes a JS array as a single text parameter, which
+       Postgres can't parse as `text[]` for the `&&` overlap operator. */
+    conditions.push(
+      sql`${events.tags} && ARRAY[${sql.join(
+        filters.tags.map((t) => sql`${t}`),
+        sql`, `,
+      )}]::text[]`,
+    );
   }
 
   if (filters.sources.length) {
