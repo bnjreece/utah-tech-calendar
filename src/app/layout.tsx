@@ -2,12 +2,54 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ReflectionShimmerLogo } from "@/components/logos";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Utah Tech Events",
-  description:
-    "Curated, in-person Utah tech events. Meetups, conferences, founder mixers, AI, hardware, design. Online events filtered by default.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_NAME,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "Utah tech events",
+    "Utah developer meetups",
+    "Salt Lake City tech events",
+    "Provo tech meetups",
+    "Silicon Slopes events",
+    "Utah JavaScript meetup",
+    "Utah AI meetup",
+    "Utah startup events",
+    "Lehi tech meetups",
+    "Ogden tech events",
+  ],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  alternates: {
+    canonical: "/",
+    types: {
+      "application/rss+xml": [{ url: "/api/rss", title: `${SITE_NAME} RSS` }],
+      "text/calendar": [{ url: "/api/ical", title: `${SITE_NAME} iCal` }],
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

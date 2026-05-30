@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getEventById } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
+import { EventJsonLd } from "@/components/json-ld";
+import { absoluteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +16,51 @@ const SOURCE_LABELS: Record<string, string> = {
   silicon_slopes: "Silicon Slopes",
   forge_utah: "Forge Utah",
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const event = await getEventById(id);
+  if (!event) return { title: "Event not found" };
+
+  const start = new Date(event.startsAt);
+  const when = start.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const where = event.isOnline
+    ? "online"
+    : [event.venueName, event.city].filter(Boolean).join(", ") || "Utah";
+  const descBase =
+    event.description?.replace(/\s+/g, " ").trim().slice(0, 200) ?? "";
+  const description = descBase
+    ? `${descBase} · ${when} · ${where}`
+    : `${event.title} on ${when} in ${where}. In-person Utah tech event.`;
+  const canonical = `/event/${event.id}`;
+
+  return {
+    title: event.title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "article",
+      title: event.title,
+      description,
+      url: absoluteUrl(canonical),
+      images: event.imageUrl ? [{ url: event.imageUrl }] : undefined,
+    },
+    twitter: {
+      card: event.imageUrl ? "summary_large_image" : "summary",
+      title: event.title,
+      description,
+    },
+  };
+}
 
 export default async function EventDetailPage({
   params,
@@ -31,6 +79,7 @@ export default async function EventDetailPage({
 
   return (
     <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-10">
+      <EventJsonLd event={event} />
       <Link
         href="/"
         className="text-base sm:text-sm text-ink-soft hover:text-ink transition-colors"

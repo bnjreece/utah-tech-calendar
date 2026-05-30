@@ -9,6 +9,7 @@ import {
 import { FilterBar } from "@/components/filter-bar";
 import { ViewTabs } from "@/components/view-tabs";
 import { EditorialLinearBlock } from "@/components/variant-blocks";
+import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,8 @@ export default async function HomePage({
 
   return (
     <div className="theme-editorial">
+      <OrganizationJsonLd />
+      <WebSiteJsonLd />
       <EditorialLinearBlock
         events={events}
         filterBarSlot={<FilterBar cities={cities} tags={tags} sources={sources} />}
