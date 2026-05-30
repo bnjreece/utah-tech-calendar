@@ -59,6 +59,10 @@ export const events = pgTable(
     /* Surfaces a thicker bar + "Conference" eyebrow in the schedule.
        Flagged manually via admin (or by future heuristic at scrape time). */
     isConference: boolean("is_conference").notNull().default(false),
+    /* True for ticketed/training events with a real price (training
+       bootcamps, conferences, paid workshops). Surfaces the same badge
+       slot as conferences but with a "Paid" label. */
+    isPaid: boolean("is_paid").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

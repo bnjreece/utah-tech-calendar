@@ -77,34 +77,44 @@ export function EditorialStripCard({ event }: { event: EventWithGroup }) {
    pixel-perfect alignment of title + metadata.
    ============================================================ */
 /* Dense one-line row for monthly view. Title gets truncate so many days
-   fit per fold; venue is dropped entirely. Conferences get a thicker bar
-   at full opacity so the color carries the badge signal. */
+   fit per fold; venue is dropped. Conference/paid events get a thicker
+   bar at full opacity AND a trailing mono-caps badge at the right of
+   the title row. */
 export function EditorialLinearCardCompact({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
-  const isConf = event.isConference;
+  const isHighlight = event.isConference || event.isPaid;
+  const badgeLabel = event.isConference ? "Conf" : event.isPaid ? "Paid" : null;
   return (
     <Link
       href={`/event/${event.id}`}
-      className={`group grid ${isConf ? "grid-cols-[6px_--spacing(14)_1fr] sm:grid-cols-[6px_--spacing(16)_1fr]" : "grid-cols-[3px_--spacing(14)_1fr] sm:grid-cols-[3px_--spacing(16)_1fr]"} gap-x-3 sm:gap-x-4 items-baseline py-1.5 border-t border-ink/10 first:border-t-0 transition-colors`}
+      className={`group grid ${isHighlight ? "grid-cols-[6px_--spacing(14)_1fr] sm:grid-cols-[6px_--spacing(16)_1fr]" : "grid-cols-[3px_--spacing(14)_1fr] sm:grid-cols-[3px_--spacing(16)_1fr]"} gap-x-3 sm:gap-x-4 items-baseline py-1.5 border-t border-ink/10 first:border-t-0 transition-colors`}
     >
-      <div className={`self-stretch ${colors.bar} ${isConf ? "opacity-100" : "opacity-70"} group-hover:opacity-100 transition-opacity`} aria-hidden />
+      <div className={`self-stretch ${colors.bar} ${isHighlight ? "opacity-100" : "opacity-70"} group-hover:opacity-100 transition-opacity`} aria-hidden />
       <div className="self-baseline font-mono text-[10px] tracking-[0.12em] text-ink-soft tabular-nums normal-case">
         {d.time.toLowerCase().replace(/\s/g, "")}
       </div>
-      <h3 className="font-display text-sm sm:text-base leading-snug text-ink truncate group-hover:text-sunset-deep transition-colors">
-        {event.title}
-      </h3>
+      <div className="flex items-baseline gap-3 min-w-0">
+        <h3 className="font-display text-sm sm:text-base leading-snug text-ink truncate group-hover:text-sunset-deep transition-colors flex-1 min-w-0">
+          {event.title}
+        </h3>
+        {badgeLabel && (
+          <span className={`shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] ${colors.text}`}>
+            {badgeLabel}
+          </span>
+        )}
+      </div>
     </Link>
   );
 }
 
 /* Used inside a day-grouped list (see EditorialLinearBlock). The day header
-   carries the date; this row only carries time + title + venue. Conferences
-   get a thicker bar + a small "Conference" eyebrow above the title in the
-   source color, so the badge reads at a glance without rotated text. */
+   carries the date; this row only carries time + title + venue. Conference
+   and paid events get a thicker bar + a trailing mono-caps badge at the
+   right of the title row (not above — top-left is the time/title scan path
+   and a top eyebrow would interrupt it). */
 export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
@@ -112,25 +122,28 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
   const placeParts = [event.venueName, event.city].filter(Boolean);
-  const isConf = event.isConference;
+  const isHighlight = event.isConference || event.isPaid;
+  const badgeLabel = event.isConference ? "Conference" : event.isPaid ? "Paid" : null;
   return (
     <Link
       href={`/event/${event.id}`}
-      className={`group grid ${isConf ? "grid-cols-[6px_--spacing(16)_1fr] sm:grid-cols-[6px_--spacing(18)_1fr]" : "grid-cols-[3px_--spacing(16)_1fr] sm:grid-cols-[3px_--spacing(18)_1fr]"} gap-x-5 sm:gap-x-6 items-baseline py-5 border-t border-ink/15 first:border-t-0 transition-colors`}
+      className={`group grid ${isHighlight ? "grid-cols-[6px_--spacing(16)_1fr] sm:grid-cols-[6px_--spacing(18)_1fr]" : "grid-cols-[3px_--spacing(16)_1fr] sm:grid-cols-[3px_--spacing(18)_1fr]"} gap-x-5 sm:gap-x-6 items-baseline py-5 border-t border-ink/15 first:border-t-0 transition-colors`}
     >
-      <div className={`self-stretch ${colors.bar} ${isConf ? "opacity-100" : "opacity-80"} group-hover:opacity-100 transition-opacity`} aria-hidden />
+      <div className={`self-stretch ${colors.bar} ${isHighlight ? "opacity-100" : "opacity-80"} group-hover:opacity-100 transition-opacity`} aria-hidden />
       <div className="self-start pt-1.5 font-mono text-[11px] tracking-[0.14em] text-ink-soft tabular-nums normal-case">
         {d.time.toLowerCase().replace(/\s/g, "")}
       </div>
       <div className="min-w-0">
-        {isConf && (
-          <p className={`font-mono text-[10px] uppercase tracking-[0.24em] mb-1.5 ${colors.text}`}>
-            Conference
-          </p>
-        )}
-        <h3 className="font-display text-xl sm:text-2xl leading-[1.2] -tracking-[0.005em] text-pretty text-ink group-hover:text-sunset-deep group-hover:underline decoration-1 underline-offset-4 transition-colors">
-          {event.title}
-        </h3>
+        <div className="flex items-baseline gap-4 sm:gap-6">
+          <h3 className="font-display text-xl sm:text-2xl leading-[1.2] -tracking-[0.005em] text-pretty text-ink group-hover:text-sunset-deep group-hover:underline decoration-1 underline-offset-4 transition-colors flex-1 min-w-0">
+            {event.title}
+          </h3>
+          {badgeLabel && (
+            <span className={`shrink-0 self-baseline font-mono text-[10px] uppercase tracking-[0.24em] ${colors.text}`}>
+              {badgeLabel}
+            </span>
+          )}
+        </div>
         <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">
           {placeParts.length > 0 && (
             <>
