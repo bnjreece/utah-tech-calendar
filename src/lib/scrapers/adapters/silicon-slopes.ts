@@ -105,6 +105,22 @@ function parseCard(card: RawCard, source: string): EventItem | null {
   };
 }
 
+/* Stealth args - Circle.so/Cloudflare flag headless browsers on Lambda
+   IPs aggressively. The cookie + same DOM works in the local browser
+   but the Vercel-hosted scrape returns the signed-out shell because
+   the bot fingerprint trips a challenge. These flags + the per-page
+   webdriver overrides knock down the easy fingerprint markers. Not a
+   silver bullet against a determined challenge but enough for the
+   default bot management posture. */
+const STEALTH_CHROMIUM_ARGS = [
+  "--disable-blink-features=AutomationControlled",
+  "--disable-features=IsolateOrigins,site-per-process",
+  "--disable-site-isolation-trials",
+];
+
+const REALISTIC_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
 async function launchBrowser() {
   const puppeteer = (await import("puppeteer-core")).default;
   const isServerless = !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.VERCEL;
@@ -115,12 +131,12 @@ async function launchBrowser() {
   if (isServerless) {
     const chromium = (await import("@sparticuz/chromium")).default;
     binaryPath = await chromium.executablePath();
-    args = chromium.args;
+    args = [...chromium.args, ...STEALTH_CHROMIUM_ARGS];
   } else {
     binaryPath =
       process.env.PUPPETEER_EXECUTABLE_PATH ??
       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-    args = ["--no-sandbox", "--disable-setuid-sandbox"];
+    args = ["--no-sandbox", "--disable-setuid-sandbox", ...STEALTH_CHROMIUM_ARGS];
   }
 
   return puppeteer.launch({
@@ -136,6 +152,19 @@ async function extractRawCards(url: string, sessionCookie: string): Promise<RawC
   try {
     browser = await launchBrowser();
     const page = await browser.newPage();
+    /* Look like a real Chrome user before any request is made. */
+    await page.setUserAgent(REALISTIC_USER_AGENT);
+    await page.setExtraHTTPHeaders({
+      "Accept-Language": "en-US,en;q=0.9",
+      "Sec-Ch-Ua": '"Google Chrome";v="126", "Not;A=Brand";v="8", "Chromium";v="126"',
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"macOS"',
+    });
+    /* Patch navigator.webdriver before any page script can read it -
+       a common bot-detection signal. */
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+    });
     try {
       await page.setCookie({
         name: "user_session_identifier",
