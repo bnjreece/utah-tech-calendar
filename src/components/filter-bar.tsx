@@ -11,7 +11,6 @@ import {
 } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
-import { SubscribePopover } from "@/components/subscribe-popover";
 import {
   Popover,
   PopoverContent,
@@ -153,12 +152,6 @@ export function FilterBar({ cities, tags, sources }: Props) {
             on={filters.showOnline}
             onChange={(v) => update({ showOnline: v })}
           />
-          <span className="ml-auto">
-            <SubscribePopover
-              feedQuery={filtersToSearchParams(filters).toString()}
-              triggerLabel={activeCount > 0 ? "Subscribe to this view" : "Subscribe"}
-            />
-          </span>
         </div>
       </div>
 
