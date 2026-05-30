@@ -156,14 +156,25 @@ export default async function EventOgImage({
           <div
             style={{
               display: "flex",
-              fontSize: title.length > 80 ? 60 : title.length > 50 ? 72 : 84,
+              fontSize:
+                title.length > 140
+                  ? 44
+                  : title.length > 100
+                    ? 52
+                    : title.length > 70
+                      ? 64
+                      : title.length > 45
+                        ? 76
+                        : 88,
               fontWeight: 500,
               lineHeight: 1.08,
               letterSpacing: "-0.02em",
               color: INK,
+              overflow: "hidden",
+              maxHeight: 360,
             }}
           >
-            {title}
+            {title.length > 200 ? title.slice(0, 197) + "…" : title}
           </div>
         </div>
 

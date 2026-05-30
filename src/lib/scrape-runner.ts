@@ -1,6 +1,5 @@
 import { sql, eq } from "drizzle-orm";
 import { db, events, sources, groups } from "./db";
-import { categorizeRegion } from "./regions";
 import { eventAdapters, type EventItem } from "./scrapers";
 
 export interface ScrapeResult {
@@ -13,24 +12,19 @@ export interface ScrapeResult {
   error?: string;
 }
 
-/* Heuristic - detect conferences from title + duration so the badge
-   shows up automatically on freshly-scraped events. Manually-set flags
-   are preserved on re-scrape (we never overwrite them with false). */
+/* Heuristic - detect conferences from title keywords. Earlier version also
+   used duration > 8h, but a 48h community hackathon is not a conference
+   and the duration rule misclassified hackathons + multi-day workshops.
+   Title keywords are noticeably high-precision; admin can still flag the
+   rare miss manually via /admin (when that UI exists). */
 const CONFERENCE_TITLE_RE =
   /\b(summit|conference|conf\b|expo|convention|congress|symposium)\b/i;
 const CONFERENCE_FALSE_POSITIVE_RE =
-  /\b(manifest|infest|fest meetup|summited|summiting)\b/i;
+  /\b(manifest|infest|fest meetup|summited|summiting|hackathon|jam\b)\b/i;
 
 function detectConference(item: EventItem): boolean {
   if (CONFERENCE_FALSE_POSITIVE_RE.test(item.title)) return false;
-  if (CONFERENCE_TITLE_RE.test(item.title)) return true;
-  /* Multi-day stretch (>8h) on a single-occurrence event is almost
-     always a conference - meetups are <4h. */
-  if (item.endsAt) {
-    const durationHours = (item.endsAt.getTime() - item.startsAt.getTime()) / 3_600_000;
-    if (durationHours > 8) return true;
-  }
-  return false;
+  return CONFERENCE_TITLE_RE.test(item.title);
 }
 
 /* Detect paid events at scrape time. Conservative: only flag the
@@ -51,13 +45,6 @@ async function upsertEvent(item: EventItem, groupId: string | undefined, default
     .from(events)
     .where(sql`${events.source} = ${item.source} AND ${events.externalId} = ${item.externalId}`)
     .limit(1);
-
-  const region = categorizeRegion({
-    city: item.city,
-    venueName: item.venueName,
-    address: item.address,
-  });
-  void region;
 
   const baseValues = {
     title: item.title,
