@@ -1,22 +1,39 @@
 import type { MetadataRoute } from "next";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { db, events } from "@/lib/db";
 import { SITE_URL } from "@/lib/seo";
+import { eventSlug, toSlug } from "@/lib/slugs";
 
 /* Dynamic sitemap. Pulls every approved upcoming event so Google can
-   crawl each detail page; also includes the main editorial routes and
-   the API feeds. Regenerates on each request via force-dynamic so a
-   newly-scraped event lands in the sitemap on the next crawl. */
+   crawl each detail page (using the canonical slug URL); also includes
+   the main editorial routes and city landing pages. Regenerates on each
+   request via force-dynamic so a newly-scraped event lands in the
+   sitemap on the next crawl. */
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
+
   const upcoming = await db
-    .select({ id: events.id, updatedAt: events.updatedAt })
+    .select({
+      id: events.id,
+      title: events.title,
+      updatedAt: events.updatedAt,
+    })
     .from(events)
     .where(and(eq(events.status, "approved"), gte(events.startsAt, now)))
     .limit(2000);
+
+  const cityRows = await db.execute<{ city: string }>(sql`
+    SELECT DISTINCT city
+    FROM events
+    WHERE city IS NOT NULL
+      AND trim(city) <> ''
+      AND status = 'approved'
+      AND starts_at >= now()
+  `);
+  const cities = (Array.isArray(cityRows) ? cityRows : cityRows.rows ?? []) as Array<{ city: string }>;
 
   const routes: MetadataRoute.Sitemap = [
     {
@@ -24,6 +41,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "hourly",
       priority: 1,
+    },
+    {
+      url: `${SITE_URL}/about`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
     {
       url: `${SITE_URL}/subscribe`,
@@ -51,9 +74,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  for (const c of cities) {
+    routes.push({
+      url: `${SITE_URL}/city/${toSlug(c.city)}`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.7,
+    });
+  }
+
   for (const e of upcoming) {
     routes.push({
-      url: `${SITE_URL}/event/${e.id}`,
+      url: `${SITE_URL}/event/${eventSlug(e.title, e.id)}`,
       lastModified: e.updatedAt ?? now,
       changeFrequency: "daily",
       priority: 0.8,

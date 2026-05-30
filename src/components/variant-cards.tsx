@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
+import { eventSlug } from "@/lib/slugs";
 
 const SOURCE_LABELS: Record<string, string> = {
   meetup: "Meetup",
@@ -32,7 +33,7 @@ export function EditorialStripCard({ event }: { event: EventWithGroup }) {
   const source = SOURCE_LABELS[event.source] ?? event.source;
   return (
     <Link
-      href={`/event/${event.id}`}
+      href={`/event/${eventSlug(event.title, event.id)}`}
       className="group grid grid-cols-[--spacing(20)_1fr] sm:grid-cols-[--spacing(28)_1fr] gap-6 sm:gap-10 items-baseline py-8 sm:py-10 border-t border-ink/15 first:border-t-0 transition-colors"
     >
       <div className="flex flex-col">
@@ -99,7 +100,7 @@ export function EditorialLinearCardCompact({ event }: { event: EventWithGroup })
   const timeText = d.time.toLowerCase().replace(/\s/g, "");
   return (
     <Link
-      href={`/event/${event.id}`}
+      href={`/event/${eventSlug(event.title, event.id)}`}
       className={`group grid ${isHighlight ? "grid-cols-[6px_--spacing(14)_1fr] sm:grid-cols-[6px_--spacing(16)_1fr]" : "grid-cols-[3px_--spacing(14)_1fr] sm:grid-cols-[3px_--spacing(16)_1fr]"} gap-x-3 sm:gap-x-4 items-baseline py-1.5 border-t border-ink/10 first:border-t-0 transition-colors`}
     >
       <div className={`self-stretch ${colors.bar} ${event.isTentative ? "opacity-50" : isHighlight ? "opacity-100" : "opacity-70"} group-hover:opacity-100 transition-opacity`} aria-hidden />
@@ -144,7 +145,7 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   const timeText = d.time.toLowerCase().replace(/\s/g, "");
   return (
     <Link
-      href={`/event/${event.id}`}
+      href={`/event/${eventSlug(event.title, event.id)}`}
       className={`group grid ${isHighlight ? "grid-cols-[6px_--spacing(16)_1fr] sm:grid-cols-[6px_--spacing(18)_1fr]" : "grid-cols-[3px_--spacing(16)_1fr] sm:grid-cols-[3px_--spacing(18)_1fr]"} gap-x-5 sm:gap-x-6 items-baseline py-5 border-t border-ink/15 first:border-t-0 transition-colors`}
     >
       <div className={`self-stretch ${colors.bar} ${event.isTentative ? "opacity-50" : isHighlight ? "opacity-100" : "opacity-80"} group-hover:opacity-100 transition-opacity`} aria-hidden />
@@ -185,7 +186,7 @@ export function WasatchCard({ event }: { event: EventWithGroup }) {
   const source = SOURCE_LABELS[event.source] ?? event.source;
   return (
     <Link
-      href={`/event/${event.id}`}
+      href={`/event/${eventSlug(event.title, event.id)}`}
       className="group block rounded-[14px] bg-card ring-1 ring-ink/10 overflow-hidden transition-all hover:ring-ink/25 hover:-translate-y-0.5"
     >
       <div className="flex items-center justify-between px-5 pt-3 pb-2 border-b border-ink/8">
@@ -234,7 +235,7 @@ export function ApartmentCard({ event }: { event: EventWithGroup }) {
   const source = SOURCE_LABELS[event.source] ?? event.source;
   return (
     <Link
-      href={`/event/${event.id}`}
+      href={`/event/${eventSlug(event.title, event.id)}`}
       className="group grid grid-cols-[--spacing(24)_1fr] gap-6 py-8 border-t border-ink/15 transition-colors hover:bg-ink/[0.03] -mx-3 px-3"
     >
       <div className="flex flex-col">
@@ -289,7 +290,7 @@ export function MainframeCard({ event }: { event: EventWithGroup }) {
   const source = (SOURCE_LABELS[event.source] ?? event.source).toUpperCase();
   return (
     <Link
-      href={`/event/${event.id}`}
+      href={`/event/${eventSlug(event.title, event.id)}`}
       className="group block bg-card transition-all hover:[text-shadow:0_0_8px_currentColor]"
       style={{ border: "1px solid currentColor" }}
     >
@@ -327,7 +328,7 @@ export function GlacierCard({ event }: { event: EventWithGroup }) {
   const source = SOURCE_LABELS[event.source] ?? event.source;
   return (
     <Link
-      href={`/event/${event.id}`}
+      href={`/event/${eventSlug(event.title, event.id)}`}
       className="group block rounded-lg bg-card ring-1 ring-ink/8 transition-all hover:ring-sunset-deep/40 hover:shadow-[0_8px_30px_-12px_oklch(0.55_0.2_220/0.25)] p-5"
     >
       <div className="flex items-center justify-between gap-3 mb-4">

@@ -125,6 +125,9 @@ export default function RootLayout({
               </p>
             </div>
             <div className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
+              <Link href="/about" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                about
+              </Link>
               <Link href="/api/ical" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
                 ical
               </Link>

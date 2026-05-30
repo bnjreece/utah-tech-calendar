@@ -1,12 +1,31 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { sql } from "drizzle-orm";
+import { db, events } from "@/lib/db";
 import { getEventById } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { EventJsonLd } from "@/components/json-ld";
 import { absoluteUrl } from "@/lib/seo";
+import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 
 export const dynamic = "force-dynamic";
+
+/* The route is /event/[id] but `id` is now polymorphic:
+   - a slug-prefix string like "utahjs-meetup-june-abcd1234"
+   - or a raw UUID (legacy URLs from before slugs were a thing)
+   We look up the actual event id, returning the canonical slug form so
+   the caller can either render or redirect. */
+async function resolveEventId(idParam: string): Promise<string | null> {
+  if (looksLikeUuid(idParam)) return idParam;
+  const prefix = extractIdPrefix(idParam);
+  if (!prefix) return null;
+  const r = await db.execute<{ id: string }>(sql`
+    SELECT id FROM events WHERE id::text ILIKE ${prefix + "%"} LIMIT 1
+  `);
+  const rows = (Array.isArray(r) ? r : r.rows ?? []) as Array<{ id: string }>;
+  return rows[0]?.id ?? null;
+}
 
 const SOURCE_LABELS: Record<string, string> = {
   meetup: "Meetup",
@@ -22,8 +41,10 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const event = await getEventById(id);
+  const { id: idParam } = await params;
+  const realId = await resolveEventId(idParam);
+  if (!realId) return { title: "Event not found" };
+  const event = await getEventById(realId);
   if (!event) return { title: "Event not found" };
 
   const start = new Date(event.startsAt);
@@ -41,7 +62,7 @@ export async function generateMetadata({
   const description = descBase
     ? `${descBase} · ${when} · ${where}`
     : `${event.title} on ${when} in ${where}. In-person Utah tech event.`;
-  const canonical = `/event/${event.id}`;
+  const canonical = `/event/${eventSlug(event.title, event.id)}`;
 
   return {
     title: event.title,
@@ -67,9 +88,19 @@ export default async function EventDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const event = await getEventById(id);
+  const { id: idParam } = await params;
+  const realId = await resolveEventId(idParam);
+  if (!realId) notFound();
+  const event = await getEventById(realId);
   if (!event) notFound();
+
+  /* Old UUID URLs redirect to the canonical slug URL so backlinks and
+     bookmarks don't 404, and Google consolidates ranking onto the new
+     URL via the 301. */
+  const canonical = eventSlug(event.title, event.id);
+  if (idParam !== canonical) {
+    redirect(`/event/${canonical}`);
+  }
 
   const start = new Date(event.startsAt);
   const end = event.endsAt ? new Date(event.endsAt) : null;

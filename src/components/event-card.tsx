@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
+import { eventSlug } from "@/lib/slugs";
 
 const SOURCE_LABELS: Record<string, string> = {
   meetup: "Meetup",
@@ -26,7 +27,7 @@ export function EventCard({ event }: { event: EventWithGroup }) {
   return (
     <Link
       data-event-card
-      href={`/event/${event.id}`}
+      href={`/event/${eventSlug(event.title, event.id)}`}
       className="group flex h-full flex-col overflow-hidden rounded-3xl bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-sm ring-1 ring-ink/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
     >
       <div data-card-bar className={`h-2 ${colors.bar}`} aria-hidden />
