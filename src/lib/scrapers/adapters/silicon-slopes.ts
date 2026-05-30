@@ -13,6 +13,10 @@ const MONTH: Record<string, number> = {
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
 };
 
+/* Strict allow-list. An unknown TZ token returns null from parseDateLine
+   so the card is skipped rather than silently stamped with the wrong
+   offset (the previous default-to-MDT was wrong for any non-listed zone
+   and for our own zone in winter). */
 const TZ_OFFSET_MIN: Record<string, number> = {
   MST: 7 * 60,
   MDT: 6 * 60,
@@ -49,13 +53,20 @@ function parseDateLine(line: string, which: "start" | "end" = "start"): Date | n
   const hour = which === "start" ? sHour : eHour;
   const minute = which === "start" ? sMin : eMin;
 
-  const offsetMin = TZ_OFFSET_MIN[tz.toUpperCase()] ?? 6 * 60;
+  const offsetMin = TZ_OFFSET_MIN[tz.toUpperCase()];
+  if (offsetMin === undefined) return null;
   const now = new Date();
-  let year = now.getUTCFullYear();
+  const year = now.getUTCFullYear();
   let utc = Date.UTC(year, month, day, hour, minute) + offsetMin * 60_000;
+  /* Calendar shows the next 12 months only, so a date that lands before
+     today on the current-year guess belongs in next year (e.g. scraping
+     in December and seeing "Jan 5"). Stale rows (>30d in the past) are
+     dropped entirely rather than bumped forward - they're historical,
+     not upcoming. */
   if (utc < now.getTime() - 30 * 86_400_000) {
-    year += 1;
-    utc = Date.UTC(year, month, day, hour, minute) + offsetMin * 60_000;
+    const bumped = Date.UTC(year + 1, month, day, hour, minute) + offsetMin * 60_000;
+    if (bumped - now.getTime() > 365 * 86_400_000) return null;
+    utc = bumped;
   }
   return new Date(utc);
 }
@@ -121,18 +132,30 @@ async function launchBrowser() {
 }
 
 async function extractRawCards(url: string, sessionCookie: string): Promise<RawCard[]> {
-  const browser = await launchBrowser();
+  let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
+    browser = await launchBrowser();
     const page = await browser.newPage();
-    await page.setCookie({
-      name: "user_session_identifier",
-      value: sessionCookie,
-      domain: COOKIE_DOMAIN,
-      path: "/",
-      httpOnly: false,
-      secure: true,
-    });
+    try {
+      await page.setCookie({
+        name: "user_session_identifier",
+        value: sessionCookie,
+        domain: COOKIE_DOMAIN,
+        path: "/",
+        httpOnly: false,
+        secure: true,
+      });
+    } catch {
+      /* Re-raise without echoing the cookie value, which puppeteer-core
+         would otherwise embed in its error message and land in the
+         sources.last_error column rendered on /admin. */
+      throw new Error("Failed to set session cookie - cookie format invalid");
+    }
     await page.goto(url, { waitUntil: "networkidle2", timeout: 45_000 });
+    /* Race between the SPA populating event anchors and Circle showing
+       the signed-out shell. We only swallow TimeoutError; any other
+       error (page crash, JS exception, navigation aborted) is a real
+       failure that should surface as lastError rather than 0 items. */
     await page
       .waitForFunction(
         () =>
@@ -140,7 +163,9 @@ async function extractRawCards(url: string, sessionCookie: string): Promise<RawC
           document.body.innerText.includes("Sign in"),
         { timeout: 20_000 },
       )
-      .catch(() => undefined);
+      .catch((e: Error) => {
+        if (e.name !== "TimeoutError") throw e;
+      });
 
     const cards = await page.evaluate(() => {
       const anchors = Array.from(
@@ -167,7 +192,9 @@ async function extractRawCards(url: string, sessionCookie: string): Promise<RawC
     });
     return cards;
   } finally {
-    await browser.close();
+    /* Guard browser too - launchBrowser() can reject mid-spawn (binary
+       download timeout on cold start) without ever returning a handle. */
+    if (browser) await browser.close().catch(() => undefined);
   }
 }
 

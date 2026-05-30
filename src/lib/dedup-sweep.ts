@@ -37,7 +37,11 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
     HAVING COUNT(*) >= 3
   `);
 
-  // Cluster B: same venue + start_at, differing titles
+  /* Cluster B: same venue + start_at, differing titles. Threshold is 4
+     (not 3) so a 3-track conference - "Track A", "Track B", "Track C"
+     at the same room and start time - is NOT eaten by the sweep. 4+
+     distinct titles at the same source/time/venue is the SEO-spam
+     signature. */
   const venueRows = await db.execute(sql`
     SELECT
       'venue:' || lower(trim(venue_name)) AS signature,
@@ -52,7 +56,7 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
       AND venue_name IS NOT NULL
       AND trim(venue_name) <> ''
     GROUP BY signature, source, starts_at
-    HAVING COUNT(DISTINCT title) >= 3
+    HAVING COUNT(DISTINCT title) >= 4
   `);
 
   type Cluster = { signature: string; source: string; ids: string[]; titles: string[] };
@@ -64,9 +68,8 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
   const details: DedupResult["details"] = [];
 
   for (const c of clusters) {
-    const [keepId, ...dropIds] = c.ids;
+    const [, ...dropIds] = c.ids;
     const [keepTitle] = c.titles;
-    void keepId;
     for (const id of dropIds) toHide.add(id);
     details.push({
       signature: c.signature,

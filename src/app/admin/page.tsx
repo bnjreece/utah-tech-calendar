@@ -11,16 +11,19 @@ interface SourceAlert {
   action?: string;
 }
 
+/* Tied to the exact format scrape-runner writes: `ok: ${N} items`. */
+const ZERO_ITEMS = /^ok: 0 items$/i;
+
 function detectAlerts(sourceRows: typeof sources.$inferSelect[]): SourceAlert[] {
   const alerts: SourceAlert[] = [];
   const now = Date.now();
   const STALE_MS = 24 * 60 * 60 * 1000;
+  const enabled = sourceRows.filter((s) => s.enabled);
+  const staleEnabled: typeof enabled = [];
 
-  for (const s of sourceRows) {
-    if (!s.enabled) continue;
-
+  for (const s of enabled) {
     /* Silicon Slopes returning 0 = cookie expired (most common failure). */
-    if (s.adapter === "siliconSlopes" && /ok: 0 items/i.test(s.lastStatus ?? "")) {
+    if (s.adapter === "siliconSlopes" && ZERO_ITEMS.test((s.lastStatus ?? "").trim())) {
       alerts.push({
         level: "urgent",
         title: "Silicon Slopes scraper returned 0 events",
@@ -40,20 +43,41 @@ function detectAlerts(sourceRows: typeof sources.$inferSelect[]): SourceAlert[] 
       continue;
     }
 
-    /* Source that is enabled but has never run, or hasn't run in over 24h */
+    /* Collect stale candidates for the meta-alert below. */
     const lastRunMs = s.lastScrapedAt ? new Date(s.lastScrapedAt).getTime() : null;
-    if (lastRunMs === null) {
+    if (lastRunMs === null || now - lastRunMs > STALE_MS) {
+      staleEnabled.push(s);
+    }
+  }
+
+  /* Stale meta-alert: if cron stopped firing, ~24 sources go stale at
+     once. Collapse into one alert rather than burying the rest of the
+     page in warn cards. Show individual cards only when 3 or fewer
+     enabled sources are stale (i.e. a real per-source issue). */
+  if (staleEnabled.length > 0 && staleEnabled.length >= enabled.length - 2) {
+    alerts.push({
+      level: "urgent",
+      title: `Cron may have stopped firing - ${staleEnabled.length} of ${enabled.length} sources stale`,
+      body: "All or nearly all enabled sources have not scraped in over 24 hours. Check Vercel Functions logs and the cron schedule.",
+    });
+  } else {
+    for (const s of staleEnabled.slice(0, 5)) {
+      const hours = s.lastScrapedAt
+        ? Math.round((now - new Date(s.lastScrapedAt).getTime()) / (60 * 60 * 1000))
+        : null;
       alerts.push({
         level: "warn",
-        title: `${s.adapter} source never scraped`,
+        title: hours === null
+          ? `${s.adapter} source never scraped`
+          : `${s.adapter} source stale (${hours}h since last scrape)`,
         body: s.url,
       });
-    } else if (now - lastRunMs > STALE_MS) {
-      const hours = Math.round((now - lastRunMs) / (60 * 60 * 1000));
+    }
+    if (staleEnabled.length > 5) {
       alerts.push({
         level: "warn",
-        title: `${s.adapter} source stale (${hours}h since last scrape)`,
-        body: s.url,
+        title: `+${staleEnabled.length - 5} more stale sources`,
+        body: "Open Sources to triage.",
       });
     }
   }
