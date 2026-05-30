@@ -51,6 +51,18 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
     conditions.push(inArray(events.source, filters.sources));
   }
 
+  /* Type filter: OR within the chip (Conference OR Paid OR Penciled),
+     AND with everything else. From=now() means we still cap to upcoming. */
+  if (filters.types.length) {
+    const typeConds = filters.types.map((t) => {
+      if (t === "conference") return eq(events.isConference, true);
+      if (t === "paid") return eq(events.isPaid, true);
+      return eq(events.isTentative, true);
+    });
+    const typeOr = or(...typeConds);
+    if (typeOr) conditions.push(typeOr);
+  }
+
   const rows = await db
     .select({
       event: events,

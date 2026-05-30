@@ -63,6 +63,12 @@ export const events = pgTable(
        bootcamps, conferences, paid workshops). Surfaces the same badge
        slot as conferences but with a "Paid" label. */
     isPaid: boolean("is_paid").notNull().default(false),
+    /* True for "penciled in" events whose date is a placeholder based on
+       prior-year cadence (e.g. Silicon Slopes SUMMIT 2027 lands in
+       February but no specific dates have been announced). Surfaces
+       brackets around the date + a PENCILED trailing badge. Flip to
+       false when the real date is announced. */
+    isTentative: boolean("is_tentative").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

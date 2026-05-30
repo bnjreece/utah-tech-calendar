@@ -79,29 +79,39 @@ export function EditorialStripCard({ event }: { event: EventWithGroup }) {
 /* Dense one-line row for monthly view. Title gets truncate so many days
    fit per fold; venue is dropped. Conference/paid events get a thicker
    bar at full opacity AND a trailing mono-caps badge at the right of
-   the title row. */
+   the title row. Tentative ("penciled in") events show their time as
+   bracketed and surface a separate PENCILED badge that wins over the
+   conference/paid badge if both apply. */
 export function EditorialLinearCardCompact({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
   const isHighlight = event.isConference || event.isPaid;
-  const badgeLabel = event.isConference ? "Conf" : event.isPaid ? "Paid" : null;
+  const badgeLabel = event.isTentative
+    ? "Penciled"
+    : event.isConference
+      ? "Conf"
+      : event.isPaid
+        ? "Paid"
+        : null;
+  const badgeClass = event.isTentative ? "text-ink-soft" : colors.text;
+  const timeText = d.time.toLowerCase().replace(/\s/g, "");
   return (
     <Link
       href={`/event/${event.id}`}
       className={`group grid ${isHighlight ? "grid-cols-[6px_--spacing(14)_1fr] sm:grid-cols-[6px_--spacing(16)_1fr]" : "grid-cols-[3px_--spacing(14)_1fr] sm:grid-cols-[3px_--spacing(16)_1fr]"} gap-x-3 sm:gap-x-4 items-baseline py-1.5 border-t border-ink/10 first:border-t-0 transition-colors`}
     >
-      <div className={`self-stretch ${colors.bar} ${isHighlight ? "opacity-100" : "opacity-70"} group-hover:opacity-100 transition-opacity`} aria-hidden />
+      <div className={`self-stretch ${colors.bar} ${isHighlight ? "opacity-100" : "opacity-70"} ${event.isTentative ? "opacity-50" : ""} group-hover:opacity-100 transition-opacity`} aria-hidden />
       <div className="self-baseline font-mono text-[10px] tracking-[0.12em] text-ink-soft tabular-nums normal-case">
-        {d.time.toLowerCase().replace(/\s/g, "")}
+        {event.isTentative ? `[${timeText}]` : timeText}
       </div>
       <div className="flex items-baseline gap-3 min-w-0">
         <h3 className="font-display text-sm sm:text-base leading-snug text-ink truncate group-hover:text-sunset-deep transition-colors flex-1 min-w-0">
           {event.title}
         </h3>
         {badgeLabel && (
-          <span className={`shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] ${colors.text}`}>
+          <span className={`shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] ${badgeClass}`}>
             {badgeLabel}
           </span>
         )}
@@ -123,15 +133,23 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   const colors = STRATUM_CLASSES[stratum];
   const placeParts = [event.venueName, event.city].filter(Boolean);
   const isHighlight = event.isConference || event.isPaid;
-  const badgeLabel = event.isConference ? "Conference" : event.isPaid ? "Paid" : null;
+  const badgeLabel = event.isTentative
+    ? "Penciled"
+    : event.isConference
+      ? "Conference"
+      : event.isPaid
+        ? "Paid"
+        : null;
+  const badgeClass = event.isTentative ? "text-ink-soft" : colors.text;
+  const timeText = d.time.toLowerCase().replace(/\s/g, "");
   return (
     <Link
       href={`/event/${event.id}`}
       className={`group grid ${isHighlight ? "grid-cols-[6px_--spacing(16)_1fr] sm:grid-cols-[6px_--spacing(18)_1fr]" : "grid-cols-[3px_--spacing(16)_1fr] sm:grid-cols-[3px_--spacing(18)_1fr]"} gap-x-5 sm:gap-x-6 items-baseline py-5 border-t border-ink/15 first:border-t-0 transition-colors`}
     >
-      <div className={`self-stretch ${colors.bar} ${isHighlight ? "opacity-100" : "opacity-80"} group-hover:opacity-100 transition-opacity`} aria-hidden />
+      <div className={`self-stretch ${colors.bar} ${isHighlight ? "opacity-100" : "opacity-80"} ${event.isTentative ? "opacity-50" : ""} group-hover:opacity-100 transition-opacity`} aria-hidden />
       <div className="self-start pt-1.5 font-mono text-[11px] tracking-[0.14em] text-ink-soft tabular-nums normal-case">
-        {d.time.toLowerCase().replace(/\s/g, "")}
+        {event.isTentative ? `[${timeText}]` : timeText}
       </div>
       <div className="min-w-0">
         <div className="flex items-baseline gap-4 sm:gap-6">
@@ -139,7 +157,7 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
             {event.title}
           </h3>
           {badgeLabel && (
-            <span className={`shrink-0 self-baseline font-mono text-[10px] uppercase tracking-[0.24em] ${colors.text}`}>
+            <span className={`shrink-0 self-baseline font-mono text-[10px] uppercase tracking-[0.24em] ${badgeClass}`}>
               {badgeLabel}
             </span>
           )}

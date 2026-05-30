@@ -1,5 +1,13 @@
 import type { UtahRegion } from "./regions";
 
+export type EventType = "conference" | "paid" | "penciled";
+
+export const TYPE_LABELS: Record<EventType, string> = {
+  conference: "Conference",
+  paid: "Paid",
+  penciled: "Penciled in",
+};
+
 export interface FilterState {
   q: string;
   regions: UtahRegion[];
@@ -7,6 +15,7 @@ export interface FilterState {
   tags: string[];
   sources: string[];
   groups: string[];
+  types: EventType[];
   from?: string;
   to?: string;
   showOnline: boolean;
@@ -37,6 +46,9 @@ export function parseFilters(searchParams: URLSearchParams | Record<string, stri
     return raw.split(",").map((s) => s.trim()).filter(Boolean);
   };
 
+  const validTypes: EventType[] = ["conference", "paid", "penciled"];
+  const types = csv("types").filter((t): t is EventType => validTypes.includes(t as EventType));
+
   return {
     q: get("q") ?? "",
     regions: csv("regions") as UtahRegion[],
@@ -44,6 +56,7 @@ export function parseFilters(searchParams: URLSearchParams | Record<string, stri
     tags: csv("tags"),
     sources: csv("sources"),
     groups: csv("groups"),
+    types,
     from: get("from"),
     to: get("to"),
     showOnline: get("online") === "show",
@@ -58,6 +71,7 @@ export function filtersToSearchParams(f: FilterState): URLSearchParams {
   if (f.tags.length) sp.set("tags", f.tags.join(","));
   if (f.sources.length) sp.set("sources", f.sources.join(","));
   if (f.groups.length) sp.set("groups", f.groups.join(","));
+  if (f.types.length) sp.set("types", f.types.join(","));
   if (f.from) sp.set("from", f.from);
   if (f.to) sp.set("to", f.to);
   if (f.showOnline) sp.set("online", "show");

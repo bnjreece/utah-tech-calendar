@@ -7,7 +7,9 @@ import {
   parseFilters,
   filtersToSearchParams,
   SOURCE_LABELS,
+  TYPE_LABELS,
   type FilterState,
+  type EventType,
 } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
@@ -73,9 +75,16 @@ export function FilterBar({ cities, tags, sources }: Props) {
     filters.cities.length +
     filters.tags.length +
     filters.sources.length +
+    filters.types.length +
     (filters.from ? 1 : 0) +
     (filters.to ? 1 : 0) +
     (filters.showOnline ? 1 : 0);
+
+  const typeOptions: { value: EventType; label: string }[] = [
+    { value: "conference", label: TYPE_LABELS.conference },
+    { value: "paid", label: TYPE_LABELS.paid },
+    { value: "penciled", label: TYPE_LABELS.penciled },
+  ];
 
   const sourceOptions = sources.map((s) => ({
     value: s.value,
@@ -148,6 +157,12 @@ export function FilterBar({ cities, tags, sources }: Props) {
               onChange={(next) => update({ sources: next })}
             />
           )}
+          <MultiSelectPopover
+            label="Type"
+            options={typeOptions}
+            selected={filters.types}
+            onChange={(next) => update({ types: next as EventType[] })}
+          />
           <DateRangePopover
             from={filters.from}
             to={filters.to}
@@ -182,6 +197,13 @@ export function FilterBar({ cities, tags, sources }: Props) {
               key={`s-${s}`}
               label={SOURCE_LABELS[s] ?? s}
               onRemove={() => clearOne("sources", s)}
+            />
+          ))}
+          {filters.types.map((t) => (
+            <ActiveChip
+              key={`type-${t}`}
+              label={TYPE_LABELS[t]}
+              onRemove={() => clearOne("types", t)}
             />
           ))}
           {filters.from && (
