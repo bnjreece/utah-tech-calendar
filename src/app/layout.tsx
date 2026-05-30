@@ -41,10 +41,11 @@ export default function RootLayout({
             >
               <ReflectionShimmerLogo
                 className="text-ink group-hover:text-sunset-deep transition-colors shrink-0"
-                style={{ width: "20px", height: "20px", transform: "translateY(2px)" }}
+                style={{ width: "32px", height: "32px", transform: "translateY(3px)" }}
               />
-              <span className="font-display text-base tracking-tight leading-none truncate">
-                utah tech <span className="italic">events</span>
+              <span className="font-display text-2xl tracking-tight leading-none truncate">
+                <span className="hidden sm:inline">utah tech <span className="italic">events</span></span>
+                <span className="sm:hidden">UTE</span>
               </span>
             </Link>
             <nav className="flex items-baseline gap-4 sm:gap-5 font-mono text-[11px] uppercase tracking-[0.18em] shrink-0">
