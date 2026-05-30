@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { parseFilters, filtersToSearchParams } from "@/lib/filters";
 import {
   queryEvents,
@@ -22,8 +23,22 @@ export default async function HomePage({
   const filters = parseFilters(params);
   const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
   const view: "list" | "calendar" = viewParam === "calendar" ? "calendar" : "list";
+
+  /* Density priority: explicit URL param > schedule_density cookie > weekly.
+     The cookie lets the preference survive header-nav clicks that wipe the
+     URL state (events / subscribe / submit links). DensityToggle writes the
+     cookie when the user picks. */
   const densityParam = Array.isArray(params.density) ? params.density[0] : params.density;
-  const density: "weekly" | "monthly" = densityParam === "monthly" ? "monthly" : "weekly";
+  const cookieStore = await cookies();
+  const cookieDensity = cookieStore.get("schedule_density")?.value;
+  const density: "weekly" | "monthly" =
+    densityParam === "monthly"
+      ? "monthly"
+      : densityParam === "weekly"
+        ? "weekly"
+        : cookieDensity === "monthly"
+          ? "monthly"
+          : "weekly";
 
   const [events, cityCounts, tagCounts, sourceCounts] = await Promise.all([
     queryEvents(filters),

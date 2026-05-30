@@ -5,6 +5,17 @@ import { useSearchParams, usePathname } from "next/navigation";
 
 export type ScheduleDensity = "weekly" | "monthly";
 
+/* Cookie name shared with src/app/page.tsx so the server-rendered initial
+   density can read what the client wrote. One year so it survives most
+   refresh cycles. */
+const DENSITY_COOKIE = "schedule_density";
+const ONE_YEAR_S = 60 * 60 * 24 * 365;
+
+function setDensityCookie(next: ScheduleDensity) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${DENSITY_COOKIE}=${next}; path=/; max-age=${ONE_YEAR_S}; samesite=lax`;
+}
+
 export function DensityToggle({ current }: { current: ScheduleDensity }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -26,6 +37,7 @@ export function DensityToggle({ current }: { current: ScheduleDensity }) {
       <span className="text-ink/40 not-italic font-normal mr-3">view</span>
       <Link
         href={buildHref("weekly")}
+        onClick={() => setDensityCookie("weekly")}
         aria-current={current === "weekly" ? "page" : undefined}
         className={current === "weekly" ? active : inactive}
       >
@@ -36,6 +48,7 @@ export function DensityToggle({ current }: { current: ScheduleDensity }) {
       </span>
       <Link
         href={buildHref("monthly")}
+        onClick={() => setDensityCookie("monthly")}
         aria-current={current === "monthly" ? "page" : undefined}
         className={current === "monthly" ? active : inactive}
       >
