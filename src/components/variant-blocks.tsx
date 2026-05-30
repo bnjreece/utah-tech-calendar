@@ -132,7 +132,7 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
       <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-2">
         <h1 className="sr-only">Utah Tech Events</h1>
         <p className="font-display text-lg sm:text-xl text-ink-soft text-pretty leading-snug max-w-[60ch] mb-8">
-          The curated calendar of in-person Utah tech events <span className="not-italic">—</span> meetups,
+          The comprehensive calendar of in-person Utah tech events <span className="not-italic">—</span> meetups,
           conferences, founder mixers, and developer nights across Salt Lake City, Provo,
           Lehi, Ogden, and Silicon Slopes.
         </p>

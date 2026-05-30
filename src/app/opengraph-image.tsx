@@ -6,7 +6,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "Utah Tech Events - the curated calendar of in-person Utah tech events";
+export const alt = "Utah Tech Events - the comprehensive calendar of in-person Utah tech events";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -52,7 +52,7 @@ export default async function HomeOgImage() {
             color: INK_SOFT,
           }}
         >
-          № 1 · curated weekly · cottonwood heights, ut
+          № 1 · updated daily · cottonwood heights, ut
         </div>
 
         <div

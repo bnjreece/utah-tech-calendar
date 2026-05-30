@@ -4,7 +4,7 @@ import { absoluteUrl, SITE_NAME, SITE_DESCRIPTION } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "About",
-  description: `About ${SITE_NAME}. Why this calendar exists, how events get curated, and how you can contribute.`,
+  description: `About ${SITE_NAME}. Why this calendar exists, how events get on the schedule, and how you can contribute.`,
   alternates: { canonical: "/about" },
   openGraph: {
     type: "website",
@@ -27,7 +27,7 @@ export default function AboutPage() {
 
       <div className="mt-10 prose-editorial space-y-6 text-pretty text-ink leading-relaxed">
         <p className="text-lg sm:text-xl">
-          <strong>{SITE_NAME}</strong> is a curated calendar of in-person tech
+          <strong>{SITE_NAME}</strong> is the comprehensive calendar of in-person tech
           gatherings across Utah. Meetups, conferences, founder mixers, AI
           builder nights, hardware hacks, developer talks, design critiques,
           startup pitch nights — anything where Utah&apos;s tech community shows
@@ -75,7 +75,7 @@ export default function AboutPage() {
           {" "}via a form. Submissions get a quick human review.
         </p>
         <p>
-          The third is editorial curation — duplicate templated events get
+          The third is light editorial work — duplicate templated events get
           collapsed by an automated sweep, and obvious off-topic events
           (cooking classes, cosmetics workshops) get hidden when they appear.
         </p>

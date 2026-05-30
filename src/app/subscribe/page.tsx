@@ -1,4 +1,5 @@
 import { SubscribePopover } from "@/components/subscribe-popover";
+import { EmailSignup } from "@/components/email-signup";
 
 export const metadata = {
   title: "Subscribe - Utah Tech Events",
@@ -77,6 +78,22 @@ export default function SubscribePage() {
         view below, or apply any filter on the schedule page and use{" "}
         <em>Subscribe to this view</em> to build a custom URL. We update nightly.
       </p>
+
+      <section className="mt-14 border-y-2 border-ink py-10">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+          Weekly digest
+        </p>
+        <h2 className="mt-3 font-display text-3xl sm:text-4xl italic tracking-tight">
+          Or get one email a week.
+        </h2>
+        <p className="mt-3 max-w-[58ch] text-pretty text-ink-soft leading-relaxed">
+          A Monday morning rundown of the next seven days of in-person Utah
+          tech events. No filler, no tracking pixels, no sponsored slots.
+        </p>
+        <div className="mt-6 max-w-md">
+          <EmailSignup />
+        </div>
+      </section>
 
       <ul role="list" className="mt-12 flex flex-col">
         {PRESETS.map((preset) => (

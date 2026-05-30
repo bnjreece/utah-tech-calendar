@@ -8,6 +8,7 @@ import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { EventJsonLd } from "@/components/json-ld";
 import { absoluteUrl } from "@/lib/seo";
 import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
+import { AddToCalendar } from "@/components/add-to-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -203,8 +204,8 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {event.link && (
-            <div className="mt-8 pt-6 border-t border-ink/10">
+          <div className="mt-8 pt-6 border-t border-ink/10 flex flex-wrap items-center gap-3">
+            {event.link && (
               <a
                 href={event.link}
                 target="_blank"
@@ -214,8 +215,18 @@ export default async function EventDetailPage({
                 RSVP and details
                 <span aria-hidden>↗</span>
               </a>
-            </div>
-          )}
+            )}
+            <AddToCalendar
+              eventId={event.id}
+              eventSlug={canonical}
+              title={event.title}
+              startsAt={event.startsAt.toISOString()}
+              endsAt={event.endsAt ? event.endsAt.toISOString() : null}
+              description={event.description}
+              location={[event.venueName, event.address, event.city, event.state, event.postalCode].filter(Boolean).join(", ") || null}
+              url={event.link}
+            />
+          </div>
         </div>
       </div>
     </article>

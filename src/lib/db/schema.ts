@@ -119,6 +119,34 @@ export const pendingSubmissions = pgTable("pending_submissions", {
     .notNull(),
 });
 
+/* Email subscribers for the weekly digest. Double opt-in: an unverified
+   row is created on signup, then verifiedAt flips when the user clicks
+   the magic link. Unsubscribe is a HMAC-signed link that deletes the
+   row outright (no soft-delete - we never want to email someone again
+   if they explicitly opted out). */
+export const emailSubscriptions = pgTable(
+  "email_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: text("email").notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+    /* Outbound digest tracking - prevents duplicate sends within the
+       same week if the cron fires twice (e.g. a manual retry). */
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+    /* Caller-supplied tag filter or region preference for future
+       slicing. Empty means "all events". */
+    topics: text("topics").array(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [uniqueIndex("email_subscriptions_email_idx").on(t.email)],
+);
+
+export type EmailSubscription = typeof emailSubscriptions.$inferSelect;
+export type NewEmailSubscription = typeof emailSubscriptions.$inferInsert;
+
 export type Group = typeof groups.$inferSelect;
 export type NewGroup = typeof groups.$inferInsert;
 export type Event = typeof events.$inferSelect;
