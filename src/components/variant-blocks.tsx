@@ -88,12 +88,35 @@ export function EditorialStripBlock({ events, filterBarSlot, viewSlot, feedQuery
   );
 }
 
+interface DayGroup {
+  key: string;
+  date: Date;
+  events: EventWithGroup[];
+}
+
+function groupEventsByDay(events: EventWithGroup[]): DayGroup[] {
+  const groups = new Map<string, DayGroup>();
+  for (const e of events) {
+    const d = new Date(e.startsAt);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.events.push(e);
+    } else {
+      groups.set(key, { key, date: d, events: [e] });
+    }
+  }
+  return Array.from(groups.values());
+}
+
 export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuery }: VariantProps) {
   const month = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const dayGroups = groupEventsByDay(events);
+
   return (
     <>
-      <section className="mx-auto max-w-5xl px-6 pt-10 pb-2">{filterBarSlot}</section>
-      <section className="mx-auto max-w-5xl px-6 pt-10 pb-16">
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-2">{filterBarSlot}</section>
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-16">
         <div className="pb-3 border-b-2 border-ink flex items-baseline justify-between gap-4">
           <h2 className="font-display text-2xl sm:text-3xl tracking-tight italic">
             The Schedule
@@ -102,11 +125,51 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
             {events.length} entries · {month}
           </span>
         </div>
-        <ul role="list" className="flex flex-col">
-          {events.map((e) => (
-            <li key={e.id}><EditorialLinearCard event={e} /></li>
-          ))}
-        </ul>
+
+        <div className="flex flex-col">
+          {dayGroups.map((group, i) => {
+            const prev = i > 0 ? dayGroups[i - 1] : null;
+            const monthChanged =
+              prev !== null && prev.date.getMonth() !== group.date.getMonth();
+            const isFirst = i === 0;
+            const weekday = group.date.toLocaleDateString("en-US", { weekday: "long" });
+            const monthName = group.date.toLocaleDateString("en-US", { month: "long" });
+            const dayNum = group.date.getDate();
+            const monthBannerLabel = monthName.toUpperCase();
+
+            return (
+              <div key={group.key}>
+                {monthChanged && (
+                  <div
+                    aria-hidden
+                    className="mt-16 mb-12 flex items-center gap-6"
+                  >
+                    <span className="h-px flex-1 bg-ink/25" />
+                    <span className="font-display text-xs uppercase tracking-[0.5em] text-ink/65">
+                      {monthBannerLabel}
+                    </span>
+                    <span className="h-px flex-1 bg-ink/25" />
+                  </div>
+                )}
+                <h3
+                  className={`font-display italic text-2xl sm:text-3xl text-ink mb-3 ${
+                    isFirst ? "mt-8" : monthChanged ? "mt-0" : "mt-12"
+                  }`}
+                >
+                  {weekday}, {monthName} {dayNum}
+                </h3>
+                <ul role="list" className="flex flex-col">
+                  {group.events.map((e) => (
+                    <li key={e.id}>
+                      <EditorialLinearCard event={e} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+
         <EditorialFooterLinks feedQuery={feedQuery} viewSlot={viewSlot} />
       </section>
     </>

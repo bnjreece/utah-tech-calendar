@@ -76,6 +76,8 @@ export function EditorialStripCard({ event }: { event: EventWithGroup }) {
    Strict 2-col grid, both rows live in same right column for
    pixel-perfect alignment of title + metadata.
    ============================================================ */
+/* Used inside a day-grouped list (see EditorialLinearBlock). The day header
+   carries the date; this row only carries time + title + venue. */
 export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
@@ -86,14 +88,11 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   return (
     <Link
       href={`/event/${event.id}`}
-      className="group grid grid-cols-[3px_--spacing(20)_1fr] sm:grid-cols-[3px_--spacing(22)_1fr] gap-x-5 sm:gap-x-7 items-baseline py-6 border-t border-ink/15 first:border-t-0 transition-colors"
+      className="group grid grid-cols-[3px_--spacing(16)_1fr] sm:grid-cols-[3px_--spacing(18)_1fr] gap-x-5 sm:gap-x-6 items-baseline py-5 border-t border-ink/15 first:border-t-0 transition-colors"
     >
       <div className={`self-stretch ${colors.bar} opacity-80 group-hover:opacity-100 transition-opacity`} aria-hidden />
-      <div className="self-start pt-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft tabular-nums">
-        <div>{d.month} {String(d.day).padStart(2, "0")}</div>
-        <div className="mt-1 text-ink/40 normal-case tracking-[0.14em]">
-          {d.time.toLowerCase().replace(/\s/g, "")}
-        </div>
+      <div className="self-start pt-1.5 font-mono text-[11px] tracking-[0.14em] text-ink-soft tabular-nums normal-case">
+        {d.time.toLowerCase().replace(/\s/g, "")}
       </div>
       <div className="min-w-0">
         <h3 className="font-display text-xl sm:text-2xl leading-[1.2] -tracking-[0.005em] text-pretty text-ink group-hover:text-sunset-deep group-hover:underline decoration-1 underline-offset-4 transition-colors">
