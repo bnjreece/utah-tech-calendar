@@ -72,7 +72,7 @@ export default async function SourcesAdminPage() {
                 <form action={toggleSourceEnabled.bind(null, s.id, !s.enabled)}>
                   <button
                     type="submit"
-                    className={s.enabled ? "text-ink hover:text-sunset-deep hover:underline decoration-1 underline-offset-4" : "text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4"}
+                    className={`py-1.5 sm:py-0 ${s.enabled ? "text-ink hover:text-sunset-deep hover:underline decoration-1 underline-offset-4" : "text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4"}`}
                   >
                     {s.enabled ? "enabled" : "disabled"}
                   </button>
@@ -80,7 +80,7 @@ export default async function SourcesAdminPage() {
                 <form action={toggleSourceRequiresReview.bind(null, s.id, !s.requiresReview)}>
                   <button
                     type="submit"
-                    className={s.requiresReview ? "text-sunset-deep hover:underline decoration-1 underline-offset-4" : "text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4"}
+                    className={`py-1.5 sm:py-0 ${s.requiresReview ? "text-sunset-deep hover:underline decoration-1 underline-offset-4" : "text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4"}`}
                   >
                     {s.requiresReview ? "requires review" : "auto-approve"}
                   </button>

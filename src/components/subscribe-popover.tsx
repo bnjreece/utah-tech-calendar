@@ -50,8 +50,8 @@ export function SubscribePopover({
 
   const triggerClass =
     variant === "filter-bar"
-      ? "inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-paper hover:bg-ink/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
-      : "inline-flex items-center gap-1.5 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-ink/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep";
+      ? "inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-2 sm:py-1.5 text-base sm:text-sm font-medium text-paper hover:bg-ink/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+      : "inline-flex items-center gap-1.5 rounded-full bg-ink px-6 py-3 text-base sm:px-5 sm:py-2.5 sm:text-sm font-medium text-paper hover:bg-ink/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep";
 
   return (
     <Popover>
@@ -75,7 +75,7 @@ export function SubscribePopover({
           <li>
             <a
               href={webcalUrl}
-              className="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-ink/[0.04] transition-colors"
+              className="flex items-center justify-between gap-2 rounded-md px-2 py-2.5 sm:py-2 text-base sm:text-sm hover:bg-ink/[0.04] transition-colors"
             >
               <span>Apple Calendar</span>
               <span className="font-mono text-[10px] uppercase tracking-wide text-ink-soft">
@@ -88,7 +88,7 @@ export function SubscribePopover({
               href={googleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-ink/[0.04] transition-colors"
+              className="flex items-center justify-between gap-2 rounded-md px-2 py-2.5 sm:py-2 text-base sm:text-sm hover:bg-ink/[0.04] transition-colors"
             >
               <span>Google Calendar</span>
               <span className="font-mono text-[10px] uppercase tracking-wide text-ink-soft">
@@ -101,7 +101,7 @@ export function SubscribePopover({
             <button
               type="button"
               onClick={() => copy(icalUrl, "ical")}
-              className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm text-left hover:bg-ink/[0.04] transition-colors"
+              className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-2.5 sm:py-2 text-base sm:text-sm text-left hover:bg-ink/[0.04] transition-colors"
             >
               <span>Copy iCal URL</span>
               <span className="font-mono text-[10px] uppercase tracking-wide text-ink-soft">
@@ -113,7 +113,7 @@ export function SubscribePopover({
             <button
               type="button"
               onClick={() => copy(rssUrl, "rss")}
-              className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm text-left hover:bg-ink/[0.04] transition-colors"
+              className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-2.5 sm:py-2 text-base sm:text-sm text-left hover:bg-ink/[0.04] transition-colors"
             >
               <span>Copy RSS URL</span>
               <span className="font-mono text-[10px] uppercase tracking-wide text-ink-soft">

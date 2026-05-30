@@ -83,7 +83,7 @@ export function SubmitForm() {
       </div>
       <div className="flex items-center gap-3">
         <Switch id="isOnline" name="isOnline" />
-        <Label htmlFor="isOnline" className="text-sm">
+        <Label htmlFor="isOnline" className="text-base sm:text-sm">
           This event is online
         </Label>
       </div>
@@ -107,7 +107,7 @@ export function SubmitForm() {
         <p className="text-sm text-destructive">{message}</p>
       )}
 
-      <Button type="submit" disabled={status === "submitting"}>
+      <Button type="submit" size="lg" disabled={status === "submitting"}>
         {status === "submitting" ? "Submitting..." : "Submit for review"}
       </Button>
     </form>
@@ -126,7 +126,7 @@ interface FieldProps {
 function Field({ label, name, type = "text", required, defaultValue, textarea }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={name} className="text-sm">
+      <Label htmlFor={name} className="text-base sm:text-sm">
         {label}{required && <span className="text-destructive"> *</span>}
       </Label>
       {textarea ? (
@@ -136,7 +136,7 @@ function Field({ label, name, type = "text", required, defaultValue, textarea }:
           rows={4}
           defaultValue={defaultValue}
           required={required}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:outline-none"
+          className="rounded-md border border-input bg-background px-3 py-2.5 sm:py-2 text-base sm:text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:outline-none"
         />
       ) : (
         <Input

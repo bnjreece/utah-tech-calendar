@@ -18,7 +18,7 @@ export default async function AdminLayout({
   const user = await requireAdmin();
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-10">
       <header className="border-b-2 border-ink pb-4">
         <div className="flex items-baseline justify-between gap-4 flex-wrap">
           <div>
@@ -29,11 +29,11 @@ export default async function AdminLayout({
               The Editor&apos;s Desk
             </h1>
           </div>
-          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">
+          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft break-all">
             signed in as {user.email}
           </div>
         </div>
-        <nav className="mt-6 flex flex-wrap gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
+        <nav className="mt-6 flex flex-wrap gap-x-5 gap-y-3 font-mono text-[11px] uppercase tracking-[0.18em]">
           {TABS.map((t) => (
             <Link
               key={t.href}

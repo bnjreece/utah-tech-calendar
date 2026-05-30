@@ -84,7 +84,7 @@ export default async function ReviewQueuePage() {
                 <form action={approveEvent.bind(null, e.id)}>
                   <button
                     type="submit"
-                    className="font-mono text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-1.5 hover:bg-ink/85 transition-colors"
+                    className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
                   >
                     Approve
                   </button>
@@ -92,7 +92,7 @@ export default async function ReviewQueuePage() {
                 <form action={rejectEvent.bind(null, e.id)}>
                   <button
                     type="submit"
-                    className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors"
+                    className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
                   >
                     Reject
                   </button>

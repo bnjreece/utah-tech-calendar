@@ -6,7 +6,7 @@ export const metadata = {
 
 export default function SubmitPage() {
   return (
-    <div className="mx-auto max-w-xl px-6 py-12">
+    <div className="mx-auto max-w-xl px-4 sm:px-6 py-10 sm:py-12">
       <p className="text-sm uppercase tracking-[0.18em] text-ink-soft font-medium">
         Submit
       </p>
@@ -16,7 +16,7 @@ export default function SubmitPage() {
       <p className="mt-3 text-base text-ink-soft text-pretty">
         In-person Utah tech events welcome. Every submission gets a quick human review before it goes live.
       </p>
-      <div className="mt-10 rounded-3xl bg-card ring-1 ring-ink/5 shadow-sm p-6 sm:p-8">
+      <div className="mt-10 rounded-3xl bg-card ring-1 ring-ink/5 shadow-sm p-5 sm:p-8">
         <SubmitForm />
       </div>
     </div>

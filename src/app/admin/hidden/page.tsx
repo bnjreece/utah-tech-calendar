@@ -52,7 +52,7 @@ export default async function HiddenEventsPage() {
               <form action={restoreEvent.bind(null, e.id)}>
                 <button
                   type="submit"
-                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
+                  className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors py-1"
                 >
                   Restore
                 </button>

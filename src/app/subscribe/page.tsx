@@ -65,7 +65,7 @@ const PRESETS: Preset[] = [
 
 export default function SubscribePage() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
         Subscribe
       </p>

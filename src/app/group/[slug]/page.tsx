@@ -16,17 +16,17 @@ export default async function GroupPage({
   const events = await getUpcomingEventsForGroup(group.id);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-10">
       <Link
         href="/"
-        className="text-sm text-ink-soft hover:text-ink transition-colors"
+        className="text-base sm:text-sm text-ink-soft hover:text-ink transition-colors"
       >
         ← All events
       </Link>
 
       <div className="mt-8 rounded-3xl overflow-hidden bg-card ring-1 ring-ink/5 shadow-sm">
         <div aria-hidden className="h-3 strata-divider" />
-        <div className="p-8 sm:p-10">
+        <div className="p-5 sm:p-10">
           <p className="text-sm uppercase tracking-[0.18em] text-ink-soft font-medium">
             Group
           </p>
