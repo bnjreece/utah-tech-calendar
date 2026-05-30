@@ -7,13 +7,16 @@ import {
   GlacierCard,
   EditorialStripCard,
   EditorialLinearCard,
+  EditorialLinearCardCompact,
 } from "./variant-cards";
+import { DensityToggle, type ScheduleDensity } from "./density-toggle";
 
 interface VariantProps {
   events: EventWithGroup[];
   filterBarSlot: React.ReactNode;
   viewSlot: React.ReactNode;
   feedQuery: string;
+  density?: ScheduleDensity;
 }
 
 /* ============================================================
@@ -109,18 +112,27 @@ function groupEventsByDay(events: EventWithGroup[]): DayGroup[] {
   return Array.from(groups.values());
 }
 
-export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuery }: VariantProps) {
+export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuery, density = "weekly" }: VariantProps) {
   const month = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const dayGroups = groupEventsByDay(events);
+  const isCompact = density === "monthly";
+
+  const dayHeaderClass = isCompact
+    ? "font-display italic text-base sm:text-lg text-ink mb-1"
+    : "font-display italic text-2xl sm:text-3xl text-ink mb-3";
+  const dayHeaderSpacing = (isFirst: boolean, monthChanged: boolean) => {
+    if (isFirst) return isCompact ? "mt-4" : "mt-8";
+    if (monthChanged) return "mt-0";
+    return isCompact ? "mt-5" : "mt-12";
+  };
+  const monthBannerSpacing = isCompact ? "mt-10 mb-6" : "mt-16 mb-12";
 
   return (
     <>
       <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-2">{filterBarSlot}</section>
       <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-16">
-        <div className="pb-3 border-b-2 border-ink flex items-baseline justify-between gap-4">
-          <h2 className="font-display text-2xl sm:text-3xl tracking-tight italic">
-            The Schedule
-          </h2>
+        <div className="pb-3 border-b-2 border-ink flex items-baseline justify-between gap-4 flex-wrap">
+          <DensityToggle current={density} />
           <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft tabular-nums">
             {events.length} entries · {month}
           </span>
@@ -140,10 +152,7 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
             return (
               <div key={group.key}>
                 {monthChanged && (
-                  <div
-                    aria-hidden
-                    className="mt-16 mb-12 flex items-center gap-6"
-                  >
+                  <div aria-hidden className={`${monthBannerSpacing} flex items-center gap-6`}>
                     <span className="h-px flex-1 bg-ink/25" />
                     <span className="font-display text-xs uppercase tracking-[0.5em] text-ink/65">
                       {monthBannerLabel}
@@ -151,17 +160,13 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
                     <span className="h-px flex-1 bg-ink/25" />
                   </div>
                 )}
-                <h3
-                  className={`font-display italic text-2xl sm:text-3xl text-ink mb-3 ${
-                    isFirst ? "mt-8" : monthChanged ? "mt-0" : "mt-12"
-                  }`}
-                >
+                <h3 className={`${dayHeaderClass} ${dayHeaderSpacing(isFirst, monthChanged)}`}>
                   {weekday}, {monthName} {dayNum}
                 </h3>
                 <ul role="list" className="flex flex-col">
                   {group.events.map((e) => (
                     <li key={e.id}>
-                      <EditorialLinearCard event={e} />
+                      {isCompact ? <EditorialLinearCardCompact event={e} /> : <EditorialLinearCard event={e} />}
                     </li>
                   ))}
                 </ul>

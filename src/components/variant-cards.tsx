@@ -76,6 +76,29 @@ export function EditorialStripCard({ event }: { event: EventWithGroup }) {
    Strict 2-col grid, both rows live in same right column for
    pixel-perfect alignment of title + metadata.
    ============================================================ */
+/* Dense one-line row for monthly view. Title gets truncate so many days
+   fit per fold; venue is dropped entirely. */
+export function EditorialLinearCardCompact({ event }: { event: EventWithGroup }) {
+  const start = new Date(event.startsAt);
+  const d = fmtDate(start);
+  const stratum = stratumForEvent(event.source);
+  const colors = STRATUM_CLASSES[stratum];
+  return (
+    <Link
+      href={`/event/${event.id}`}
+      className="group grid grid-cols-[3px_--spacing(14)_1fr] sm:grid-cols-[3px_--spacing(16)_1fr] gap-x-3 sm:gap-x-4 items-baseline py-1.5 border-t border-ink/10 first:border-t-0 transition-colors"
+    >
+      <div className={`self-stretch ${colors.bar} opacity-70 group-hover:opacity-100 transition-opacity`} aria-hidden />
+      <div className="self-baseline font-mono text-[10px] tracking-[0.12em] text-ink-soft tabular-nums normal-case">
+        {d.time.toLowerCase().replace(/\s/g, "")}
+      </div>
+      <h3 className="font-display text-sm sm:text-base leading-snug text-ink truncate group-hover:text-sunset-deep transition-colors">
+        {event.title}
+      </h3>
+    </Link>
+  );
+}
+
 /* Used inside a day-grouped list (see EditorialLinearBlock). The day header
    carries the date; this row only carries time + title + venue. */
 export function EditorialLinearCard({ event }: { event: EventWithGroup }) {

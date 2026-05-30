@@ -22,6 +22,8 @@ export default async function HomePage({
   const filters = parseFilters(params);
   const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
   const view: "list" | "calendar" = viewParam === "calendar" ? "calendar" : "list";
+  const densityParam = Array.isArray(params.density) ? params.density[0] : params.density;
+  const density: "weekly" | "monthly" = densityParam === "monthly" ? "monthly" : "weekly";
 
   const [events, cityCounts, tagCounts, sourceCounts] = await Promise.all([
     queryEvents(filters),
@@ -43,6 +45,7 @@ export default async function HomePage({
         filterBarSlot={<FilterBar cities={cities} tags={tags} sources={sources} />}
         viewSlot={<ViewTabs current={view} />}
         feedQuery={feedQuery}
+        density={density}
       />
     </div>
   );
