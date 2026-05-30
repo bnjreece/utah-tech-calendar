@@ -55,19 +55,26 @@ function outlookUrl(p: AddToCalendarProps): string {
 export function AddToCalendar(props: AddToCalendarProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = "add-to-cal-panel";
 
   useEffect(() => {
     if (!open) return;
-    function onClick(e: MouseEvent) {
+    function onDown(e: PointerEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     }
-    document.addEventListener("mousedown", onClick);
+    /* pointerdown covers mouse + touch + pen in one event; avoids the
+       mobile Safari quirk where mousedown can lag a tap. */
+    document.addEventListener("pointerdown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -76,13 +83,17 @@ export function AddToCalendar(props: AddToCalendarProps) {
   const gUrl = googleUrl(props);
   const oUrl = outlookUrl(props);
 
+  /* Treat the panel as a disclosure, not an ARIA menu - native link
+     semantics work without the menubar-style arrow-key contract that
+     `role=menu`/`menuitem` requires. */
   return (
     <div ref={ref} className="relative inline-block">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-haspopup="menu"
+        aria-controls={panelId}
         className="inline-flex items-center gap-2 rounded-full border border-ink/20 bg-paper px-5 py-2.5 text-sm font-medium text-ink hover:border-ink hover:bg-paper-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
       >
         Add to calendar
@@ -91,11 +102,10 @@ export function AddToCalendar(props: AddToCalendarProps) {
 
       {open && (
         <div
-          role="menu"
+          id={panelId}
           className="absolute left-0 top-full z-10 mt-2 w-56 rounded-2xl border border-ink/15 bg-paper shadow-lg ring-1 ring-ink/5 overflow-hidden"
         >
           <a
-            role="menuitem"
             href={icsUrl}
             download
             className="block px-4 py-3 text-sm text-ink hover:bg-paper-deep"
@@ -104,7 +114,6 @@ export function AddToCalendar(props: AddToCalendarProps) {
             Apple Calendar (.ics)
           </a>
           <a
-            role="menuitem"
             href={gUrl}
             target="_blank"
             rel="noopener noreferrer"
@@ -114,7 +123,6 @@ export function AddToCalendar(props: AddToCalendarProps) {
             Google Calendar
           </a>
           <a
-            role="menuitem"
             href={oUrl}
             target="_blank"
             rel="noopener noreferrer"

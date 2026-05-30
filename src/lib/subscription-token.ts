@@ -58,23 +58,36 @@ export function createSubscriptionToken(
   return `${payloadStr}.${sig}`;
 }
 
-export function verifySubscriptionToken(token: string): SubscriptionToken | null {
+export type VerifyResult =
+  | { ok: true; payload: SubscriptionToken }
+  | { ok: false; reason: "malformed" | "bad_signature" | "expired" };
+
+/* Detailed failure modes - lets the landing page tell a user "your link
+   expired, re-subscribe to get a fresh one" instead of the generic
+   "link not recognized" that conflates expiry with attack attempts. */
+export function verifySubscriptionTokenDetailed(token: string): VerifyResult {
   const parts = token.split(".");
-  if (parts.length !== 2) return null;
+  if (parts.length !== 2) return { ok: false, reason: "malformed" };
   const [payloadStr, sig] = parts;
   const expectedSig = sign(payloadStr);
   const a = Buffer.from(sig);
   const b = Buffer.from(expectedSig);
-  if (a.length !== b.length) return null;
-  if (!crypto.timingSafeEqual(a, b)) return null;
+  if (a.length !== b.length) return { ok: false, reason: "bad_signature" };
+  if (!crypto.timingSafeEqual(a, b)) return { ok: false, reason: "bad_signature" };
   let parsed: SubscriptionToken;
   try {
     parsed = JSON.parse(b64urlDecode(payloadStr).toString("utf8"));
   } catch {
-    return null;
+    return { ok: false, reason: "malformed" };
   }
-  if (parsed.exp < Math.floor(Date.now() / 1000)) return null;
-  if (parsed.kind !== "verify" && parsed.kind !== "unsubscribe") return null;
-  if (!parsed.subscriptionId) return null;
-  return parsed;
+  if (parsed.exp < Math.floor(Date.now() / 1000)) return { ok: false, reason: "expired" };
+  if (parsed.kind !== "verify" && parsed.kind !== "unsubscribe") return { ok: false, reason: "malformed" };
+  if (!parsed.subscriptionId) return { ok: false, reason: "malformed" };
+  return { ok: true, payload: parsed };
+}
+
+/* Backward-compatible wrapper - existing callers that just want a yes/no. */
+export function verifySubscriptionToken(token: string): SubscriptionToken | null {
+  const r = verifySubscriptionTokenDetailed(token);
+  return r.ok ? r.payload : null;
 }

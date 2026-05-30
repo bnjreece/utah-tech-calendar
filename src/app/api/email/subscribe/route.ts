@@ -29,27 +29,48 @@ export async function POST(req: Request) {
 
   const email = parsed.email.trim().toLowerCase();
 
-  /* Idempotent. If the row exists and is already verified, just (re-)send
-     a verify email - that lets a user re-confirm after losing the link.
-     If not yet verified, reissue the token. */
+  /* Idempotent + anti-bomb. We return `ok:true` in every legitimate
+     branch so an attacker who knows a victim's email can't distinguish
+     "already subscribed" from "newly created" - the response body is
+     the same. */
   const [existing] = await db
     .select()
     .from(emailSubscriptions)
     .where(eq(emailSubscriptions.email, email))
     .limit(1);
 
+  /* Already-verified, currently-subscribed: short-circuit. Without this,
+     an attacker could POST repeatedly with a known victim email and
+     either (a) flood their inbox with confirm-your-subscription emails,
+     or (b) silently reset `verifiedAt: null` and stop their digests
+     until they re-click. */
+  if (existing && existing.verifiedAt && !existing.unsubscribedAt) {
+    return NextResponse.json({ ok: true });
+  }
+
+  /* Soft per-row rate limit on verify emails. If we've sent a verify
+     email to this row within the last 5 minutes, return ok without
+     resending. Doesn't need a separate column - we treat `createdAt`
+     as the "last verify sent" timestamp for unverified rows. (Once
+     verified, we never enter this branch anyway.) */
+  const RESEND_COOLDOWN_MS = 5 * 60 * 1000;
+  if (existing && existing.createdAt && !existing.unsubscribedAt) {
+    const ageMs = Date.now() - new Date(existing.createdAt).getTime();
+    if (ageMs < RESEND_COOLDOWN_MS) {
+      return NextResponse.json({ ok: true });
+    }
+  }
+
   let subscriptionId: string;
   if (existing) {
     subscriptionId = existing.id;
-    /* If they previously unsubscribed, clear that so the verification
-       step can re-activate them. They have to click the link, so this
-       is still consent-confirming. */
-    if (existing.unsubscribedAt) {
-      await db
-        .update(emailSubscriptions)
-        .set({ unsubscribedAt: null, verifiedAt: null })
-        .where(eq(emailSubscriptions.id, existing.id));
-    }
+    /* Resurrecting an unsubscribed row, or re-issuing a verify token to
+       a stale unverified row. Reset state + bump createdAt so the
+       cooldown window restarts. */
+    await db
+      .update(emailSubscriptions)
+      .set({ unsubscribedAt: null, verifiedAt: null, createdAt: new Date() })
+      .where(eq(emailSubscriptions.id, existing.id));
   } else {
     const [created] = await db
       .insert(emailSubscriptions)

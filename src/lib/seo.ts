@@ -9,7 +9,7 @@ export const SITE_URL =
 export const SITE_NAME = "Utah Tech Events";
 
 export const SITE_DESCRIPTION =
-  "A curated calendar of in-person Utah tech events. Meetups, conferences, founder mixers, AI nights, hardware hacks, and design talks across Salt Lake City, Provo, Lehi, Ogden, and Silicon Slopes. Online events filtered by default.";
+  "The comprehensive calendar of in-person Utah tech events. Meetups, conferences, founder mixers, AI nights, hardware hacks, and design talks across Salt Lake City, Provo, Lehi, Ogden, and Silicon Slopes. Online events filtered by default.";
 
 export const SITE_TAGLINE =
   "Meetups, conferences, founder mixers, and developer events across Salt Lake City, Provo, Lehi, Ogden, and Silicon Slopes.";

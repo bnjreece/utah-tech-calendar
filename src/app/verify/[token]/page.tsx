@@ -1,27 +1,37 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { db, emailSubscriptions } from "@/lib/db";
-import { verifySubscriptionToken } from "@/lib/subscription-token";
+import { verifySubscriptionTokenDetailed } from "@/lib/subscription-token";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Confirm subscription · Utah Tech Events" };
 
-async function consume(tokenStr: string): Promise<"ok" | "invalid" | "already" | "error"> {
-  const payload = verifySubscriptionToken(tokenStr);
-  if (!payload || payload.kind !== "verify") return "invalid";
+type Outcome = "ok" | "already" | "expired" | "invalid" | "error";
+
+async function consume(tokenStr: string): Promise<Outcome> {
+  const r = verifySubscriptionTokenDetailed(tokenStr);
+  if (!r.ok) {
+    return r.reason === "expired" ? "expired" : "invalid";
+  }
+  if (r.payload.kind !== "verify") return "invalid";
   try {
-    const [row] = await db
-      .select()
-      .from(emailSubscriptions)
-      .where(eq(emailSubscriptions.id, payload.subscriptionId))
-      .limit(1);
-    if (!row) return "invalid";
-    if (row.verifiedAt && !row.unsubscribedAt) return "already";
-    await db
+    /* Conditional UPDATE so a fast double-click yields one row updated
+       and one no-op; we branch on rowcount rather than the read+write
+       race in the previous version. */
+    const updated = await db
       .update(emailSubscriptions)
       .set({ verifiedAt: new Date(), unsubscribedAt: null })
-      .where(eq(emailSubscriptions.id, payload.subscriptionId));
-    return "ok";
+      .where(and(eq(emailSubscriptions.id, r.payload.subscriptionId), isNull(emailSubscriptions.verifiedAt)))
+      .returning({ id: emailSubscriptions.id });
+    if (updated.length > 0) return "ok";
+    /* No row updated: either already verified or row doesn't exist.
+       Disambiguate with a follow-up read. */
+    const [row] = await db
+      .select({ id: emailSubscriptions.id })
+      .from(emailSubscriptions)
+      .where(eq(emailSubscriptions.id, r.payload.subscriptionId))
+      .limit(1);
+    return row ? "already" : "invalid";
   } catch (err) {
     console.warn("[verify] db error", err);
     return "error";
@@ -39,16 +49,19 @@ export default async function VerifyPage({
   const heading =
     result === "ok" ? "You're in." :
     result === "already" ? "Already confirmed." :
-    result === "invalid" ? "Link expired." :
+    result === "expired" ? "This link expired." :
+    result === "invalid" ? "Link not recognized." :
     "Something broke.";
   const body =
     result === "ok"
       ? "The weekly digest of in-person Utah tech events will land in your inbox each Monday morning."
       : result === "already"
         ? "This email is already subscribed - nothing to do. Watch your inbox Monday morning."
-        : result === "invalid"
-          ? "This confirmation link is invalid or expired. Resubscribe from the subscribe page to get a fresh link."
-          : "We hit a database error confirming this. Try again in a minute, or ping b@bnjmn.org.";
+        : result === "expired"
+          ? "Confirmation links expire after seven days. Resubscribe to get a fresh link."
+          : result === "invalid"
+            ? "We can't make sense of this link. Resubscribe to get a fresh one, or ping b@bnjmn.org if you keep seeing this."
+            : "We hit a database error confirming this. Try again in a minute, or ping b@bnjmn.org.";
 
   return (
     <div className="mx-auto max-w-xl px-4 sm:px-6 py-20">

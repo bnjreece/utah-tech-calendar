@@ -30,7 +30,7 @@ function EditorialMasthead({ events }: { events: EventWithGroup[] }) {
       <div className="mx-auto max-w-5xl px-6 pt-14 pb-10">
         <div className="flex items-baseline justify-between gap-4 flex-wrap">
           <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-            № 1 · {month} · curated weekly
+            № 1 · {month} · updated daily
           </span>
           <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
             cottonwood heights, ut
@@ -40,7 +40,7 @@ function EditorialMasthead({ events }: { events: EventWithGroup[] }) {
           utah tech <span className="italic">events</span>
         </h1>
         <p className="mt-6 max-w-[58ch] text-pretty text-base sm:text-lg text-ink-soft font-display italic leading-relaxed">
-          A periodical of in-person tech gatherings throughout the state. Editorially curated. Filed by region, host, and stack.
+          A periodical of every in-person tech gathering across the state. Filed by region, host, and stack.
         </p>
         <p className="mt-6 font-mono text-xs uppercase tracking-[0.2em] text-ink-soft">
           filed {events.length} entries · across 5 regions · online events filtered
@@ -229,7 +229,7 @@ export function ApartmentBlock({ events, filterBarSlot, viewSlot, feedQuery }: V
           Utah Tech <span className="italic">Quarterly</span>
         </h1>
         <p className="mt-6 max-w-[58ch] text-pretty text-lg text-ink-soft font-display italic leading-relaxed">
-          A periodical of in-person tech gatherings throughout the state. Editorially curated. Filed by region, host, and stack.
+          A periodical of every in-person tech gathering across the state. Filed by region, host, and stack.
         </p>
       </section>
       <section className="mx-auto max-w-5xl px-6 pb-4">{filterBarSlot}</section>

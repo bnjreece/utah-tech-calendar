@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { sql } from "drizzle-orm";
-import { db, events as eventsTable } from "@/lib/db";
+import { db } from "@/lib/db";
 import { getEventById } from "@/lib/queries";
 import { eventsToIcal } from "@/lib/feeds/ical";
-import { extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
+import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +33,17 @@ export async function GET(
 
   const host = new URL(req.url).host;
   const ical = eventsToIcal([event], host);
+  /* ASCII fallback + RFC 5987 UTF-8 filename so non-ASCII titles render
+     correctly when the user saves the file. The slug is already
+     lowercase ASCII so the fallback is rarely materially different. */
+  const slug = eventSlug(event.title, event.id);
+  const asciiName = `${slug}.ics`;
+  const utf8Name = encodeURIComponent(`${event.title}.ics`);
   return new Response(ical, {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${event.id}.ics"`,
+      "Content-Disposition": `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`,
       "Cache-Control": "private, max-age=60",
     },
   });

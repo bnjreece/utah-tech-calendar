@@ -25,6 +25,19 @@ function isAuthorized(request: NextRequest): boolean {
   return timingSafeEqualStrings(header.slice(7), secret);
 }
 
+/* Start of this ISO week (Monday 00:00 UTC). Idempotency anchor for
+   the digest: if a subscriber's lastSentAt is >= this, they already
+   got this week's send. A 24h guard wasn't enough - manually retrying
+   on Tuesday after a Monday timeout would have resent the same week
+   to everyone who succeeded on Monday. */
+function thisWeekAnchorUTC(now: Date): Date {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = d.getUTCDay();                     // 0=Sun .. 6=Sat
+  const offsetToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + offsetToMonday);
+  return d;
+}
+
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) return new Response("Unauthorized", { status: 401 });
 
@@ -64,14 +77,14 @@ export async function GET(request: NextRequest) {
     );
 
   const now = new Date();
-  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const weekAnchor = thisWeekAnchorUTC(now);
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
 
   let sent = 0;
   let skipped = 0;
   let failed = 0;
   for (const sub of subs) {
-    if (sub.lastSentAt && now.getTime() - new Date(sub.lastSentAt).getTime() < ONE_DAY_MS) {
+    if (sub.lastSentAt && new Date(sub.lastSentAt).getTime() >= weekAnchor.getTime()) {
       skipped++;
       continue;
     }
