@@ -97,6 +97,11 @@ export const sources = pgTable("sources", {
   lastScrapedAt: timestamp("last_scraped_at", { withTimezone: true }),
   lastStatus: text("last_status"),
   lastError: text("last_error"),
+  /* For cookie/session-auth scrapers (e.g. Silicon Slopes via Circle.so),
+     manually set whenever the cookie is rotated so the admin can warn
+     before the cookie silently expires. NULL on sources that don't have
+     a rotation lifecycle. */
+  authRotatedAt: timestamp("auth_rotated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

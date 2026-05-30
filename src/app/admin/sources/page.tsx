@@ -154,6 +154,18 @@ export default async function SourcesAdminPage({
             ? new Date(s.lastScrapedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
             : "never";
           const health = classifySource(s);
+          /* Cookie age - only meaningful for sources that have it set
+             (Silicon Slopes). Warn at 50d, urgent at 80d. */
+          const rotatedAt = s.authRotatedAt ? new Date(s.authRotatedAt) : null;
+          const cookieDays = rotatedAt
+            ? Math.round((Date.now() - rotatedAt.getTime()) / (24 * 60 * 60 * 1000))
+            : null;
+          const cookieChipClass =
+            cookieDays !== null && cookieDays >= 80
+              ? "bg-terracotta/25 text-terracotta-deep"
+              : cookieDays !== null && cookieDays >= 50
+                ? "bg-sunset/20 text-sunset-deep"
+                : "bg-paper-deep text-ink-soft";
           return (
             <li
               key={s.id}
@@ -164,6 +176,11 @@ export default async function SourcesAdminPage({
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 ${STATUS_CHIP[health]}`}>
                     {STATUS_LABEL[health]}
                   </span>
+                  {cookieDays !== null && (
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 ${cookieChipClass}`}>
+                      cookie {cookieDays}d
+                    </span>
+                  )}
                   <span>{s.adapter}</span>
                   <span aria-hidden>·</span>
                   <span>last scraped {lastScraped}</span>

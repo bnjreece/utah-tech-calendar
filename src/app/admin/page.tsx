@@ -33,6 +33,32 @@ function detectAlerts(sourceRows: typeof sources.$inferSelect[]): SourceAlert[] 
       continue;
     }
 
+    /* Preemptive cookie-age alert. The Silicon Slopes session cookie
+       has a ~60-90d lifetime; warn at 50d, urgent at 80d so we rotate
+       before it silently dies. */
+    if (s.authRotatedAt) {
+      const days = Math.round(
+        (Date.now() - new Date(s.authRotatedAt).getTime()) / (24 * 60 * 60 * 1000),
+      );
+      if (days >= 80) {
+        alerts.push({
+          level: "urgent",
+          title: `${s.adapter} session cookie is ${days} days old`,
+          body: `Cookie is past the typical 60-90d expiry window. Rotate before the next scrape returns 0 events.`,
+          action: "Sign in at the source, then ask Claude to rotate the cookie.",
+        });
+        continue;
+      }
+      if (days >= 50) {
+        alerts.push({
+          level: "warn",
+          title: `${s.adapter} session cookie is ${days} days old`,
+          body: "Approaching the typical expiry window. Plan to rotate in the next few weeks.",
+        });
+        continue;
+      }
+    }
+
     /* Any source with an error status */
     if (s.lastError) {
       alerts.push({
