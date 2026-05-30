@@ -61,8 +61,11 @@ export async function GET(req: NextRequest) {
   if (filters.regions.length) {
     /* Region is computed from city/venue/address - has to be done after
        fetching. We pull the minimum columns needed for categorizeRegion
-       rather than full event rows + joins, which keeps payload small
-       even for the unfiltered case. */
+       rather than full event rows + joins, and cap at 5000 to keep this
+       endpoint cheap even when the corpus grows. The cap matches the
+       FEED_LIMIT semantics below: a slice that overflows it just shows
+       "5000+" to the user, which is more than enough signal. */
+    const REGION_BRANCH_CAP = 5000;
     const rows = await db
       .select({
         city: events.city,
@@ -70,7 +73,8 @@ export async function GET(req: NextRequest) {
         address: events.address,
       })
       .from(events)
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .limit(REGION_BRANCH_CAP);
     count = rows.filter((r) =>
       filters.regions.includes(
         categorizeRegion({ city: r.city, venueName: r.venueName, address: r.address }),

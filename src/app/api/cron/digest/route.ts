@@ -61,6 +61,10 @@ function filtersForSub(weekStart: Date, weekEnd: Date, feedQuery: string | null)
   const base = baseFilters(weekStart, weekEnd);
   if (!feedQuery) return base;
   const parsed = parseFilters(new URLSearchParams(feedQuery));
+  /* Only copy the slice fields we trust. q/from/to are deliberately
+     NOT propagated - they're stored as raw strings and would otherwise
+     reach queryEvents (where q drives an unbounded ILIKE over the
+     event corpus). The base window owns from/to. */
   return {
     ...base,
     regions: parsed.regions,
@@ -69,8 +73,6 @@ function filtersForSub(weekStart: Date, weekEnd: Date, feedQuery: string | null)
     sources: parsed.sources,
     groups: parsed.groups,
     types: parsed.types,
-    /* respect their online toggle if they saved one; otherwise default
-       to hiding online events same as the website */
     showOnline: parsed.showOnline,
   };
 }
@@ -104,7 +106,12 @@ export async function GET(request: NextRequest) {
   /* One query per subscriber so each gets the events that match their
      own filter slice. For 50 subs that's 50 lightweight queries; well
      under the 300s timeout. If we ever scale past a few thousand subs
-     this becomes a group-by-feedQuery cache. */
+     this becomes a group-by-feedQuery cache.
+
+     Each iteration is wrapped in its own try/catch so a single broken
+     feed_query (or transient Neon hiccup) doesn't take down the rest
+     of the week's run. We log the offending sub.id and count it as
+     `failed`; the next cron tick will pick it up again. */
   let sent = 0;
   let skipped = 0;
   let failed = 0;
@@ -113,36 +120,41 @@ export async function GET(request: NextRequest) {
       skipped++;
       continue;
     }
-    const filters = filtersForSub(weekStart, weekEnd, sub.feedQuery);
-    const events = await queryEvents(filters, 200);
-    const unsubToken = createSubscriptionToken("unsubscribe", sub.id);
-    const unsubscribeUrl = absoluteUrl(`/unsubscribe/${unsubToken}`);
-    const content = buildDigest({
-      events,
-      unsubscribeUrl,
-      weekStart,
-      weekEnd,
-      filterLabel: describeFilters(filters),
-    });
-    if (dryRun) {
-      sent++;
-      continue;
-    }
-    const result = await sendEmail({
-      to: sub.email,
-      subject: content.subject,
-      text: content.text,
-      html: content.html,
-      listUnsubscribe: `<${absoluteUrl(`/api/email/unsubscribe?token=${unsubToken}`)}>`,
-    });
-    if (result.ok) {
-      sent++;
-      await db
-        .update(emailSubscriptions)
-        .set({ lastSentAt: new Date() })
-        .where(eq(emailSubscriptions.id, sub.id));
-    } else {
+    try {
+      const filters = filtersForSub(weekStart, weekEnd, sub.feedQuery);
+      const events = await queryEvents(filters, 200);
+      const unsubToken = createSubscriptionToken("unsubscribe", sub.id);
+      const unsubscribeUrl = absoluteUrl(`/unsubscribe/${unsubToken}`);
+      const content = buildDigest({
+        events,
+        unsubscribeUrl,
+        weekStart,
+        weekEnd,
+        filterLabel: describeFilters(filters),
+      });
+      if (dryRun) {
+        sent++;
+        continue;
+      }
+      const result = await sendEmail({
+        to: sub.email,
+        subject: content.subject,
+        text: content.text,
+        html: content.html,
+        listUnsubscribe: `<${absoluteUrl(`/api/email/unsubscribe?token=${unsubToken}`)}>`,
+      });
+      if (result.ok) {
+        sent++;
+        await db
+          .update(emailSubscriptions)
+          .set({ lastSentAt: new Date() })
+          .where(eq(emailSubscriptions.id, sub.id));
+      } else {
+        failed++;
+      }
+    } catch (err) {
       failed++;
+      console.warn("[digest] sub failed", sub.id, err);
     }
   }
 

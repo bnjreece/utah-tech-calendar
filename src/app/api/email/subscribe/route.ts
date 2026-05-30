@@ -72,9 +72,13 @@ export async function POST(req: Request) {
      unique and the verifiedAt check guards. */
   if (existing && existing.verifiedAt && !existing.unsubscribedAt) {
     if (feedQuery !== existing.feedQuery) {
+      /* Slice changed - null lastSentAt so the next cron run delivers
+         the new feed_query this same week. Without this, a user who
+         re-subscribes Wednesday with a different filter has to wait
+         until next Monday to see the new slice. */
       await db
         .update(emailSubscriptions)
-        .set({ feedQuery })
+        .set({ feedQuery, lastSentAt: null })
         .where(eq(emailSubscriptions.id, existing.id));
     }
     return NextResponse.json({ ok: true });

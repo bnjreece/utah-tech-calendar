@@ -306,12 +306,19 @@ function EmailSignupInline({ feedQuery }: { feedQuery: string }) {
     return (
       <p className="rounded-md border-l-[3px] border-sage-deep bg-sage/[0.08] px-3 py-2 text-sm text-ink">
         Check your inbox for the one-click confirm.
+        {feedQuery && (
+          <span className="block mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-soft">
+            With current filters
+          </span>
+        )}
       </p>
     );
   }
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
+      {/* aria-hidden honeypot - removed from the accessibility tree, so
+          a screen reader user never sees or tabs into it. */}
       <span aria-hidden style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
         <input
           type="text"
@@ -319,7 +326,6 @@ function EmailSignupInline({ feedQuery }: { feedQuery: string }) {
           autoComplete="off"
           value={website}
           onChange={(e) => setWebsite(e.target.value)}
-          aria-label="Leave blank"
         />
       </span>
       <div className="flex flex-col sm:flex-row gap-2">

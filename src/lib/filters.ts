@@ -41,10 +41,19 @@ export function parseFilters(searchParams: URLSearchParams | Record<string, stri
     return v;
   };
 
+  /* Cap per-bucket array length so a malicious feedQuery can't smuggle
+     hundreds of comma-separated tags into the digest cron's queryEvents
+     and burn function time on a 1000-element ARRAY[...] bind every
+     week. Real users never need more than a handful per bucket. */
+  const MAX_PER_BUCKET = 25;
   const csv = (k: string): string[] => {
     const raw = get(k);
     if (!raw) return [];
-    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, MAX_PER_BUCKET);
   };
 
   const validTypes: EventType[] = ["conference", "paid", "free", "penciled"];
