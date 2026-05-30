@@ -83,6 +83,7 @@ export function FilterBar({ cities, tags, sources }: Props) {
   const typeOptions: { value: EventType; label: string }[] = [
     { value: "conference", label: TYPE_LABELS.conference },
     { value: "paid", label: TYPE_LABELS.paid },
+    { value: "free", label: TYPE_LABELS.free },
     { value: "penciled", label: TYPE_LABELS.penciled },
   ];
 

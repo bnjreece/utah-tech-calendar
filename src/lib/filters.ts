@@ -1,10 +1,11 @@
 import type { UtahRegion } from "./regions";
 
-export type EventType = "conference" | "paid" | "penciled";
+export type EventType = "conference" | "paid" | "free" | "penciled";
 
 export const TYPE_LABELS: Record<EventType, string> = {
   conference: "Conference",
   paid: "Paid",
+  free: "Free",
   penciled: "Penciled in",
 };
 
@@ -46,7 +47,7 @@ export function parseFilters(searchParams: URLSearchParams | Record<string, stri
     return raw.split(",").map((s) => s.trim()).filter(Boolean);
   };
 
-  const validTypes: EventType[] = ["conference", "paid", "penciled"];
+  const validTypes: EventType[] = ["conference", "paid", "free", "penciled"];
   const types = csv("types").filter((t): t is EventType => validTypes.includes(t as EventType));
 
   return {

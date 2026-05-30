@@ -51,16 +51,18 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
     conditions.push(inArray(events.source, filters.sources));
   }
 
-  /* Type filter: OR within the chip (Conference OR Paid OR Penciled),
-     AND with everything else. From=now() means we still cap to upcoming. */
+  /* Type filter: OR within the chip (e.g. Conference OR Free), AND
+     with everything else. Free is the inverse of Paid (is_paid=false)
+     and includes all unflagged events, so picking it alone yields
+     "everything that isn't a paid ticketed event." */
   if (filters.types.length) {
     const typeConds = filters.types.map((t) => {
       if (t === "conference") return eq(events.isConference, true);
       if (t === "paid") return eq(events.isPaid, true);
+      if (t === "free") return eq(events.isPaid, false);
       return eq(events.isTentative, true);
     });
-    const typeOr = or(...typeConds);
-    if (typeOr) conditions.push(typeOr);
+    conditions.push(or(...typeConds)!);
   }
 
   const rows = await db
