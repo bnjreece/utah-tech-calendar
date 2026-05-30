@@ -1,6 +1,7 @@
 import { sql, eq } from "drizzle-orm";
 import { db, events, sources, groups } from "./db";
 import { eventAdapters, type EventItem } from "./scrapers";
+import { inferTagsFromTitle } from "./auto-tag";
 
 export interface ScrapeResult {
   sourceId: string;
@@ -46,6 +47,14 @@ async function upsertEvent(item: EventItem, groupId: string | undefined, default
     .where(sql`${events.source} = ${item.source} AND ${events.externalId} = ${item.externalId}`)
     .limit(1);
 
+  /* If the scraper supplied tags, trust them. Otherwise infer from the
+     title (and description if present) so /tag/[tag] landing pages have
+     actual content. */
+  const tags =
+    item.tags && item.tags.length > 0
+      ? item.tags
+      : inferTagsFromTitle(item.title, item.description);
+
   const baseValues = {
     title: item.title,
     description: item.description,
@@ -63,7 +72,7 @@ async function upsertEvent(item: EventItem, groupId: string | undefined, default
     latitude: item.latitude?.toString(),
     longitude: item.longitude?.toString(),
     imageUrl: item.imageUrl,
-    tags: item.tags,
+    tags,
     groupId,
     updatedAt: new Date(),
   };
