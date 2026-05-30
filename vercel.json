@@ -2,7 +2,8 @@
   "functions": {
     "src/app/api/cron/scrape/route.ts": {
       "memory": 1024,
-      "maxDuration": 300
+      "maxDuration": 300,
+      "includeFiles": "node_modules/@sparticuz/chromium/**"
     }
   },
   "crons": [

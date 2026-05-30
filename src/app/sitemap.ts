@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { and, eq, gte, sql } from "drizzle-orm";
-import { db, events } from "@/lib/db";
+import { db, events, groups } from "@/lib/db";
 import { SITE_URL } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
 
@@ -80,6 +80,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.7,
+    });
+  }
+
+  const groupRows = await db
+    .select({ slug: groups.slug })
+    .from(groups)
+    .where(eq(groups.status, "active"));
+  for (const g of groupRows) {
+    routes.push({
+      url: `${SITE_URL}/group/${g.slug}`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.6,
     });
   }
 
