@@ -33,24 +33,24 @@ export default function RootLayout({
       </head>
       <body className="isolate min-h-dvh flex flex-col bg-background text-foreground antialiased">
         <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/10">
-          <div className="mx-auto max-w-5xl px-6 py-3.5 flex items-center justify-between gap-6">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 sm:gap-6">
             <Link
               href="/"
               aria-label="Homepage"
-              className="group flex items-center gap-2.5 hover:text-sunset-deep transition-colors"
+              className="group flex items-center gap-2.5 hover:text-sunset-deep transition-colors min-w-0"
             >
               <ReflectionShimmerLogo
-                className="text-ink group-hover:text-sunset-deep transition-colors"
+                className="text-ink group-hover:text-sunset-deep transition-colors shrink-0"
                 style={{ width: "20px", height: "20px", transform: "translateY(2px)" }}
               />
-              <span className="font-display text-base tracking-tight leading-none">
+              <span className="font-display text-base tracking-tight leading-none truncate">
                 utah tech <span className="italic">events</span>
               </span>
             </Link>
-            <nav className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
+            <nav className="flex items-baseline gap-4 sm:gap-5 font-mono text-[11px] uppercase tracking-[0.18em] shrink-0">
               <Link
                 href="/"
-                className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
+                className="hidden sm:inline text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
               >
                 events
               </Link>
@@ -71,7 +71,7 @@ export default function RootLayout({
         </header>
         <main className="flex-1">{children}</main>
         <footer className="mt-12 border-t-2 border-ink">
-          <div className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2.5">
               <ReflectionShimmerLogo
                 className="text-ink"

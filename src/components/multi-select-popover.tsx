@@ -51,8 +51,8 @@ export function MultiSelectPopover({
       <PopoverTrigger
         className={
           count > 0
-            ? "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
-            : "inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+            ? "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-2 sm:py-1.5 text-base sm:text-sm font-medium text-background hover:bg-foreground/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+            : "inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-3 py-2 sm:py-1.5 text-base sm:text-sm font-medium text-foreground/75 hover:bg-foreground/[0.08] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
         }
       >
         <span>{label}</span>
@@ -73,7 +73,7 @@ export function MultiSelectPopover({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             aria-label={`Search ${label}`}
-            className="mb-2 w-full rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-sm placeholder:text-foreground/40 focus-visible:outline-2 focus-visible:outline-sunset-deep -outline-offset-1 max-sm:text-base"
+            className="mb-2 w-full rounded-md bg-foreground/[0.04] px-2.5 py-2 sm:py-1.5 text-base sm:text-sm placeholder:text-foreground/40 focus-visible:outline-2 focus-visible:outline-sunset-deep -outline-offset-1"
           />
         )}
         <ul role="list" className="max-h-64 overflow-auto flex flex-col gap-px">

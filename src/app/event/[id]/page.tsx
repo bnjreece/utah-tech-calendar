@@ -30,17 +30,17 @@ export default async function EventDetailPage({
   const colors = STRATUM_CLASSES[stratum];
 
   return (
-    <article className="mx-auto max-w-3xl px-6 py-10">
+    <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-10">
       <Link
         href="/"
-        className="text-sm text-ink-soft hover:text-ink transition-colors"
+        className="text-base sm:text-sm text-ink-soft hover:text-ink transition-colors"
       >
         ← All events
       </Link>
 
       <div className="mt-8 overflow-hidden rounded-3xl bg-card ring-1 ring-ink/5 shadow-sm">
         <div className={`h-3 ${colors.bar}`} aria-hidden />
-        <div className="px-8 pt-8 pb-10 sm:px-10 sm:pt-10">
+        <div className="px-5 pt-7 pb-9 sm:px-10 sm:pt-10 sm:pb-10">
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide">
             <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-medium ${colors.chip}`}>
               {sourceLabel}
@@ -129,7 +129,7 @@ export default async function EventDetailPage({
                 href={event.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-ink/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+                className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-base sm:px-5 sm:py-2.5 sm:text-sm font-medium text-paper hover:bg-ink/85 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
               >
                 RSVP and details
                 <span aria-hidden>↗</span>
