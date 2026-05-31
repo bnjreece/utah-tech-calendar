@@ -46,6 +46,21 @@ function toUrl(input: string, base = "https://lu.ma"): string {
   return `${base}/${input}`;
 }
 
+/* Luma's geo_address_json.city is often missing even when a full
+   street address is present (e.g. venue strings like "Show Barn at
+   Thanksgiving Point, 2975 S Thanksgiving Wy, Lehi, UT 84043"). Parse
+   the standard "..., CITY, UT [ZIP]" tail to recover the city when
+   the structured field is empty - means region categorization can
+   actually route the event to Utah County instead of "Unknown". */
+function extractCityFromAddress(addr: string | undefined | null): string | undefined {
+  if (!addr) return undefined;
+  const withZip = addr.match(/,\s*([A-Z][A-Za-z .'-]+?)\s*,\s*(?:UT|Utah)\s+\d{5}/);
+  if (withZip) return withZip[1].trim();
+  const noZip = addr.match(/,\s*([A-Z][A-Za-z .'-]+?)\s*,\s*(?:UT|Utah)\b/);
+  if (noZip) return noZip[1].trim();
+  return undefined;
+}
+
 function normalize(node: LumaEventNode): EventItem | null {
   if (!node.start_at || !node.name || !node.api_id) return null;
   const startsAt = new Date(node.start_at);
@@ -69,7 +84,12 @@ function normalize(node: LumaEventNode): EventItem | null {
     isOnline,
     venueName: node.venue?.name ?? node.geo_address_info?.full_address,
     address: node.geo_address_json?.address ?? node.geo_address_info?.full_address,
-    city: node.geo_address_json?.city ?? node.venue?.city,
+    city:
+      node.geo_address_json?.city ??
+      node.venue?.city ??
+      extractCityFromAddress(node.geo_address_info?.full_address) ??
+      extractCityFromAddress(node.venue?.address) ??
+      extractCityFromAddress(node.geo_address_json?.address),
     postalCode: node.geo_address_json?.postal_code,
     latitude: Number.isFinite(latitude) ? (latitude as number) : undefined,
     longitude: Number.isFinite(longitude) ? (longitude as number) : undefined,

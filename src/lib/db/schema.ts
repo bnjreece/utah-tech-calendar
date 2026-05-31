@@ -172,6 +172,11 @@ export const adminSettings = pgTable("admin_settings", {
      once per day max" rate-limiting and for the alerts hash dedup. */
   lastAlertsSentAt: timestamp("last_alerts_sent_at", { withTimezone: true }),
   lastAlertsHash: text("last_alerts_hash"),
+  /* Heartbeat - stamped at the start of every scrape cron tick so the
+     health detector can independently verify "the cron is firing" even
+     when every individual source has lastScrapedAt updates that look
+     fresh from a stale cached run. If this gets too old, alert. */
+  lastScrapeTickAt: timestamp("last_scrape_tick_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -116,8 +116,14 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
           Regions
         </p>
         <div className="flex flex-wrap gap-2">
-          {UTAH_REGIONS.filter((r) => r !== "Unknown").map((r) => {
+          {UTAH_REGIONS.map((r) => {
             const on = filters.regions.includes(r);
+            /* "Unknown" gets a softer style + clearer label - it's the
+               opt-in bucket for events whose city/address didn't
+               categorize. About a quarter of the corpus, so worth
+               surfacing. */
+            const isUnknown = r === "Unknown";
+            const label = isUnknown ? "Location TBD" : r;
             return (
               <button
                 key={r}
@@ -126,11 +132,11 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
                 aria-pressed={on}
                 className={
                   on
-                    ? "rounded-full bg-ink text-paper px-3 py-1.5 text-sm font-medium"
-                    : "rounded-full border border-ink/25 px-3 py-1.5 text-sm hover:border-ink"
+                    ? `rounded-full px-3 py-1.5 text-sm font-medium ${isUnknown ? "bg-ink-soft text-paper" : "bg-ink text-paper"}`
+                    : `rounded-full border px-3 py-1.5 text-sm hover:border-ink ${isUnknown ? "border-ink-soft/40 text-ink-soft" : "border-ink/25"}`
                 }
               >
-                {r}
+                {label}
               </button>
             );
           })}

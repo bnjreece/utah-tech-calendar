@@ -7,7 +7,16 @@ import type { sources, AdminSettings } from "./db";
 
 export type SourceRow = typeof sources.$inferSelect;
 
-export type AlertCategory = "cookie_expiry" | "source_error" | "source_stale";
+export type AlertCategory = "cookie_expiry" | "source_error" | "source_stale" | "cron_down";
+
+/* Sources newer than this are excluded from the "never scraped" alert.
+   They legitimately haven't had a cron tick yet; firing on them creates
+   noise every time we add new sources. */
+const NEW_SOURCE_GRACE_MS = 24 * 60 * 60 * 1000;
+/* The scrape cron runs every 3h. If the heartbeat is older than this
+   limit (~2× cron interval), the cron has stopped firing even if
+   individual sources still look fresh. */
+const CRON_HEARTBEAT_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 export interface SourceAlert {
   level: "urgent" | "warn";
@@ -38,6 +47,21 @@ export function detectAlerts(
   const alerts: SourceAlert[] = [];
   const now = Date.now();
   const staleThresholdHours = opts.settings?.staleThresholdHours ?? 24;
+  /* Heartbeat check - independent of any individual source. Surfaces
+     fastest when Vercel cron quietly stops. */
+  if (opts.settings?.lastScrapeTickAt) {
+    const lastTick = new Date(opts.settings.lastScrapeTickAt).getTime();
+    const ageH = Math.round((now - lastTick) / (60 * 60 * 1000));
+    if (now - lastTick > CRON_HEARTBEAT_MAX_AGE_MS) {
+      alerts.push({
+        level: "urgent",
+        title: `Scrape cron heartbeat is ${ageH}h old`,
+        body: "The cron stamps lastScrapeTickAt at the start of every run. Stale heartbeat = Vercel cron isn't firing. Check Vercel Functions logs and the cron schedule.",
+        category: "cron_down",
+        key: "cron_heartbeat",
+      });
+    }
+  }
   const STALE_MS = staleThresholdHours * 60 * 60 * 1000;
   const wantErrors = opts.settings?.notifySourceErrors ?? true;
   const wantStale = opts.settings?.notifySourceStale ?? true;
@@ -120,6 +144,11 @@ export function detectAlerts(
        (A genuinely stale recurrence row means the cron itself stopped,
        which the meta-alert below catches.) */
     if (!wantStale) continue;
+    /* Skip recently-added sources - they legitimately haven't had a
+       cron tick yet. Without this every new seed shows up as
+       "never scraped" the same minute it's added. */
+    const createdAtMs = s.createdAt ? new Date(s.createdAt).getTime() : 0;
+    if (createdAtMs && now - createdAtMs < NEW_SOURCE_GRACE_MS) continue;
     const lastRunMs = s.lastScrapedAt ? new Date(s.lastScrapedAt).getTime() : null;
     if (lastRunMs === null || now - lastRunMs > STALE_MS) {
       staleEnabled.push(s);

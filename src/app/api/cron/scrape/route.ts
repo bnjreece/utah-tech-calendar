@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
 import { runAllEnabledSources } from "@/lib/scrape-runner";
+import { db, adminSettings } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -24,6 +26,18 @@ function isAuthorized(request: NextRequest): boolean {
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return new Response("Unauthorized", { status: 401 });
+  }
+  /* Heartbeat - stamp the moment the cron actually started, before any
+     fetch can fail. health.ts uses this to surface "the cron stopped
+     firing" independently of any individual source's freshness. Best-
+     effort: a DB failure here shouldn't block the scrape itself. */
+  try {
+    await db
+      .update(adminSettings)
+      .set({ lastScrapeTickAt: new Date() })
+      .where(eq(adminSettings.id, 1));
+  } catch (err) {
+    console.warn("[scrape] heartbeat update failed", err);
   }
   const results = await runAllEnabledSources();
   return Response.json({
