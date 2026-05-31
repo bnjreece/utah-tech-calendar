@@ -32,17 +32,21 @@ export function EventCard({ event }: { event: EventWithGroup }) {
       <div data-card-bar className={`h-2 ${colors.bar}`} aria-hidden />
       <div className="p-5 flex flex-1 flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col items-start tabular-nums">
-            <span className="text-xs uppercase tracking-wide text-ink-soft">
-              {weekday}
-            </span>
-            <span className="text-3xl font-medium leading-none mt-0.5">
-              {dayNum}
-            </span>
-            <span className="text-xs uppercase tracking-wide text-ink-soft mt-0.5">
-              {month}
-            </span>
-          </div>
+          {Number.isFinite(dayNum) ? (
+            <div className="flex flex-col items-start tabular-nums">
+              <span className="text-xs uppercase tracking-wide text-ink-soft">
+                {weekday}
+              </span>
+              <span className="text-3xl font-medium leading-none mt-0.5">
+                {dayNum}
+              </span>
+              <span className="text-xs uppercase tracking-wide text-ink-soft mt-0.5">
+                {month}
+              </span>
+            </div>
+          ) : (
+            <div aria-hidden />
+          )}
           <span
             data-source-chip
             className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${colors.chip}`}

@@ -49,17 +49,17 @@ function safeDate(d: Date | string): Date | null {
    of `date.getDate()` whenever the result is rendered to a user. On a
    Vercel Function (UTC), `getDate()` returns the UTC day, which is
    off-by-one for any evening-Utah event whose UTC timestamp is in the
-   next calendar day. Returns 0 for Invalid Date so JSX doesn't render
-   the string "NaN". */
+   next calendar day. Returns NaN for Invalid Date so call sites can
+   `Number.isFinite()`-guard rather than rendering a misleading "0". */
 export function mtDayNum(d: Date | string): number {
   const date = safeDate(d);
-  if (!date) return 0;
+  if (!date) return NaN;
   return parseInt(mtDate(date, { day: "numeric" }), 10);
 }
 
 export function mtYear(d: Date | string): number {
   const date = safeDate(d);
-  if (!date) return 0;
+  if (!date) return NaN;
   return parseInt(mtDate(date, { year: "numeric" }), 10);
 }
 

@@ -11,6 +11,7 @@ import {
 } from "@/lib/filters";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
 import { SubscribePopover } from "@/components/subscribe-popover";
+import { SITE_URL } from "@/lib/seo";
 
 interface CountedOption {
   value: string;
@@ -284,24 +285,21 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
 
 /* RSS-specific subscribe card. Surfaces a copy-to-clipboard URL plus
    Feedly's one-click subscribe deeplink. Stays inside FeedBuilder so it
-   reacts to the current filter state. */
+   reacts to the current filter state.
+
+   Origin is anchored to SITE_URL (the canonical production host) on
+   both SSR and CSR so the rendered <a href> is real from the first
+   paint - no empty href flash, no hydration mismatch. In local dev
+   that means the copy/Feedly URLs point at the prod domain rather
+   than localhost, which is correct: a Feedly subscription to a
+   localhost RSS feed would never work anyway. */
 function RssSubscribe({ feedQuery }: { feedQuery: string }) {
   const [copied, setCopied] = useState(false);
-  const [origin, setOrigin] = useState("");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") setOrigin(window.location.origin);
-  }, []);
-
-  const rssUrl = origin
-    ? `${origin}/api/rss${feedQuery ? `?${feedQuery}` : ""}`
-    : "";
-  const feedlyUrl = rssUrl
-    ? `https://feedly.com/i/subscription/feed/${encodeURIComponent(rssUrl)}`
-    : "#";
+  const rssUrl = `${SITE_URL}/api/rss${feedQuery ? `?${feedQuery}` : ""}`;
+  const feedlyUrl = `https://feedly.com/i/subscription/feed/${encodeURIComponent(rssUrl)}`;
 
   async function copy() {
-    if (!rssUrl) return;
     try {
       await navigator.clipboard.writeText(rssUrl);
       setCopied(true);
