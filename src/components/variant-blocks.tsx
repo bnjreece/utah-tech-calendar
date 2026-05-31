@@ -10,7 +10,7 @@ import {
   EditorialLinearCardCompact,
 } from "./variant-cards";
 import { DensityToggle, type ScheduleDensity } from "./density-toggle";
-import { mtDate, mtDayKey, mtDayNum } from "@/lib/time";
+import { mtDate, mtDayKey, mtDayNum, mtMonthKey } from "@/lib/time";
 
 interface VariantProps {
   events: EventWithGroup[];
@@ -152,8 +152,11 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
         <div className="flex flex-col">
           {dayGroups.map((group, i) => {
             const prev = i > 0 ? dayGroups[i - 1] : null;
+            /* Include year in the change key so a Dec->next-year-Jan
+               sequence still gets a banner; pure month-name compare
+               would also miss Dec 2026 -> Dec 2027 in long calendars. */
             const monthChanged =
-              prev !== null && mtDate(prev.date, { month: "long" }) !== mtDate(group.date, { month: "long" });
+              prev !== null && mtMonthKey(prev.date) !== mtMonthKey(group.date);
             const isFirst = i === 0;
             const weekday = mtDate(group.date, { weekday: "long" });
             const monthName = mtDate(group.date, { month: "long" });

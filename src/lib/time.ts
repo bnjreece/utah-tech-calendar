@@ -40,28 +40,52 @@ export function mtDay(d: Date | string): string {
   return mtDate(d, { day: "numeric" });
 }
 
+function safeDate(d: Date | string): Date | null {
+  const date = new Date(d);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 /* Day-of-month as a number, anchored to Mountain Time. Use this instead
    of `date.getDate()` whenever the result is rendered to a user. On a
    Vercel Function (UTC), `getDate()` returns the UTC day, which is
    off-by-one for any evening-Utah event whose UTC timestamp is in the
-   next calendar day. */
+   next calendar day. Returns 0 for Invalid Date so JSX doesn't render
+   the string "NaN". */
 export function mtDayNum(d: Date | string): number {
-  return parseInt(mtDate(d, { day: "numeric" }), 10);
+  const date = safeDate(d);
+  if (!date) return 0;
+  return parseInt(mtDate(date, { day: "numeric" }), 10);
 }
 
 export function mtYear(d: Date | string): number {
-  return parseInt(mtDate(d, { year: "numeric" }), 10);
+  const date = safeDate(d);
+  if (!date) return 0;
+  return parseInt(mtDate(date, { year: "numeric" }), 10);
 }
 
 /* Stable day key (YYYY-MM-DD in Denver) for grouping events into
-   per-day buckets. */
+   per-day buckets. Returns the literal "invalid" for malformed input
+   so a single bad row can't crash `groupEventsByDay`. */
 export function mtDayKey(d: Date | string): string {
-  const date = new Date(d);
-  const parts = new Intl.DateTimeFormat("en-CA", {
+  const date = safeDate(d);
+  if (!date) return "invalid";
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(date);
-  return parts;
+}
+
+/* Year+month key for change detection - "06" alone is ambiguous across
+   years; this keeps the banner correct if a list ever spans
+   December into the next year. */
+export function mtMonthKey(d: Date | string): string {
+  const date = safeDate(d);
+  if (!date) return "invalid";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: ZONE,
+    year: "numeric",
+    month: "2-digit",
+  }).format(date);
 }

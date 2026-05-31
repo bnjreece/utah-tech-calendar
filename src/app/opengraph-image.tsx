@@ -74,8 +74,7 @@ export default async function HomeOgImage() {
               color: INK,
             }}
           >
-            <span style={{ fontStyle: "italic" }}>Utah tech</span>
-            <span style={{ fontStyle: "normal" }}>events</span>
+            <span style={{ fontStyle: "normal" }}>Utah tech calendar</span>
           </div>
           <div
             style={{
