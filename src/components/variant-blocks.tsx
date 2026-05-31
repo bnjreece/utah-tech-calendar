@@ -10,6 +10,7 @@ import {
   EditorialLinearCardCompact,
 } from "./variant-cards";
 import { DensityToggle, type ScheduleDensity } from "./density-toggle";
+import { mtDate, mtDayKey, mtDayNum } from "@/lib/time";
 
 interface VariantProps {
   events: EventWithGroup[];
@@ -24,7 +25,7 @@ interface VariantProps {
    Used by all 4 final picker combos with different fonts/cards.
    ============================================================ */
 function EditorialMasthead({ events }: { events: EventWithGroup[] }) {
-  const month = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const month = mtDate(new Date(), { month: "long", year: "numeric" });
   return (
     <section className="border-b-2 border-ink">
       <div className="mx-auto max-w-5xl px-6 pt-14 pb-10">
@@ -37,7 +38,7 @@ function EditorialMasthead({ events }: { events: EventWithGroup[] }) {
           </span>
         </div>
         <h1 className="mt-8 font-display text-[clamp(3.25rem,9vw,6.75rem)] leading-[0.92] -tracking-[0.025em] text-balance text-ink">
-          utah tech <span className="italic">calendar</span>
+          utah tech calendar
         </h1>
         <p className="mt-6 max-w-[58ch] text-pretty text-base sm:text-lg text-ink-soft font-display italic leading-relaxed">
           A periodical of every in-person tech gathering across the state. Filed by region, host, and stack.
@@ -101,7 +102,9 @@ function groupEventsByDay(events: EventWithGroup[]): DayGroup[] {
   const groups = new Map<string, DayGroup>();
   for (const e of events) {
     const d = new Date(e.startsAt);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    /* Key by Denver-local date so a 7pm Tue MDT event (= 01:00 Wed UTC)
+       buckets under Tuesday, not Wednesday. */
+    const key = mtDayKey(d);
     const existing = groups.get(key);
     if (existing) {
       existing.events.push(e);
@@ -113,7 +116,7 @@ function groupEventsByDay(events: EventWithGroup[]): DayGroup[] {
 }
 
 export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuery, density = "weekly" }: VariantProps) {
-  const month = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const month = mtDate(new Date(), { month: "long", year: "numeric" });
   const dayGroups = groupEventsByDay(events);
   const isCompact = density === "monthly";
 
@@ -150,11 +153,11 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
           {dayGroups.map((group, i) => {
             const prev = i > 0 ? dayGroups[i - 1] : null;
             const monthChanged =
-              prev !== null && prev.date.getMonth() !== group.date.getMonth();
+              prev !== null && mtDate(prev.date, { month: "long" }) !== mtDate(group.date, { month: "long" });
             const isFirst = i === 0;
-            const weekday = group.date.toLocaleDateString("en-US", { weekday: "long" });
-            const monthName = group.date.toLocaleDateString("en-US", { month: "long" });
-            const dayNum = group.date.getDate();
+            const weekday = mtDate(group.date, { weekday: "long" });
+            const monthName = mtDate(group.date, { month: "long" });
+            const dayNum = mtDayNum(group.date);
             const monthBannerLabel = monthName.toUpperCase();
 
             return (
@@ -223,7 +226,7 @@ export function ApartmentBlock({ events, filterBarSlot, viewSlot, feedQuery }: V
     <>
       <section className="mx-auto max-w-5xl px-6 pt-16 pb-10">
         <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-sunset-deep">
-          Issue 01 · {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+          Issue 01 · {mtDate(new Date(), { month: "long", year: "numeric" })}
         </span>
         <h1 className="mt-6 font-display text-[clamp(3.5rem,9vw,7rem)] leading-[0.92] tracking-[-0.02em] text-balance">
           Utah Tech <span className="italic">Quarterly</span>

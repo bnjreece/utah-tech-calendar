@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { db, events } from "@/lib/db";
 import { getEventById } from "@/lib/queries";
 import { extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
+import { mtDate, mtTime } from "@/lib/time";
 
 export const runtime = "nodejs";
 export const alt = "Utah Tech Calendar";
@@ -64,16 +65,14 @@ export default async function EventOgImage({
   const title = event?.title ?? "Utah Tech Calendar";
   const start = event ? new Date(event.startsAt) : null;
   const dateString = start
-    ? start.toLocaleDateString("en-US", {
+    ? mtDate(start, {
         weekday: "long",
         month: "long",
         day: "numeric",
         year: "numeric",
       })
     : "";
-  const timeString = start
-    ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()
-    : "";
+  const timeString = start ? mtTime(start).toLowerCase() : "";
   const placeParts = event
     ? [event.venueName, event.city].filter(Boolean).join(" · ")
     : "Utah";

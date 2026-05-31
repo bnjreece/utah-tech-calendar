@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { eventSlug } from "@/lib/slugs";
+import { mtDate, mtTime, mtDayNum, mtYear } from "@/lib/time";
 
 const SOURCE_LABELS: Record<string, string> = {
   meetup: "Meetup",
@@ -14,12 +15,12 @@ const SOURCE_LABELS: Record<string, string> = {
 
 function fmtDate(d: Date) {
   return {
-    weekday: d.toLocaleDateString("en-US", { weekday: "short" }),
-    day: d.getDate(),
-    month: d.toLocaleDateString("en-US", { month: "short" }),
-    monthFull: d.toLocaleDateString("en-US", { month: "long" }),
-    year: d.getFullYear(),
-    time: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    weekday: mtDate(d, { weekday: "short" }),
+    day: mtDayNum(d),
+    month: mtDate(d, { month: "short" }),
+    monthFull: mtDate(d, { month: "long" }),
+    year: mtYear(d),
+    time: mtTime(d),
     iso: d.toISOString().slice(0, 16).replace("T", " "),
   };
 }

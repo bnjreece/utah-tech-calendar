@@ -1,8 +1,9 @@
 import { EventCard } from "./event-card";
 import type { EventWithGroup } from "@/lib/queries";
+import { mtDate } from "@/lib/time";
 
 function dayLabel(d: Date): string {
-  return d.toLocaleDateString("en-US", {
+  return mtDate(d, {
     weekday: "long",
     month: "long",
     day: "numeric",

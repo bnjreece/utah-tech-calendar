@@ -3,6 +3,7 @@ import { db, events, groups } from "@/lib/db";
 import { restoreEvent } from "@/lib/admin-actions";
 import { SOURCE_LABELS } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
+import { mtDate } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function HiddenEventsPage() {
                   <span>via {sourceLabel.toLowerCase()}</span>
                   <span aria-hidden>·</span>
                   <span>
-                    {start.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    {mtDate(start, { weekday: "short", month: "short", day: "numeric" })}
                   </span>
                   {g && (<><span aria-hidden>·</span><span>{g.name}</span></>)}
                 </div>

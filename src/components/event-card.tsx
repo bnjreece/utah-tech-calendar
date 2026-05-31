@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { eventSlug } from "@/lib/slugs";
+import { mtTime, mtMonth, mtWeekday, mtDayNum } from "@/lib/time";
 
 const SOURCE_LABELS: Record<string, string> = {
   meetup: "Meetup",
@@ -17,12 +18,10 @@ export function EventCard({ event }: { event: EventWithGroup }) {
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
   const sourceLabel = SOURCE_LABELS[event.source] ?? event.source;
-  const time = start.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  const month = start.toLocaleDateString("en-US", { month: "short" });
-  const weekday = start.toLocaleDateString("en-US", { weekday: "short" });
+  const time = mtTime(start);
+  const month = mtMonth(start);
+  const weekday = mtWeekday(start);
+  const dayNum = mtDayNum(start);
 
   return (
     <Link
@@ -38,7 +37,7 @@ export function EventCard({ event }: { event: EventWithGroup }) {
               {weekday}
             </span>
             <span className="text-3xl font-medium leading-none mt-0.5">
-              {start.getDate()}
+              {dayNum}
             </span>
             <span className="text-xs uppercase tracking-wide text-ink-soft mt-0.5">
               {month}

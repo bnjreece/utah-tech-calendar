@@ -9,6 +9,7 @@ import { EventJsonLd } from "@/components/json-ld";
 import { absoluteUrl } from "@/lib/seo";
 import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 import { AddToCalendar } from "@/components/add-to-calendar";
+import { mtDate, mtTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export async function generateMetadata({
   if (!event) return { title: "Event not found" };
 
   const start = new Date(event.startsAt);
-  const when = start.toLocaleDateString("en-US", {
+  const when = mtDate(start, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -139,7 +140,7 @@ export default async function EventDetailPage({
             <dt className="text-xs uppercase tracking-wide text-ink-soft">When</dt>
             <dd>
               <div className="font-medium text-base">
-                {start.toLocaleDateString("en-US", {
+                {mtDate(start, {
                   weekday: "long",
                   month: "long",
                   day: "numeric",
@@ -147,8 +148,8 @@ export default async function EventDetailPage({
                 })}
               </div>
               <div className="text-ink-soft tabular-nums">
-                {start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                {end && ` – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
+                {mtTime(start)}
+                {end && ` – ${mtTime(end)}`}
               </div>
             </dd>
 

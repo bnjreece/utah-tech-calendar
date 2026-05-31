@@ -87,7 +87,7 @@ export default function RootLayout({
                 style={{ width: "32px", height: "32px", transform: "translateY(3px)" }}
               />
               <span className="font-display text-2xl tracking-tight leading-none truncate">
-                <span className="hidden sm:inline">utah tech <span className="italic">calendar</span></span>
+                <span className="hidden sm:inline">utah tech calendar</span>
                 <span className="sm:hidden">UTC</span>
               </span>
             </Link>
