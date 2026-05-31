@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   keywords: [
+    "Utah tech calendar",
     "Utah tech events",
     "Utah developer meetups",
     "Salt Lake City tech events",
@@ -86,8 +87,8 @@ export default function RootLayout({
                 style={{ width: "32px", height: "32px", transform: "translateY(3px)" }}
               />
               <span className="font-display text-2xl tracking-tight leading-none truncate">
-                <span className="hidden sm:inline">utah tech <span className="italic">events</span></span>
-                <span className="sm:hidden">UTE</span>
+                <span className="hidden sm:inline">utah tech <span className="italic">calendar</span></span>
+                <span className="sm:hidden">UTC</span>
               </span>
             </Link>
             <nav className="flex items-baseline gap-4 sm:gap-5 font-mono text-[11px] uppercase tracking-[0.18em] shrink-0">

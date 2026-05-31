@@ -285,8 +285,8 @@ export function GlacierBlock({ events, filterBarSlot, viewSlot, feedQuery }: Var
       <section className="border-b border-ink/8">
         <div className="mx-auto max-w-6xl px-6 py-8 flex items-baseline justify-between gap-6 flex-wrap">
           <div>
-            <h1 className="font-display text-3xl -tracking-[0.02em] font-semibold">Utah tech events</h1>
-            <p className="mt-1 text-sm text-ink-soft">Curated calendar of in-person gatherings across the state.</p>
+            <h1 className="font-display text-3xl -tracking-[0.02em] font-semibold">Utah tech calendar</h1>
+            <p className="mt-1 text-sm text-ink-soft">Comprehensive calendar of in-person gatherings across the state.</p>
           </div>
         </div>
       </section>
