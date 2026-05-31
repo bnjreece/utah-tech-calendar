@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
-        from: "Utah Tech Events <events@bnjmn.org>",
+        from: "Utah Tech Calendar <events@bnjmn.org>",
         to: MODERATOR_EMAIL,
         subject: `New event submission: ${payload.title}`,
         html: `

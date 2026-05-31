@@ -37,7 +37,7 @@ function EditorialMasthead({ events }: { events: EventWithGroup[] }) {
           </span>
         </div>
         <h1 className="mt-8 font-display text-[clamp(3.25rem,9vw,6.75rem)] leading-[0.92] -tracking-[0.025em] text-balance text-ink">
-          utah tech <span className="italic">events</span>
+          utah tech <span className="italic">calendar</span>
         </h1>
         <p className="mt-6 max-w-[58ch] text-pretty text-base sm:text-lg text-ink-soft font-display italic leading-relaxed">
           A periodical of every in-person tech gathering across the state. Filed by region, host, and stack.
@@ -130,7 +130,7 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
   return (
     <>
       <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-2">
-        <h1 className="sr-only">Utah Tech Events</h1>
+        <h1 className="sr-only">Utah Tech Calendar</h1>
         <p className="font-display text-lg sm:text-xl text-ink-soft text-pretty leading-snug max-w-[60ch] mb-8">
           The comprehensive calendar of in-person Utah tech events <span className="not-italic">—</span> meetups,
           conferences, founder mixers, and developer nights across Salt Lake City, Provo,

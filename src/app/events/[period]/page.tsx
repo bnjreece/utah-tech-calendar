@@ -48,7 +48,7 @@ export async function generateMetadata({
   const parsed = parsePeriod(slug);
   if (!parsed) return { title: "Period not found" };
   const evts = await fetchPeriodEvents(parsed.from, parsed.to);
-  const title = `Utah Tech Events · ${parsed.display}`;
+  const title = `Utah Tech Calendar · ${parsed.display}`;
   const description =
     evts.length > 0
       ? `${evts.length} Utah tech events in ${parsed.display} — meetups, conferences, founder mixers, and developer nights across Salt Lake City, Provo, Lehi, Ogden, and Silicon Slopes.`

@@ -2,7 +2,7 @@ import { FeedBuilder } from "@/components/feed-builder";
 import { getCityCounts, getTagCounts, getSourceCounts } from "@/lib/queries";
 
 export const metadata = {
-  title: "Subscribe - Utah Tech Events",
+  title: "Subscribe - Utah Tech Calendar",
 };
 
 export default async function SubscribePage() {

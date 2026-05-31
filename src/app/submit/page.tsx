@@ -1,7 +1,7 @@
 import { SubmitForm } from "@/components/submit-form";
 
 export const metadata = {
-  title: "Submit an event - Utah Tech Events",
+  title: "Submit an event - Utah Tech Calendar",
 };
 
 export default function SubmitPage() {

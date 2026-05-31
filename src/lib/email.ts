@@ -7,10 +7,10 @@ import { Resend } from "resend";
 
 /* The dsynthetic Resend key is in the "bnjmn" Resend workspace, where
    only `updates.bnjmn.org` is a verified sending domain. Add bnjmn.org
-   root (or events.bnjmn.org, or utahtech.events once DNS is fixed) as
+   root (or events.bnjmn.org, or utahtechcalendar.com once DNS is fixed) as
    a verified domain in Resend if a cleaner from address is wanted. */
 const FROM_ADDRESS =
-  process.env.EMAIL_FROM ?? "Utah Tech Events <events@updates.bnjmn.org>";
+  process.env.EMAIL_FROM ?? "Utah Tech Calendar <events@updates.bnjmn.org>";
 
 export interface SendEmailInput {
   to: string;
@@ -18,7 +18,7 @@ export interface SendEmailInput {
   text: string;
   html?: string;
   /* List-Unsubscribe header value, e.g.
-       <https://utahtech.events/unsubscribe/abc>, <mailto:u@example.com>
+       <https://utahtechcalendar.com/unsubscribe/abc>, <mailto:u@example.com>
      Required for the digest to satisfy Gmail/Yahoo bulk-sender rules. */
   listUnsubscribe?: string;
 }

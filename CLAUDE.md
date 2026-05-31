@@ -1,8 +1,8 @@
 @AGENTS.md
 
-# Utah Tech Events
+# Utah Tech Calendar
 
-Curated calendar of in-person Utah tech events. Scraped from Meetup, Luma, Eventbrite, plus manual submissions. Online events filtered out by default.
+The comprehensive calendar of in-person Utah tech events at `utahtechcalendar.com`. Scraped from Meetup, Luma, Eventbrite, plus manual submissions. Online events filtered out by default. (Repo / Vercel project slug stays `utah-tech-events` for continuity.)
 
 ## Stack
 - Next.js 16 App Router, Tailwind v4, shadcn v4 (base-maia, hugeicons)

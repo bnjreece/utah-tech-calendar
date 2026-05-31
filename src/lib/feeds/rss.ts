@@ -38,7 +38,7 @@ export function eventsToRss(events: EventWithGroup[], baseUrl: string): string {
   return `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0">
   <channel>
-    <title>Utah Tech Events</title>
+    <title>Utah Tech Calendar</title>
     <link>${baseUrl}</link>
     <description>In-person Utah tech events. Curated.</description>
     <language>en-us</language>

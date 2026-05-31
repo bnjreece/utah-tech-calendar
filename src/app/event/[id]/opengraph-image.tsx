@@ -9,7 +9,7 @@ import { getEventById } from "@/lib/queries";
 import { extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 
 export const runtime = "nodejs";
-export const alt = "Utah Tech Events";
+export const alt = "Utah Tech Calendar";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -61,7 +61,7 @@ export default async function EventOgImage({
   const realId = await resolveEventId(idParam);
   const event = realId ? await getEventById(realId) : null;
 
-  const title = event?.title ?? "Utah Tech Events";
+  const title = event?.title ?? "Utah Tech Calendar";
   const start = event ? new Date(event.startsAt) : null;
   const dateString = start
     ? start.toLocaleDateString("en-US", {
@@ -125,7 +125,7 @@ export default async function EventOgImage({
             color: INK_SOFT,
           }}
         >
-          <div style={{ display: "flex" }}>Utah Tech Events</div>
+          <div style={{ display: "flex" }}>Utah Tech Calendar</div>
           <div style={{ display: "flex", color: sourceColor }}>
             via {sourceLabel.toLowerCase()}
           </div>
@@ -196,7 +196,7 @@ export default async function EventOgImage({
             <div style={{ display: "flex", color: sourceColor }}>{tagLine}</div>
           </div>
           <div style={{ display: "flex", color: INK, letterSpacing: "0.24em" }}>
-            utahtech.events
+            utahtechcalendar.com
           </div>
         </div>
       </div>

@@ -25,7 +25,7 @@ export function describeFilters(f: FilterState): string | null {
    message: subject line, header, ranked list of next 7 days of events,
    unsubscribe footer. Editorial design - keeps DM Serif italic for the
    header, IBM Plex Mono eyebrows, and the same stratum palette as the
-   site, so the email visually echoes utahtech.events.
+   site, so the email visually echoes utahtechcalendar.com.
 
    Header colors are inlined hex (no @import or CSS custom properties)
    because Gmail strips <link> tags and Apple Mail only honors a subset
@@ -118,11 +118,11 @@ export function buildDigest(input: BuildDigestInput): DigestContent {
 
   // Plain text body
   const textLines: string[] = [
-    "Utah Tech Events",
+    "Utah Tech Calendar",
     range,
     "",
     count === 0
-      ? "No in-person events this week. Schedule looks light - the full calendar lives at utahtech.events."
+      ? "No in-person events this week. Schedule looks light - the full calendar lives at utahtechcalendar.com."
       : `${count} event${count === 1 ? "" : "s"} on deck.`,
     "",
   ];
@@ -188,7 +188,7 @@ export function buildDigest(input: BuildDigestInput): DigestContent {
           No in-person events this week. Quiet stretch on the schedule.
         </p>
         <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:${INK_SOFT};margin:8px 0 0;">
-          Hosting something? Submit it at <a href="${SITE_URL}/submit" style="color:${SUNSET_DEEP};">utahtech.events/submit</a>.
+          Hosting something? Submit it at <a href="${SITE_URL}/submit" style="color:${SUNSET_DEEP};">utahtechcalendar.com/submit</a>.
         </p>
       </td>
     </tr>`;
@@ -207,7 +207,7 @@ export function buildDigest(input: BuildDigestInput): DigestContent {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:${PAPER};">
         <tr>
           <td style="padding-bottom:20px;">
-            <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:${INK_SOFT};">Utah Tech Events</span>
+            <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:${INK_SOFT};">Utah Tech Calendar</span>
           </td>
         </tr>
         <tr>
@@ -252,16 +252,16 @@ export interface BuildVerifyEmailInput {
 }
 
 export function buildVerifyEmail(input: BuildVerifyEmailInput): DigestContent {
-  const subject = "Confirm your Utah Tech Events digest";
+  const subject = "Confirm your Utah Tech Calendar digest";
   const text = [
     "Hi,",
     "",
-    `Confirm your weekly Utah Tech Events digest:`,
+    `Confirm your weekly Utah Tech Calendar digest:`,
     input.verifyUrl,
     "",
     "If you didn't sign up, ignore this email.",
     "",
-    "- Utah Tech Events",
+    "- Utah Tech Calendar",
   ].join("\n");
   const html = `<!doctype html>
 <html><body style="margin:0;padding:0;background:${PAPER};color:${INK};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -269,7 +269,7 @@ export function buildVerifyEmail(input: BuildVerifyEmailInput): DigestContent {
   <tr><td align="center" style="padding:48px 16px;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px;">
       <tr><td>
-        <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:${INK_SOFT};">Utah Tech Events</span>
+        <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:${INK_SOFT};">Utah Tech Calendar</span>
         <h1 style="margin:16px 0 12px;font-family:Georgia,serif;font-style:italic;font-size:32px;line-height:1.15;color:${INK};">One click to confirm.</h1>
         <p style="font-size:15px;line-height:1.6;color:${INK_SOFT};margin:0 0 24px;">Hit the button to start receiving the weekly digest of in-person Utah tech events. We'll only email once a week, Monday mornings.</p>
         <p style="margin:0 0 32px;"><a href="${input.verifyUrl}" style="display:inline-block;background:${INK};color:${PAPER};font-family:-apple-system,sans-serif;font-size:14px;text-decoration:none;padding:14px 28px;border-radius:999px;">Confirm subscription</a></p>

@@ -1,7 +1,7 @@
 import { ReflectionShimmerLogo } from "@/components/logos";
 
 export const metadata = {
-  title: "Logo size studies - Utah Tech Events",
+  title: "Logo size studies - Utah Tech Calendar",
 };
 
 interface Treatment {

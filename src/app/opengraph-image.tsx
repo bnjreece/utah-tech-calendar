@@ -6,7 +6,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "Utah Tech Events - the comprehensive calendar of in-person Utah tech events";
+export const alt = "Utah Tech Calendar - the comprehensive calendar of in-person Utah tech events";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -105,7 +105,7 @@ export default async function HomeOgImage() {
           }}
         >
           <div>updated nightly</div>
-          <div style={{ color: INK, letterSpacing: "0.24em" }}>utahtech.events</div>
+          <div style={{ color: INK, letterSpacing: "0.24em" }}>utahtechcalendar.com</div>
         </div>
       </div>
     ),

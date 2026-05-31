@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { getGroupBySlug, getUpcomingEventsForGroup } from "@/lib/queries";
 
 export const runtime = "nodejs";
-export const alt = "Utah Tech Events - Group";
+export const alt = "Utah Tech Calendar - Group";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -59,7 +59,7 @@ export default async function GroupOgImage({
             display: "flex",
           }}
         >
-          Utah Tech Events · Group
+          Utah Tech Calendar · Group
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
@@ -105,7 +105,7 @@ export default async function GroupOgImage({
               ? `${count} upcoming ${count === 1 ? "event" : "events"}`
               : "schedule loading"}
           </div>
-          <div style={{ color: INK, letterSpacing: "0.24em", display: "flex" }}>utahtech.events</div>
+          <div style={{ color: INK, letterSpacing: "0.24em", display: "flex" }}>utahtechcalendar.com</div>
         </div>
       </div>
     ),

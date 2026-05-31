@@ -1,7 +1,7 @@
 import { ReflectionShimmerLogo } from "@/components/logos";
 
 export const metadata = {
-  title: "Wordmark studies - Utah Tech Events",
+  title: "Wordmark studies - Utah Tech Calendar",
 };
 
 interface VariantProps {
@@ -34,7 +34,7 @@ const VARIANTS: VariantProps[] = [
       "Pure italic Fraunces, tight tracking. Most editorial-periodical of the set. Apartamento-adjacent.",
     wordmark: (
       <span className="font-display text-base tracking-tight italic leading-none">
-        utah tech events
+        utah tech calendar
       </span>
     ),
   },
@@ -58,7 +58,7 @@ const VARIANTS: VariantProps[] = [
       "Title case italic — more formal, more typographically present. The capitals slow you down; reads as a proper publication name.",
     wordmark: (
       <span className="font-display text-base tracking-tight italic leading-none">
-        Utah Tech Events
+        Utah Tech Calendar
       </span>
     ),
   },
@@ -70,7 +70,7 @@ const VARIANTS: VariantProps[] = [
       "Uppercase Fraunces with wide tracking (0.18em). Has the authority of a section masthead. Tracking gives the caps room to breathe.",
     wordmark: (
       <span className="font-display text-sm tracking-[0.18em] uppercase leading-none">
-        utah tech events
+        utah tech calendar
       </span>
     ),
   },
@@ -133,7 +133,7 @@ const VARIANTS: VariantProps[] = [
       "Full uppercase Fraunces semibold with very tight tracking. Authoritative, almost monumental. Trades editorial softness for institutional presence.",
     wordmark: (
       <span className="font-display text-sm font-semibold tracking-[0.02em] uppercase leading-none">
-        Utah Tech Events
+        Utah Tech Calendar
       </span>
     ),
   },

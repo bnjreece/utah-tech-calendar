@@ -5,7 +5,7 @@ import { verifySubscriptionToken } from "@/lib/subscription-token";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "Unsubscribe · Utah Tech Events",
+  title: "Unsubscribe · Utah Tech Calendar",
   robots: { index: false, follow: false },
 };
 

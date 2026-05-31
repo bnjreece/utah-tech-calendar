@@ -1,7 +1,7 @@
 import { ALL_LOGOS } from "@/components/logos";
 
 export const metadata = {
-  title: "Logo studies - Utah Tech Events",
+  title: "Logo studies - Utah Tech Calendar",
 };
 
 const FAVICON_SIZES = [16, 32, 48, 64] as const;
@@ -13,7 +13,7 @@ export default function LogosPage() {
         Logo studies · v2
       </p>
       <h1 className="mt-3 font-display text-4xl sm:text-5xl tracking-tight italic">
-        Six marks for utahtech.events.
+        Six marks for utahtechcalendar.com.
       </h1>
       <p className="mt-4 max-w-[62ch] text-pretty text-ink-soft leading-relaxed">
         All marks now square so they survive favicon use. Each shown in the actual editorial header, at every favicon size in a bounded box, and at display size in both ink and burgundy. Tell me which one (or which to combine) and I&apos;ll wire it into the header, favicon, apple-touch-icon, and og:image.

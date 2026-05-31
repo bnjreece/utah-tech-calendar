@@ -62,7 +62,7 @@ const SOURCE_TO_ORGANIZER: Record<string, string> = {
   silicon_slopes: "Silicon Slopes",
   forge_utah: "Forge Utah",
   substack: "Substack",
-  manual: "Utah Tech Events",
+  manual: "Utah Tech Calendar",
 };
 
 export function EventJsonLd({ event }: { event: EventWithGroup }) {

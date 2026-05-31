@@ -85,7 +85,7 @@ export default async function CityOgImage({
             color: INK_SOFT,
           }}
         >
-          Utah Tech Events · City Edition
+          Utah Tech Calendar · City Edition
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
@@ -130,7 +130,7 @@ export default async function CityOgImage({
               ? `${count} upcoming ${count === 1 ? "event" : "events"}`
               : "schedule loading"}
           </div>
-          <div style={{ color: INK, letterSpacing: "0.24em" }}>utahtech.events</div>
+          <div style={{ color: INK, letterSpacing: "0.24em" }}>utahtechcalendar.com</div>
         </div>
       </div>
     ),

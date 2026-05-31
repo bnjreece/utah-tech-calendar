@@ -24,10 +24,10 @@ export function eventsToIcal(events: EventWithGroup[], host: string): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Utah Tech Events//EN",
+    "PRODID:-//Utah Tech Calendar//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Utah Tech Events",
+    "X-WR-CALNAME:Utah Tech Calendar",
     "X-WR-CALDESC:In-person Utah tech events",
     "X-WR-TIMEZONE:America/Denver",
   ];

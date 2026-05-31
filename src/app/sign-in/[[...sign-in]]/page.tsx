@@ -1,6 +1,6 @@
 import { SignIn } from "@clerk/nextjs";
 
-export const metadata = { title: "Sign in - Utah Tech Events" };
+export const metadata = { title: "Sign in - Utah Tech Calendar" };
 
 export default function SignInPage() {
   return (
