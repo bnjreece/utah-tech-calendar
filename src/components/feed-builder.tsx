@@ -227,16 +227,16 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
         )}
       </div>
 
-      {/* Two delivery channels for the same filter slice */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        <div className="border border-ink/15 rounded-2xl p-5 bg-paper">
+      {/* Three delivery channels for the same filter slice */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <div className="border border-ink/15 rounded-2xl p-5 bg-paper flex flex-col">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
             Calendar
           </p>
           <h3 className="mt-2 font-display text-xl italic tracking-tight">
             Pipe it into your calendar.
           </h3>
-          <p className="mt-2 text-sm text-ink-soft leading-relaxed">
+          <p className="mt-2 text-sm text-ink-soft leading-relaxed flex-1">
             Apple Calendar, Google Calendar, or any reader that speaks iCal.
             Updates as soon as we scrape.
           </p>
@@ -248,21 +248,86 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
             />
           </div>
         </div>
-        <div className="border border-ink/15 rounded-2xl p-5 bg-paper">
+        <div className="border border-ink/15 rounded-2xl p-5 bg-paper flex flex-col">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
             Email
           </p>
           <h3 className="mt-2 font-display text-xl italic tracking-tight">
             Or get it Monday mornings.
           </h3>
-          <p className="mt-2 text-sm text-ink-soft leading-relaxed">
+          <p className="mt-2 text-sm text-ink-soft leading-relaxed flex-1">
             A weekly email of just these events. Same filters, every Monday.
           </p>
           <div className="mt-4">
             <EmailSignupInline feedQuery={feedQuery} />
           </div>
         </div>
+        <div className="border border-ink/15 rounded-2xl p-5 bg-paper flex flex-col">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+            RSS
+          </p>
+          <h3 className="mt-2 font-display text-xl italic tracking-tight">
+            Or read it in your feed reader.
+          </h3>
+          <p className="mt-2 text-sm text-ink-soft leading-relaxed flex-1">
+            Feedly, NetNewsWire, Reeder, Inoreader, whatever you already
+            use. Same filters, syndicated.
+          </p>
+          <div className="mt-4">
+            <RssSubscribe feedQuery={feedQuery} />
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+/* RSS-specific subscribe card. Surfaces a copy-to-clipboard URL plus
+   Feedly's one-click subscribe deeplink. Stays inside FeedBuilder so it
+   reacts to the current filter state. */
+function RssSubscribe({ feedQuery }: { feedQuery: string }) {
+  const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") setOrigin(window.location.origin);
+  }, []);
+
+  const rssUrl = origin
+    ? `${origin}/api/rss${feedQuery ? `?${feedQuery}` : ""}`
+    : "";
+  const feedlyUrl = rssUrl
+    ? `https://feedly.com/i/subscription/feed/${encodeURIComponent(rssUrl)}`
+    : "#";
+
+  async function copy() {
+    if (!rssUrl) return;
+    try {
+      await navigator.clipboard.writeText(rssUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked - fall back to the visible URL */
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <a
+        href={feedlyUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper hover:bg-ink/85 text-center"
+      >
+        Add to Feedly
+      </a>
+      <button
+        type="button"
+        onClick={copy}
+        className="rounded-full border border-ink/20 bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-ink"
+      >
+        {copied ? "URL copied" : "Copy RSS URL"}
+      </button>
     </div>
   );
 }
