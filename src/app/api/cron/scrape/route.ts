@@ -29,13 +29,19 @@ export async function GET(request: NextRequest) {
   }
   /* Heartbeat - stamp the moment the cron actually started, before any
      fetch can fail. health.ts uses this to surface "the cron stopped
-     firing" independently of any individual source's freshness. Best-
-     effort: a DB failure here shouldn't block the scrape itself. */
+     firing" independently of any individual source's freshness.
+     Upserts the singleton row so a fresh deploy (no /admin/notifications
+     visit yet) still gets a heartbeat. Best-effort: a DB failure here
+     shouldn't block the scrape itself. */
   try {
+    const tickedAt = new Date();
     await db
-      .update(adminSettings)
-      .set({ lastScrapeTickAt: new Date() })
-      .where(eq(adminSettings.id, 1));
+      .insert(adminSettings)
+      .values({ id: 1, lastScrapeTickAt: tickedAt })
+      .onConflictDoUpdate({
+        target: adminSettings.id,
+        set: { lastScrapeTickAt: tickedAt },
+      });
   } catch (err) {
     console.warn("[scrape] heartbeat update failed", err);
   }

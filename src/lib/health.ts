@@ -48,15 +48,26 @@ export function detectAlerts(
   const now = Date.now();
   const staleThresholdHours = opts.settings?.staleThresholdHours ?? 24;
   /* Heartbeat check - independent of any individual source. Surfaces
-     fastest when Vercel cron quietly stops. */
+     fastest when Vercel cron quietly stops.
+
+     Corroborate the stale heartbeat against "did any source scrape
+     recently?" before firing - protects against the false positive
+     where a transient Neon error swallowed the heartbeat write but
+     the scrape itself ran fine. If at least one source has a fresh
+     lastScrapedAt, the cron clearly fired; suppress the alert. */
   if (opts.settings?.lastScrapeTickAt) {
     const lastTick = new Date(opts.settings.lastScrapeTickAt).getTime();
     const ageH = Math.round((now - lastTick) / (60 * 60 * 1000));
-    if (now - lastTick > CRON_HEARTBEAT_MAX_AGE_MS) {
+    const anyFresh = sourceRows.some(
+      (s) =>
+        s.lastScrapedAt &&
+        now - new Date(s.lastScrapedAt).getTime() < CRON_HEARTBEAT_MAX_AGE_MS,
+    );
+    if (now - lastTick > CRON_HEARTBEAT_MAX_AGE_MS && !anyFresh) {
       alerts.push({
         level: "urgent",
         title: `Scrape cron heartbeat is ${ageH}h old`,
-        body: "The cron stamps lastScrapeTickAt at the start of every run. Stale heartbeat = Vercel cron isn't firing. Check Vercel Functions logs and the cron schedule.",
+        body: "The cron stamps lastScrapeTickAt at the start of every run, and no source has a fresh lastScrapedAt either. Check Vercel Functions logs and the cron schedule.",
         category: "cron_down",
         key: "cron_heartbeat",
       });
@@ -67,6 +78,13 @@ export function detectAlerts(
   const wantStale = opts.settings?.notifySourceStale ?? true;
   const wantCookie = opts.settings?.notifyCookieExpiry ?? true;
   const enabled = sourceRows.filter((s) => s.enabled);
+  /* "Eligible" for stale tracking = enabled AND past the 24h
+     new-source grace. Used by the meta-alert math so a flurry of newly
+     added sources doesn't mask a real cron-down situation. */
+  const eligibleForStale = enabled.filter((s) => {
+    const createdAtMs = s.createdAt ? new Date(s.createdAt).getTime() : 0;
+    return !createdAtMs || now - createdAtMs >= NEW_SOURCE_GRACE_MS;
+  });
   const staleEnabled: SourceRow[] = [];
 
   for (const s of enabled) {
@@ -155,12 +173,20 @@ export function detectAlerts(
     }
   }
 
-  /* Meta-alert when most sources are stale - cron likely stopped. */
-  if (wantStale && staleEnabled.length > 0 && staleEnabled.length >= enabled.length - 2) {
+  /* Meta-alert when most ELIGIBLE sources are stale - cron likely
+     stopped. Compared against eligibleForStale (not raw enabled) so a
+     recent batch of new sources can't artificially keep us below the
+     "almost everyone is stale" threshold. */
+  if (
+    wantStale &&
+    staleEnabled.length > 0 &&
+    eligibleForStale.length > 0 &&
+    staleEnabled.length >= eligibleForStale.length - 2
+  ) {
     alerts.push({
       level: "urgent",
-      title: `Cron may have stopped firing - ${staleEnabled.length} of ${enabled.length} sources stale`,
-      body: `All or nearly all enabled sources have not scraped in over ${staleThresholdHours}h. Check Vercel Functions logs and the cron schedule.`,
+      title: `Cron may have stopped firing - ${staleEnabled.length} of ${eligibleForStale.length} eligible sources stale`,
+      body: `All or nearly all enabled sources (past the 24h grace) have not scraped in over ${staleThresholdHours}h. Check Vercel Functions logs and the cron schedule.`,
       category: "source_stale",
       key: "cron_dead",
     });

@@ -94,7 +94,13 @@ export function FilterBar({ cities, tags, sources }: Props) {
     dotClass: STRATUM_CLASSES[stratumForEvent(s.value)].bar,
   }));
   const regionOptions = UTAH_REGIONS.map((r) => ({ value: r, label: r }));
-  const cityOptions = cities.map((c) => ({ value: c.value, label: c.value, count: c.count }));
+  const cityOptions = cities.map((c) => ({
+    value: c.value,
+    label: c.value === "Unknown" ? "Location TBD" : c.value,
+    count: c.count,
+  }));
+  const cityLabel = (c: string) => (c === "Unknown" ? "Location TBD" : c);
+  const regionLabel = (r: string) => (r === "Unknown" ? "Location TBD" : r);
   const tagOptions = tags.map((t) => ({ value: t.value, label: t.value, count: t.count }));
 
   return (
@@ -185,10 +191,10 @@ export function FilterBar({ cities, tags, sources }: Props) {
             <ActiveChip label={`"${filters.q}"`} onRemove={() => clearOne("q")} />
           )}
           {filters.regions.map((r) => (
-            <ActiveChip key={`r-${r}`} label={r} onRemove={() => clearOne("regions", r)} />
+            <ActiveChip key={`r-${r}`} label={regionLabel(r)} onRemove={() => clearOne("regions", r)} />
           ))}
           {filters.cities.map((c) => (
-            <ActiveChip key={`c-${c}`} label={c} onRemove={() => clearOne("cities", c)} />
+            <ActiveChip key={`c-${c}`} label={cityLabel(c)} onRemove={() => clearOne("cities", c)} />
           ))}
           {filters.tags.map((t) => (
             <ActiveChip key={`t-${t}`} label={t} onRemove={() => clearOne("tags", t)} />
