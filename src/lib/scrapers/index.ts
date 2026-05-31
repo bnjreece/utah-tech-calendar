@@ -5,6 +5,7 @@ import { eventbriteAdapter } from "./adapters/eventbrite";
 import { siliconSlopesAdapter } from "./adapters/silicon-slopes";
 import { substackAdapter } from "./adapters/substack";
 import { utahGeekEventsAdapter } from "./adapters/utah-geek-events";
+import { recurrenceAdapter } from "./adapters/recurrence";
 
 export * from "./types";
 
@@ -15,6 +16,7 @@ export const eventAdapters: Record<string, Adapter<EventItem>> = {
   siliconSlopes: siliconSlopesAdapter,
   substack: substackAdapter,
   utahGeekEvents: utahGeekEventsAdapter,
+  recurrence: recurrenceAdapter,
 };
 
 export function getEventAdapter(name: string): Adapter<EventItem> {

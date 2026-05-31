@@ -119,7 +119,11 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
   let groupId: string | undefined = source.groupId ?? undefined;
 
   try {
-    const items = await adapter.scrape({ url: source.url, maxItems: 30 });
+    const items = await adapter.scrape({
+      url: source.url,
+      maxItems: 30,
+      sourceConfig: source.config ?? undefined,
+    });
     let inserted = 0;
     let updated = 0;
 

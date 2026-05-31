@@ -102,6 +102,11 @@ export const sources = pgTable("sources", {
      before the cookie silently expires. NULL on sources that don't have
      a rotation lifecycle. */
   authRotatedAt: timestamp("auth_rotated_at", { withTimezone: true }),
+  /* Per-source JSON config consumed by adapters that need parameters
+     beyond a URL. The recurrence adapter uses this to encode the
+     pattern ({type:"weekly", weekday, hour, minute, ...}); other
+     adapters can leave it NULL. */
+  config: jsonb("config"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

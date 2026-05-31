@@ -35,11 +35,16 @@ export interface JobItem {
   tags?: string[];
 }
 
-export type AdapterRuntime = "fetch" | "browser";
+export type AdapterRuntime = "fetch" | "browser" | "synthetic";
 
 export interface AdapterConfig {
   url: string;
   maxItems?: number;
+  /* Per-source JSON config, plumbed from the sources.config column.
+     Adapters that need parameters beyond a URL (the recurrence adapter,
+     for one) consume this; the URL stays the canonical listing link
+     baked into each generated event's `link` field. */
+  sourceConfig?: unknown;
 }
 
 export interface Adapter<T> {
