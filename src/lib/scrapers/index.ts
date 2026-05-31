@@ -4,6 +4,7 @@ import { lumaAdapter } from "./adapters/luma";
 import { eventbriteAdapter } from "./adapters/eventbrite";
 import { siliconSlopesAdapter } from "./adapters/silicon-slopes";
 import { substackAdapter } from "./adapters/substack";
+import { utahGeekEventsAdapter } from "./adapters/utah-geek-events";
 
 export * from "./types";
 
@@ -13,6 +14,7 @@ export const eventAdapters: Record<string, Adapter<EventItem>> = {
   eventbrite: eventbriteAdapter,
   siliconSlopes: siliconSlopesAdapter,
   substack: substackAdapter,
+  utahGeekEvents: utahGeekEventsAdapter,
 };
 
 export function getEventAdapter(name: string): Adapter<EventItem> {
