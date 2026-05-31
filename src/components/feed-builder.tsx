@@ -100,7 +100,13 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
     );
   }
 
-  const cityOptions = cities.map((c) => ({ value: c.value, label: c.value, count: c.count }));
+  const cityOptions = cities.map((c) => ({
+    value: c.value,
+    /* Mirror the region chip's "Location TBD" label so the same
+       sentinel reads consistently in both pickers. */
+    label: c.value === "Unknown" ? "Location TBD" : c.value,
+    count: c.count,
+  }));
   const tagOptions = tags.map((t) => ({ value: t.value, label: t.value, count: t.count }));
   const sourceOptions = sources.map((s) => ({
     value: s.value,

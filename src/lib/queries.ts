@@ -36,7 +36,17 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
   }
 
   if (filters.cities.length) {
-    conditions.push(inArray(events.city, filters.cities));
+    /* The literal "Unknown" sentinel in the filter is the parallel of
+       the Unknown UtahRegion - it selects rows where city is NULL.
+       Other values are matched directly. We split the filter into the
+       known/unknown halves and OR them so a picker like
+       ["Lehi", "Unknown"] returns both. */
+    const known = filters.cities.filter((c) => c !== "Unknown");
+    const wantsUnknown = filters.cities.includes("Unknown");
+    const cityConds = [];
+    if (known.length) cityConds.push(inArray(events.city, known));
+    if (wantsUnknown) cityConds.push(sql`${events.city} IS NULL`);
+    if (cityConds.length) conditions.push(or(...cityConds)!);
   }
 
   if (filters.groups.length) {
@@ -205,8 +215,16 @@ export async function getCityCounts(): Promise<Array<{ city: string; count: numb
       ),
     )
     .groupBy(events.city);
-  return rows
-    .filter((r): r is { city: string; count: number } => Boolean(r.city))
+  /* Surface NULL-city events as a synthetic "Unknown" entry so the
+     city picker can include them - parallel with the Unknown
+     UtahRegion exposed as "Location TBD" in the FeedBuilder. */
+  const unknownRow = rows.find((r) => !r.city);
+  const namedRows = rows.filter((r): r is { city: string; count: number } => Boolean(r.city));
+  const result = namedRows.slice();
+  if (unknownRow && unknownRow.count > 0) {
+    result.push({ city: "Unknown", count: unknownRow.count });
+  }
+  return result
     .sort((a, b) => b.count - a.count);
 }
 
