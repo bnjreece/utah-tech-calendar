@@ -29,7 +29,30 @@ export const SOURCE_LABELS: Record<string, string> = {
   manual: "Community",
   silicon_slopes: "Silicon Slopes",
   forge_utah: "Forge Utah",
+  utah_geek_events: "Utah Geek Events",
+  /* Recurrence-adapter series get an explicit label per slug. Add an
+     entry whenever you stand up a new `recurrence:<slug>` source so
+     event cards, filter chips, and OG images render cleanly. */
+  "recurrence:1mc-slc": "1 Million Cups",
+  "recurrence:cto-breakfast-utah": "CTO Breakfast",
 };
+
+/* Resolve a raw source identifier to a display label. Use this in any
+   UI render path that surfaces `event.source` to a human - falls back
+   to a humanized slug for recurrence sources that haven't been added
+   to SOURCE_LABELS yet, and to the raw string for anything else. */
+export function sourceLabel(source: string | undefined | null): string {
+  if (!source) return "";
+  if (SOURCE_LABELS[source]) return SOURCE_LABELS[source];
+  if (source.startsWith("recurrence:")) {
+    return source
+      .slice("recurrence:".length)
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+  return source;
+}
 
 export function parseFilters(searchParams: URLSearchParams | Record<string, string | string[] | undefined>): FilterState {
   const get = (k: string): string | undefined => {

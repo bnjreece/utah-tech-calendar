@@ -26,6 +26,11 @@ type RecurrenceConfig =
   | MonthlyNthConfig;
 
 interface BaseConfig {
+  /* Stable kebab-case identifier for this series. The adapter uses it
+     to build `source: recurrence:<slug>` and `externalId: <slug>-<date>`,
+     so two source rows with identical titles can coexist as long as
+     their slugs differ. */
+  slug: string;
   title: string;
   description?: string;
   /* Local wall clock in America/Denver */
@@ -66,7 +71,12 @@ function pad(n: number): string {
 }
 
 /* Build a UTC Date for a wall-clock instant in America/Denver. Two-
-   candidate round-trip check handles DST without leaking an hour. */
+   candidate round-trip check handles DST without leaking an hour. On
+   the spring-forward skipped hour (e.g. Mar 8 2026 02:00 Denver) neither
+   offset round-trips, so we throw rather than silently materialize a
+   wrong-hour event. The fall-back repeated hour (Nov 1 2026 01:00) IS
+   ambiguous; we deliberately resolve to the earlier (MDT) instant so
+   the rendered local time stays consistent for the rest of the year. */
 function denverInstant(y: number, mo: number, d: number, h: number, mi: number): Date {
   const probe = (offsetH: number): Date | null => {
     const candidate = new Date(Date.UTC(y, mo - 1, d, h + offsetH, mi));
@@ -91,13 +101,21 @@ function denverInstant(y: number, mo: number, d: number, h: number, mi: number):
     }
     return null;
   };
-  return probe(6) ?? probe(7) ?? new Date(Date.UTC(y, mo - 1, d, h + 6, mi));
+  const mdt = probe(6);
+  if (mdt) return mdt;
+  const mst = probe(7);
+  if (mst) return mst;
+  throw new Error(
+    `denverInstant: ${y}-${pad(mo)}-${pad(d)} ${pad(h)}:${pad(mi)} does not exist in America/Denver (DST skipped hour)`,
+  );
 }
 
 function nextWeeklyDates(weekday: number, count: number, from: Date): Date[] {
   const dates: Date[] = [];
   /* Start from `from`'s local Denver date, find the next matching
-     weekday (or today if it's already that weekday). */
+     weekday (or today if it's already that weekday and hasn't started
+     yet - that "hasn't started" check happens in the caller after
+     building the instant). */
   const ymd = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Denver",
     year: "numeric",
@@ -156,24 +174,23 @@ function nextMonthlyNthDates(weekday: number, nth: number, count: number, from: 
   return dates;
 }
 
-function slugify(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-
 function isValidConfig(c: unknown): c is RecurrenceConfig {
   if (!c || typeof c !== "object") return false;
   const o = c as Record<string, unknown>;
+  const isInt = (v: unknown, lo: number, hi: number) =>
+    typeof v === "number" && Number.isInteger(v) && v >= lo && v <= hi;
+  if (typeof o.slug !== "string" || !/^[a-z0-9-]+$/.test(o.slug)) return false;
   if (typeof o.title !== "string" || !o.title) return false;
   if (typeof o.city !== "string" || !o.city) return false;
-  if (typeof o.hour !== "number" || o.hour < 0 || o.hour > 23) return false;
+  if (!isInt(o.hour, 0, 23)) return false;
+  if (o.minute !== undefined && !isInt(o.minute, 0, 59)) return false;
+  if (o.durationMinutes !== undefined && !isInt(o.durationMinutes, 1, 24 * 60)) return false;
+  if (o.countAhead !== undefined && !isInt(o.countAhead, 1, 104)) return false;
   if (o.type === "weekly") {
-    return typeof o.weekday === "number" && o.weekday >= 0 && o.weekday <= 6;
+    return isInt(o.weekday, 0, 6);
   }
   if (o.type === "monthly_nth") {
-    return (
-      typeof o.weekday === "number" && o.weekday >= 0 && o.weekday <= 6 &&
-      typeof o.nth === "number" && o.nth >= 1 && o.nth <= 5
-    );
+    return isInt(o.weekday, 0, 6) && isInt(o.nth, 1, 5);
   }
   return false;
 }
@@ -199,6 +216,7 @@ export const recurrenceAdapter: Adapter<EventItem> = {
         : nextMonthlyNthDates(cfg.weekday, cfg.nth, count, now);
 
     const items: EventItem[] = [];
+    const cutoff = now.getTime() - 60 * 60 * 1000; // 1h grace, then drop
     for (const dateOnly of dates) {
       const y = Number(
         new Intl.DateTimeFormat("en-CA", { timeZone: "America/Denver", year: "numeric" })
@@ -213,11 +231,15 @@ export const recurrenceAdapter: Adapter<EventItem> = {
           .formatToParts(dateOnly).find((p) => p.type === "day")?.value,
       );
       const startsAt = denverInstant(y, m, d, hour, minute);
+      /* Skip instances that have already started (with 1h grace for an
+         event still in progress). Without this the weekly path would
+         materialize today's 9am instance at 3pm even though it's done. */
+      if (startsAt.getTime() < cutoff) continue;
       const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
       const dateKey = `${y}-${pad(m)}-${pad(d)}`;
       items.push({
-        source: `recurrence:${slugify(cfg.title)}`,
-        externalId: `${slugify(cfg.title)}-${dateKey}`,
+        source: `recurrence:${cfg.slug}`,
+        externalId: `${cfg.slug}-${dateKey}`,
         title: cfg.title,
         description: cfg.description,
         link: url,

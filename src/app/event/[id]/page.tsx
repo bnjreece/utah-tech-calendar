@@ -10,6 +10,7 @@ import { absoluteUrl } from "@/lib/seo";
 import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { mtDate, mtTime } from "@/lib/time";
+import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 
 export const dynamic = "force-dynamic";
 
@@ -28,15 +29,6 @@ async function resolveEventId(idParam: string): Promise<string | null> {
   const rows = (Array.isArray(r) ? r : r.rows ?? []) as Array<{ id: string }>;
   return rows[0]?.id ?? null;
 }
-
-const SOURCE_LABELS: Record<string, string> = {
-  meetup: "Meetup",
-  luma: "Luma",
-  eventbrite: "Eventbrite",
-  manual: "Community-submitted",
-  silicon_slopes: "Silicon Slopes",
-  forge_utah: "Forge Utah",
-};
 
 export async function generateMetadata({
   params,
@@ -106,7 +98,7 @@ export default async function EventDetailPage({
 
   const start = new Date(event.startsAt);
   const end = event.endsAt ? new Date(event.endsAt) : null;
-  const sourceLabel = SOURCE_LABELS[event.source] ?? event.source;
+  const sourceLabel = resolveSourceLabel(event.source);
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
 

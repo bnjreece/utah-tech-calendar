@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { UTAH_REGIONS, type UtahRegion } from "@/lib/regions";
 import {
   filtersToSearchParams,
-  SOURCE_LABELS,
+  sourceLabel,
   TYPE_LABELS,
   type FilterState,
   type EventType,
@@ -104,7 +104,7 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
   const tagOptions = tags.map((t) => ({ value: t.value, label: t.value, count: t.count }));
   const sourceOptions = sources.map((s) => ({
     value: s.value,
-    label: SOURCE_LABELS[s.value] ?? s.value,
+    label: sourceLabel(s.value),
     count: s.count,
   }));
 

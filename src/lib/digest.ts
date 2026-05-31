@@ -1,6 +1,6 @@
 import type { EventWithGroup } from "./queries";
 import type { FilterState } from "./filters";
-import { SOURCE_LABELS, TYPE_LABELS } from "./filters";
+import { sourceLabel, TYPE_LABELS } from "./filters";
 import { SITE_URL, absoluteUrl } from "./seo";
 import { eventSlug } from "./slugs";
 
@@ -14,7 +14,7 @@ export function describeFilters(f: FilterState): string | null {
   if (f.regions.length) parts.push(f.regions.join(", "));
   if (f.cities.length) parts.push(f.cities.join(", "));
   if (f.tags.length) parts.push(f.tags.join(", "));
-  if (f.sources.length) parts.push(f.sources.map((s) => SOURCE_LABELS[s] ?? s).join(", "));
+  if (f.sources.length) parts.push(f.sources.map((s) => sourceLabel(s)).join(", "));
   if (f.types.length) parts.push(f.types.map((t) => TYPE_LABELS[t]).join(", "));
   if (!parts.length) return null;
   const joined = parts.join(" · ");

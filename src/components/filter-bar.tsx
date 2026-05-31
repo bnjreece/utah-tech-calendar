@@ -6,7 +6,7 @@ import { UTAH_REGIONS, type UtahRegion } from "@/lib/regions";
 import {
   parseFilters,
   filtersToSearchParams,
-  SOURCE_LABELS,
+  sourceLabel,
   TYPE_LABELS,
   type FilterState,
   type EventType,
@@ -89,7 +89,7 @@ export function FilterBar({ cities, tags, sources }: Props) {
 
   const sourceOptions = sources.map((s) => ({
     value: s.value,
-    label: SOURCE_LABELS[s.value] ?? s.value,
+    label: sourceLabel(s.value),
     count: s.count,
     dotClass: STRATUM_CLASSES[stratumForEvent(s.value)].bar,
   }));
@@ -196,7 +196,7 @@ export function FilterBar({ cities, tags, sources }: Props) {
           {filters.sources.map((s) => (
             <ActiveChip
               key={`s-${s}`}
-              label={SOURCE_LABELS[s] ?? s}
+              label={sourceLabel(s)}
               onRemove={() => clearOne("sources", s)}
             />
           ))}

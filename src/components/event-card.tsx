@@ -3,21 +3,13 @@ import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { eventSlug } from "@/lib/slugs";
 import { mtTime, mtMonth, mtWeekday, mtDayNum } from "@/lib/time";
-
-const SOURCE_LABELS: Record<string, string> = {
-  meetup: "Meetup",
-  luma: "Luma",
-  eventbrite: "Eventbrite",
-  manual: "Community",
-  silicon_slopes: "Silicon Slopes",
-  forge_utah: "Forge Utah",
-};
+import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 
 export function EventCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
-  const sourceLabel = SOURCE_LABELS[event.source] ?? event.source;
+  const sourceLabel = resolveSourceLabel(event.source);
   const time = mtTime(start);
   const month = mtMonth(start);
   const weekday = mtWeekday(start);

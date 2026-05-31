@@ -1,7 +1,7 @@
 import { eq, asc, gte, and } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { restoreEvent } from "@/lib/admin-actions";
-import { SOURCE_LABELS } from "@/lib/filters";
+import { SOURCE_LABELS, sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { mtDate } from "@/lib/time";
 
@@ -29,7 +29,7 @@ export default async function HiddenEventsPage() {
         {rows.map(({ event: e, group: g }) => {
           const stratum = stratumForEvent(e.source);
           const colors = STRATUM_CLASSES[stratum];
-          const sourceLabel = SOURCE_LABELS[e.source] ?? e.source;
+          const sourceLabel = resolveSourceLabel(e.source);
           const start = new Date(e.startsAt);
           return (
             <li

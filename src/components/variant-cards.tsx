@@ -3,15 +3,7 @@ import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { eventSlug } from "@/lib/slugs";
 import { mtDate, mtTime, mtDayNum, mtYear } from "@/lib/time";
-
-const SOURCE_LABELS: Record<string, string> = {
-  meetup: "Meetup",
-  luma: "Luma",
-  eventbrite: "Eventbrite",
-  manual: "Community",
-  silicon_slopes: "Silicon Slopes",
-  forge_utah: "Forge Utah",
-};
+import { sourceLabel } from "@/lib/filters";
 
 function fmtDate(d: Date) {
   return {
@@ -31,7 +23,7 @@ function fmtDate(d: Date) {
 export function EditorialStripCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
-  const source = SOURCE_LABELS[event.source] ?? event.source;
+  const source = sourceLabel(event.source);
   return (
     <Link
       href={`/event/${eventSlug(event.title, event.id)}`}
@@ -130,7 +122,7 @@ export function EditorialLinearCardCompact({ event }: { event: EventWithGroup })
 export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
-  const source = SOURCE_LABELS[event.source] ?? event.source;
+  const source = sourceLabel(event.source);
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
   const placeParts = [event.venueName, event.city].filter(Boolean);
@@ -184,7 +176,7 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
 export function WasatchCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
-  const source = SOURCE_LABELS[event.source] ?? event.source;
+  const source = sourceLabel(event.source);
   return (
     <Link
       href={`/event/${eventSlug(event.title, event.id)}`}
@@ -233,7 +225,7 @@ export function WasatchCard({ event }: { event: EventWithGroup }) {
 export function ApartmentCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
-  const source = SOURCE_LABELS[event.source] ?? event.source;
+  const source = sourceLabel(event.source);
   return (
     <Link
       href={`/event/${eventSlug(event.title, event.id)}`}
@@ -288,7 +280,7 @@ export function ApartmentCard({ event }: { event: EventWithGroup }) {
 export function MainframeCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
-  const source = (SOURCE_LABELS[event.source] ?? event.source).toUpperCase();
+  const source = (sourceLabel(event.source)).toUpperCase();
   return (
     <Link
       href={`/event/${eventSlug(event.title, event.id)}`}
@@ -326,7 +318,7 @@ export function MainframeCard({ event }: { event: EventWithGroup }) {
 export function GlacierCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
   const d = fmtDate(start);
-  const source = SOURCE_LABELS[event.source] ?? event.source;
+  const source = sourceLabel(event.source);
   return (
     <Link
       href={`/event/${eventSlug(event.title, event.id)}`}

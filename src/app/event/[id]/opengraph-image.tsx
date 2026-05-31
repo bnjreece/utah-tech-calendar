@@ -8,6 +8,7 @@ import { db, events } from "@/lib/db";
 import { getEventById } from "@/lib/queries";
 import { extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 import { mtDate, mtTime } from "@/lib/time";
+import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 
 export const runtime = "nodejs";
 export const alt = "Utah Tech Calendar";
@@ -32,15 +33,6 @@ const SOURCE_COLORS: Record<string, string> = {
   manual: SAGE,
 };
 
-const SOURCE_LABELS: Record<string, string> = {
-  meetup: "Meetup",
-  luma: "Luma",
-  eventbrite: "Eventbrite",
-  silicon_slopes: "Silicon Slopes",
-  forge_utah: "Forge Utah",
-  substack: "Substack",
-  manual: "Community",
-};
 
 async function resolveEventId(idParam: string): Promise<string | null> {
   if (looksLikeUuid(idParam)) return idParam;
@@ -76,7 +68,7 @@ export default async function EventOgImage({
   const placeParts = event
     ? [event.venueName, event.city].filter(Boolean).join(" · ")
     : "Utah";
-  const sourceLabel = event ? SOURCE_LABELS[event.source] ?? event.source : "";
+  const sourceLabel = event ? resolveSourceLabel(event.source) : "";
   const sourceColor = event ? SOURCE_COLORS[event.source] ?? INK_SOFT : INK_SOFT;
   const tags: string[] = [];
   if (event?.isConference) tags.push("· Conference");
