@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -156,6 +157,26 @@ export const emailSubscriptions = pgTable(
 
 export type EmailSubscription = typeof emailSubscriptions.$inferSelect;
 export type NewEmailSubscription = typeof emailSubscriptions.$inferInsert;
+
+/* Singleton admin preferences. The id column is CHECK-constrained to
+   1 at the DB level so we always upsert into the same row regardless
+   of how many edits land. */
+export const adminSettings = pgTable("admin_settings", {
+  id: integer("id").primaryKey().default(1),
+  alertEmail: text("alert_email"),
+  notifySourceErrors: boolean("notify_source_errors").notNull().default(true),
+  notifySourceStale: boolean("notify_source_stale").notNull().default(true),
+  notifyCookieExpiry: boolean("notify_cookie_expiry").notNull().default(true),
+  staleThresholdHours: integer("stale_threshold_hours").notNull().default(24),
+  /* Last time the health-alerts cron emailed - used both for "send
+     once per day max" rate-limiting and for the alerts hash dedup. */
+  lastAlertsSentAt: timestamp("last_alerts_sent_at", { withTimezone: true }),
+  lastAlertsHash: text("last_alerts_hash"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AdminSettings = typeof adminSettings.$inferSelect;
+export type NewAdminSettings = typeof adminSettings.$inferInsert;
 
 export type Group = typeof groups.$inferSelect;
 export type NewGroup = typeof groups.$inferInsert;

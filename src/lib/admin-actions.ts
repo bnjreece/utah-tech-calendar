@@ -2,8 +2,49 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { db, events, sources } from "@/lib/db";
+import { db, events, sources, adminSettings } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
+
+export interface AdminSettingsInput {
+  alertEmail: string;
+  notifySourceErrors: boolean;
+  notifySourceStale: boolean;
+  notifyCookieExpiry: boolean;
+  staleThresholdHours: number;
+}
+
+export async function saveAdminSettings(input: AdminSettingsInput) {
+  await requireAdmin();
+  const email = (input.alertEmail || "").trim().toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("Invalid alert email");
+  }
+  const hours = Math.max(1, Math.min(168, Math.round(input.staleThresholdHours)));
+  await db
+    .insert(adminSettings)
+    .values({
+      id: 1,
+      alertEmail: email || null,
+      notifySourceErrors: input.notifySourceErrors,
+      notifySourceStale: input.notifySourceStale,
+      notifyCookieExpiry: input.notifyCookieExpiry,
+      staleThresholdHours: hours,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: adminSettings.id,
+      set: {
+        alertEmail: email || null,
+        notifySourceErrors: input.notifySourceErrors,
+        notifySourceStale: input.notifySourceStale,
+        notifyCookieExpiry: input.notifyCookieExpiry,
+        staleThresholdHours: hours,
+        updatedAt: new Date(),
+      },
+    });
+  revalidatePath("/admin/notifications");
+  revalidatePath("/admin");
+}
 
 export async function approveEvent(id: string) {
   await requireAdmin();
