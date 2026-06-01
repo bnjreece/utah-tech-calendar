@@ -112,9 +112,11 @@ async function upsertEvent(item: EventItem, groupId: string | undefined, default
      'pending' from requires_review sources) - we don't want a craft
      event to end up on the moderation queue. */
   const status = isCraft ? "hidden" : defaultStatus;
+  const hiddenReason = isCraft ? "craft" : null;
   await db.insert(events).values({
     ...baseValues,
     status,
+    hiddenReason,
     isConference,
     isPaid,
   });

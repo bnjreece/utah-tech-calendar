@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
 import { db, adminSettings } from "@/lib/db";
 import { fetchQueueSnapshot, buildQueueDigestEmail } from "@/lib/queue-digest";
 import { sendEmail } from "@/lib/email";
@@ -29,6 +30,23 @@ export async function GET(request: NextRequest) {
     return Response.json({ ok: true, skipped: "no_alert_email" });
   }
 
+  /* Heartbeat - stamp the moment the cron actually started, before
+     fetching the queue. /admin reads this to surface "queue digest
+     ran X hours ago" so the admin can spot a silent cron outage even
+     during empty-queue days. Skip on dryRun so a smoke-test doesn't
+     pollute the heartbeat reading. */
+  const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
+  if (!dryRun) {
+    try {
+      await db
+        .update(adminSettings)
+        .set({ lastQueueDigestRunAt: new Date() })
+        .where(eq(adminSettings.id, 1));
+    } catch (err) {
+      console.warn("[queue-digest] heartbeat update failed", err);
+    }
+  }
+
   const snapshot = await fetchQueueSnapshot();
   const total = snapshot.pendingEvents.length + snapshot.pendingSubmissions.length;
   if (total === 0) {
@@ -38,7 +56,6 @@ export async function GET(request: NextRequest) {
     return Response.json({ ok: true, skipped: "queue_empty" });
   }
 
-  const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
   const content = buildQueueDigestEmail(snapshot);
   if (dryRun) {
     /* Include the rendered text/html bodies so the admin can curl

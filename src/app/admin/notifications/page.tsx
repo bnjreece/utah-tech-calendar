@@ -14,8 +14,18 @@ async function loadSettings() {
       notifyCookieExpiry: true,
       staleThresholdHours: 24,
       lastAlertsSentAt: null,
+      lastQueueDigestRunAt: null,
+      lastScrapeTickAt: null,
     }
   );
+}
+
+function fmtRelative(d: Date): string {
+  const ms = Date.now() - d.getTime();
+  const h = Math.floor(ms / 3_600_000);
+  if (h < 1) return `${Math.max(1, Math.floor(ms / 60_000))} min ago`;
+  if (h < 48) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 export default async function NotificationsPage() {
@@ -106,11 +116,26 @@ export default async function NotificationsPage() {
           </span>
         </label>
 
-        {s.lastAlertsSentAt && (
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft border-t border-ink/15 pt-6">
-            Last alert email: {new Date(s.lastAlertsSentAt).toLocaleString("en-US", { timeZone: "America/Denver" })}
-          </p>
-        )}
+        <dl className="border-t border-ink/15 pt-6 grid grid-cols-[1fr_auto] gap-y-2 gap-x-6 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+          <dt>Last source-health email</dt>
+          <dd className="tabular-nums">
+            {s.lastAlertsSentAt
+              ? `${fmtRelative(new Date(s.lastAlertsSentAt))} · ${new Date(s.lastAlertsSentAt).toLocaleString("en-US", { timeZone: "America/Denver", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+              : "never"}
+          </dd>
+          <dt>Last queue-digest cron run</dt>
+          <dd className="tabular-nums">
+            {s.lastQueueDigestRunAt
+              ? `${fmtRelative(new Date(s.lastQueueDigestRunAt))} · ${new Date(s.lastQueueDigestRunAt).toLocaleString("en-US", { timeZone: "America/Denver", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+              : "not yet · fires daily 13:30 UTC"}
+          </dd>
+          <dt>Last scrape tick</dt>
+          <dd className="tabular-nums">
+            {s.lastScrapeTickAt
+              ? `${fmtRelative(new Date(s.lastScrapeTickAt))} · ${new Date(s.lastScrapeTickAt).toLocaleString("en-US", { timeZone: "America/Denver", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+              : "never"}
+          </dd>
+        </dl>
 
         <button
           type="submit"

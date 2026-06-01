@@ -15,6 +15,13 @@
       "when": 1780237635514,
       "tag": "0001_outgoing_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780336715177,
+      "tag": "0002_slimy_wiccan",
+      "breakpoints": true
     }
   ]
 }

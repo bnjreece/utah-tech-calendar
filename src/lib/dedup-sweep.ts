@@ -105,7 +105,7 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
   if (toHide.size > 0) {
     await db
       .update(events)
-      .set({ status: "hidden" })
+      .set({ status: "hidden", hiddenReason: "cross-post" })
       .where(inArray(events.id, [...toHide]));
   }
 

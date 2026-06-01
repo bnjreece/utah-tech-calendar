@@ -1,108 +1,230 @@
 import { eq, asc } from "drizzle-orm";
-import { db, events, groups } from "@/lib/db";
-import { approveEvent, rejectEvent } from "@/lib/admin-actions";
-import { SOURCE_LABELS, sourceLabel as resolveSourceLabel } from "@/lib/filters";
+import { db, events, groups, pendingSubmissions } from "@/lib/db";
+import {
+  approveEvent,
+  rejectEvent,
+  approveSubmission,
+  rejectSubmission,
+} from "@/lib/admin-actions";
+import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
+import { displayTitle } from "@/lib/display";
 import { mtDate, mtTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
+interface SubmissionPayload {
+  title?: unknown;
+  description?: unknown;
+  link?: unknown;
+  startsAt?: unknown;
+  venueName?: unknown;
+  city?: unknown;
+}
+
+function strField(p: SubmissionPayload, key: keyof SubmissionPayload): string | null {
+  const v = p[key];
+  return typeof v === "string" && v.trim().length > 0 ? v : null;
+}
+
 export default async function ReviewQueuePage() {
-  const rows = await db
+  const eventRows = await db
     .select({ event: events, group: groups })
     .from(events)
     .leftJoin(groups, eq(events.groupId, groups.id))
     .where(eq(events.status, "pending"))
     .orderBy(asc(events.startsAt));
 
-  if (rows.length === 0) {
+  const submissionRows = await db
+    .select()
+    .from(pendingSubmissions)
+    .where(eq(pendingSubmissions.status, "pending"))
+    .orderBy(asc(pendingSubmissions.createdAt));
+
+  if (eventRows.length === 0 && submissionRows.length === 0) {
     return (
       <div className="py-20 text-center">
         <p className="font-display text-2xl italic text-ink-soft">
           The queue is empty.
         </p>
         <p className="mt-3 text-sm text-ink-soft max-w-[40ch] mx-auto text-pretty">
-          New events from sources marked &quot;requires review&quot; will land
-          here.
+          New events from sources marked &quot;requires review&quot; and
+          drafts from /submit will both land here.
         </p>
       </div>
     );
   }
 
   return (
-    <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft mb-4">
-        {rows.length} pending
+    <div className="flex flex-col gap-12">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+        {eventRows.length} scraped · {submissionRows.length} submitted
       </p>
-      <ul role="list" className="flex flex-col">
-        {rows.map(({ event: e, group: g }) => {
-          const stratum = stratumForEvent(e.source);
-          const colors = STRATUM_CLASSES[stratum];
-          const sourceLabel = resolveSourceLabel(e.source);
-          const start = new Date(e.startsAt);
-          return (
-            <li
-              key={e.id}
-              className="grid grid-cols-[3px_1fr_auto] gap-x-5 items-start py-6 border-t border-ink/15 first:border-t-0"
-            >
-              <div className={`self-stretch ${colors.bar} opacity-80`} aria-hidden />
-              <div className="min-w-0">
-                <div className="flex items-baseline gap-3 flex-wrap font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
-                  <span>via {sourceLabel.toLowerCase()}</span>
-                  <span aria-hidden>·</span>
-                  <span>
-                    {mtDate(start, { weekday: "short", month: "short", day: "numeric" })}{" "}
-                    {mtTime(start)}
-                  </span>
-                  {g && (<><span aria-hidden>·</span><span>{g.name}</span></>)}
-                </div>
-                <h3 className="mt-1.5 font-display text-xl leading-snug -tracking-[0.005em] text-ink">
-                  {e.title}
-                </h3>
-                {e.description && (
-                  <p className="mt-1.5 text-sm text-ink-soft text-pretty line-clamp-3 max-w-[68ch]">
-                    {e.description}
-                  </p>
-                )}
-                <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
-                  {[e.venueName, e.city].filter(Boolean).join(" · ") || "no venue"}
-                  {e.link && (
-                    <>
-                      {" · "}
-                      <a
-                        href={e.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-ink hover:underline decoration-1 underline-offset-2"
+
+      {eventRows.length > 0 && (
+        <section>
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-sunset-deep mb-4">
+            Scraped · {eventRows.length}
+          </h2>
+          <ul role="list" className="flex flex-col">
+            {eventRows.map(({ event: e, group: g }) => {
+              const stratum = stratumForEvent(e.source);
+              const colors = STRATUM_CLASSES[stratum];
+              const sourceLabel = resolveSourceLabel(e.source);
+              const start = new Date(e.startsAt);
+              const title = displayTitle({
+                title: e.title,
+                link: e.link,
+                group: g ? { name: g.name } : null,
+                source: e.source,
+              });
+              return (
+                <li
+                  key={e.id}
+                  className="grid grid-cols-[3px_1fr_auto] gap-x-5 items-start py-6 border-t border-ink/15 first:border-t-0"
+                >
+                  <div className={`self-stretch ${colors.bar} opacity-80`} aria-hidden />
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-3 flex-wrap font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                      <span>via {sourceLabel.toLowerCase()}</span>
+                      <span aria-hidden>·</span>
+                      <span>
+                        {mtDate(start, { weekday: "short", month: "short", day: "numeric" })}{" "}
+                        {mtTime(start)}
+                      </span>
+                      {g && (<><span aria-hidden>·</span><span>{g.name}</span></>)}
+                    </div>
+                    <h3 className="mt-1.5 font-display text-xl leading-snug -tracking-[0.005em] text-ink">
+                      {title}
+                    </h3>
+                    {e.description && (
+                      <p className="mt-1.5 text-sm text-ink-soft text-pretty line-clamp-3 max-w-[68ch]">
+                        {e.description}
+                      </p>
+                    )}
+                    <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                      {[e.venueName, e.city].filter(Boolean).join(" · ") || "no venue"}
+                      {e.link && (
+                        <>
+                          {" · "}
+                          <a
+                            href={e.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-ink hover:underline decoration-1 underline-offset-2"
+                          >
+                            source ↗
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 self-start">
+                    <form action={approveEvent.bind(null, e.id)}>
+                      <button
+                        type="submit"
+                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
                       >
-                        source ↗
-                      </a>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 self-start">
-                <form action={approveEvent.bind(null, e.id)}>
-                  <button
-                    type="submit"
-                    className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
-                  >
-                    Approve
-                  </button>
-                </form>
-                <form action={rejectEvent.bind(null, e.id)}>
-                  <button
-                    type="submit"
-                    className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
-                  >
-                    Reject
-                  </button>
-                </form>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                        Approve
+                      </button>
+                    </form>
+                    <form action={rejectEvent.bind(null, e.id)}>
+                      <button
+                        type="submit"
+                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
+                      >
+                        Reject
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {submissionRows.length > 0 && (
+        <section>
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-dusk-deep mb-4">
+            Submitted · {submissionRows.length}
+          </h2>
+          <ul role="list" className="flex flex-col">
+            {submissionRows.map((s) => {
+              const p = (s.payload as SubmissionPayload) ?? {};
+              const title = strField(p, "title") ?? "(untitled draft)";
+              const desc = strField(p, "description");
+              const link = strField(p, "link");
+              const startsAt = strField(p, "startsAt");
+              const venue = strField(p, "venueName");
+              const city = strField(p, "city");
+              const submitter = s.submitterName ?? s.submitterEmail ?? "anonymous";
+              const start = startsAt ? new Date(startsAt) : null;
+              return (
+                <li
+                  key={s.id}
+                  className="grid grid-cols-[3px_1fr_auto] gap-x-5 items-start py-6 border-t border-ink/15 first:border-t-0"
+                >
+                  <div className="self-stretch bg-dusk-deep/40" aria-hidden />
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-3 flex-wrap font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                      <span>from {submitter}</span>
+                      <span aria-hidden>·</span>
+                      <span>
+                        {start && !Number.isNaN(start.getTime())
+                          ? `${mtDate(start, { weekday: "short", month: "short", day: "numeric" })} ${mtTime(start)}`
+                          : "date tbd"}
+                      </span>
+                    </div>
+                    <h3 className="mt-1.5 font-display text-xl leading-snug -tracking-[0.005em] text-ink">
+                      {title}
+                    </h3>
+                    {desc && (
+                      <p className="mt-1.5 text-sm text-ink-soft text-pretty line-clamp-3 max-w-[68ch]">
+                        {desc}
+                      </p>
+                    )}
+                    <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                      {[venue, city].filter(Boolean).join(" · ") || "no venue"}
+                      {link && (
+                        <>
+                          {" · "}
+                          <a
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-ink hover:underline decoration-1 underline-offset-2"
+                          >
+                            submitter link ↗
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 self-start">
+                    <form action={approveSubmission.bind(null, s.id)}>
+                      <button
+                        type="submit"
+                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
+                      >
+                        Approve
+                      </button>
+                    </form>
+                    <form action={rejectSubmission.bind(null, s.id)}>
+                      <button
+                        type="submit"
+                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
+                      >
+                        Reject
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

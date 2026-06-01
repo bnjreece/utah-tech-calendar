@@ -70,6 +70,13 @@ export const events = pgTable(
        brackets around the date + a PENCILED trailing badge. Flip to
        false when the real date is announced. */
     isTentative: boolean("is_tentative").notNull().default(false),
+    /* For status='hidden' rows, why - so /admin/hidden can group by
+       the cause (craft filter, cross-post dedup-sweep, cert-spam,
+       manual admin reject, source disabled). NULL on
+       status='approved' or 'pending' rows. New enum-ish strings:
+       'craft' | 'cert-spam' | 'cross-post' | 'manual' |
+       'source-disabled' | 'unknown' (legacy). */
+    hiddenReason: text("hidden_reason"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -177,6 +184,11 @@ export const adminSettings = pgTable("admin_settings", {
      when every individual source has lastScrapedAt updates that look
      fresh from a stale cached run. If this gets too old, alert. */
   lastScrapeTickAt: timestamp("last_scrape_tick_at", { withTimezone: true }),
+  /* Heartbeat - stamped at the start of every queue-digest cron tick
+     regardless of whether the email was actually sent (the cron is
+     skip-if-empty). Lets /admin show "queue digest ran 4h ago" so the
+     admin can spot a silent cron outage even during dry weeks. */
+  lastQueueDigestRunAt: timestamp("last_queue_digest_run_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
