@@ -7,6 +7,7 @@ import { getEventById } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { EventJsonLd } from "@/components/json-ld";
 import { absoluteUrl } from "@/lib/seo";
+import { displayTitle } from "@/lib/display";
 import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { mtDate, mtTime } from "@/lib/time";
@@ -51,27 +52,30 @@ export async function generateMetadata({
   const where = event.isOnline
     ? "online"
     : [event.venueName, event.city].filter(Boolean).join(", ") || "Utah";
+  const friendlyTitle = displayTitle(event);
   const descBase =
     event.description?.replace(/\s+/g, " ").trim().slice(0, 200) ?? "";
   const description = descBase
     ? `${descBase} · ${when} · ${where}`
-    : `${event.title} on ${when} in ${where}. In-person Utah tech event.`;
+    : `${friendlyTitle} on ${when} in ${where}. In-person Utah tech event.`;
+  /* Canonical slug stays bound to the raw stored title so URLs don't
+     change when the placeholder is later updated by the organizer. */
   const canonical = `/event/${eventSlug(event.title, event.id)}`;
 
   return {
-    title: event.title,
+    title: friendlyTitle,
     description,
     alternates: { canonical },
     openGraph: {
       type: "article",
-      title: event.title,
+      title: friendlyTitle,
       description,
       url: absoluteUrl(canonical),
       images: event.imageUrl ? [{ url: event.imageUrl }] : undefined,
     },
     twitter: {
       card: event.imageUrl ? "summary_large_image" : "summary",
-      title: event.title,
+      title: friendlyTitle,
       description,
     },
   };
@@ -101,6 +105,7 @@ export default async function EventDetailPage({
   const sourceLabel = resolveSourceLabel(event.source);
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
+  const renderTitle = displayTitle(event);
 
   return (
     <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-10">
@@ -125,7 +130,7 @@ export default async function EventDetailPage({
             )}
           </div>
           <h1 className="mt-4 font-semibold text-4xl sm:text-5xl leading-[1.05] tracking-tight text-balance">
-            {event.title}
+            {renderTitle}
           </h1>
 
           <dl className="mt-8 grid grid-cols-1 sm:grid-cols-[--spacing(28)_1fr] gap-y-4 gap-x-8 border-t border-ink/10 pt-6">
@@ -212,7 +217,7 @@ export default async function EventDetailPage({
             <AddToCalendar
               eventId={event.id}
               eventSlug={canonical}
-              title={event.title}
+              title={renderTitle}
               startsAt={event.startsAt.toISOString()}
               endsAt={event.endsAt ? event.endsAt.toISOString() : null}
               description={event.description}

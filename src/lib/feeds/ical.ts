@@ -1,4 +1,5 @@
 import type { EventWithGroup } from "../queries";
+import { displayTitle } from "../display";
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -35,7 +36,14 @@ export function eventsToIcal(events: EventWithGroup[], host: string): string {
   for (const e of events) {
     const start = new Date(e.startsAt);
     const end = e.endsAt ? new Date(e.endsAt) : new Date(start.getTime() + 60 * 60 * 1000);
-    const summary = e.group ? `${e.group.name}: ${e.title}` : e.title;
+    const title = displayTitle(e);
+    /* Group prefix is the original ical convention from utah-dev-events
+       ("Utah JS: Monthly Meetup"). displayTitle already prepends the
+       group on TBD-pattern titles, so detect that and skip double-prefix. */
+    const titleAlreadyHasGroup =
+      !!e.group && title.toLowerCase().startsWith(e.group.name.toLowerCase());
+    const summary =
+      e.group && !titleAlreadyHasGroup ? `${e.group.name}: ${title}` : title;
     const locationParts = [e.venueName, e.address, e.city, e.state, e.postalCode].filter(Boolean);
     const location = locationParts.join(", ");
     const descriptionParts = [

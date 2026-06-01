@@ -42,6 +42,20 @@ function detectPaid(item: EventItem): boolean {
   return PAID_TITLE_RE.test(item.title) || PAID_NUMERIC_TRAINING_RE.test(item.title);
 }
 
+/* Pure-craft / makerspace events occasionally bleed in from sources we
+   keep enabled for their tech content (slc-tech, utah-iot, etc.). The
+   strongest signals are "Make & Take" workshop format and physical
+   craft mediums. Conservative: only match clear craft keywords so a
+   legitimate "Laser Cutter for IoT Enclosures" workshop still lands.
+   New matches insert as status='hidden' so they're auditable without
+   surfacing on the calendar. */
+const CRAFT_REJECT_RE =
+  /\b(make\s*(?:&|and)\s*take|woodturning|wood\s+turning|woodshop|lathe|sewing machine|cutting board|wood ring|knitting class|crochet class|quilting class|ceramics class|pottery class|jewelry making|soap making|candle making|makerspace tour)\b/i;
+
+function detectCraft(item: EventItem): boolean {
+  return CRAFT_REJECT_RE.test(item.title);
+}
+
 async function upsertEvent(item: EventItem, groupId: string | undefined, defaultStatus: string = "approved") {
   const existing = await db
     .select({ id: events.id })
@@ -88,9 +102,16 @@ async function upsertEvent(item: EventItem, groupId: string | undefined, default
   }
   const isConference = detectConference(item);
   const isPaid = detectPaid(item);
+  const isCraft = detectCraft(item);
+  /* Craft-pattern matches insert as 'hidden' instead of being silently
+     dropped, so admin can audit false positives via /admin without
+     re-running the scrape. Status overrides defaultStatus (incl. the
+     'pending' from requires_review sources) - we don't want a craft
+     event to end up on the moderation queue. */
+  const status = isCraft ? "hidden" : defaultStatus;
   await db.insert(events).values({
     ...baseValues,
-    status: defaultStatus,
+    status,
     isConference,
     isPaid,
   });

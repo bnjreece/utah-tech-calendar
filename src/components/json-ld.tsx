@@ -4,6 +4,7 @@
 
 import type { EventWithGroup } from "@/lib/queries";
 import { ORGANIZATION_NAME, SITE_DESCRIPTION, SITE_URL, absoluteUrl } from "@/lib/seo";
+import { displayTitle } from "@/lib/display";
 
 interface JsonLdProps {
   data: unknown;
@@ -92,7 +93,7 @@ export function EventJsonLd({ event }: { event: EventWithGroup }) {
   const data = {
     "@context": "https://schema.org",
     "@type": "Event",
-    name: event.title,
+    name: displayTitle(event),
     description: event.description?.slice(0, 500) ?? undefined,
     startDate: startISO,
     endDate: endISO,

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { eventSlug } from "@/lib/slugs";
+import { displayTitle } from "@/lib/display";
 import { mtTime, mtMonth, mtWeekday, mtDayNum } from "@/lib/time";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 
@@ -14,6 +15,9 @@ export function EventCard({ event }: { event: EventWithGroup }) {
   const month = mtMonth(start);
   const weekday = mtWeekday(start);
   const dayNum = mtDayNum(start);
+  /* Slug uses raw title for URL stability; presentation uses the
+     prettified form so "TBD" reads as e.g. "Utah Go · TBD". */
+  const title = displayTitle(event);
 
   return (
     <Link
@@ -49,7 +53,7 @@ export function EventCard({ event }: { event: EventWithGroup }) {
 
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-lg leading-snug text-balance group-hover:text-sunset-deep transition-colors">
-            {event.title}
+            {title}
           </h3>
           {event.description && (
             <p className="mt-1.5 text-sm text-ink-soft text-pretty line-clamp-2">

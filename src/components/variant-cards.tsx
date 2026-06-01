@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { eventSlug } from "@/lib/slugs";
+import { displayTitle } from "@/lib/display";
 import { mtDate, mtTime, mtDayNum, mtYear } from "@/lib/time";
 import { sourceLabel } from "@/lib/filters";
 
@@ -42,7 +43,7 @@ export function EditorialStripCard({ event }: { event: EventWithGroup }) {
       </div>
       <div className="min-w-0">
         <h3 className="font-display text-3xl sm:text-4xl leading-[1.05] tracking-tight text-balance text-ink group-hover:text-sunset-deep transition-colors">
-          {event.title}
+          {displayTitle(event)}
         </h3>
         {event.description && (
           <p className="mt-3 text-base text-ink-soft text-pretty line-clamp-2 max-w-[60ch] leading-relaxed">
@@ -102,7 +103,7 @@ export function EditorialLinearCardCompact({ event }: { event: EventWithGroup })
       </div>
       <div className="flex items-baseline gap-3 min-w-0">
         <h3 className="font-display text-sm sm:text-base leading-snug text-ink truncate group-hover:text-sunset-deep transition-colors flex-1 min-w-0">
-          {event.title}
+          {displayTitle(event)}
         </h3>
         {badgeLabel && (
           <span className={`shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] ${badgeClass}`}>
@@ -148,7 +149,7 @@ export function EditorialLinearCard({ event }: { event: EventWithGroup }) {
       <div className="min-w-0">
         <div className="flex items-baseline gap-4 sm:gap-6">
           <h3 className="font-display text-xl sm:text-2xl leading-[1.2] -tracking-[0.005em] text-pretty text-ink group-hover:text-sunset-deep group-hover:underline decoration-1 underline-offset-4 transition-colors flex-1 min-w-0">
-            {event.title}
+            {displayTitle(event)}
           </h3>
           {badgeLabel && (
             <span className={`shrink-0 self-baseline font-mono text-[10px] uppercase tracking-[0.24em] ${badgeClass}`}>
@@ -198,7 +199,7 @@ export function WasatchCard({ event }: { event: EventWithGroup }) {
           <span className="ml-auto text-ink-soft tabular-nums">{d.time}</span>
         </div>
         <h3 className="mt-4 font-display text-2xl leading-[1.15] tracking-tight text-balance group-hover:text-sunset-deep transition-colors">
-          {event.title}
+          {displayTitle(event)}
         </h3>
         {event.description && (
           <p className="mt-2 text-sm text-ink-soft text-pretty line-clamp-2">
@@ -247,7 +248,7 @@ export function ApartmentCard({ event }: { event: EventWithGroup }) {
           № {source}
         </span>
         <h3 className="mt-2 font-display text-4xl sm:text-5xl leading-[1.02] tracking-tight text-balance group-hover:text-sunset-deep transition-colors">
-          {event.title}
+          {displayTitle(event)}
         </h3>
         {event.description && (
           <p className="mt-3 text-base text-ink-soft text-pretty line-clamp-2 max-w-[60ch]">
@@ -296,7 +297,7 @@ export function MainframeCard({ event }: { event: EventWithGroup }) {
           ◆ {d.iso}
         </div>
         <h3 className="font-semibold text-base leading-tight text-balance">
-          {"> "}{event.title}
+          {"> "}{displayTitle(event)}
         </h3>
         {event.description && (
           <p className="text-xs text-ink-soft text-pretty line-clamp-3">
@@ -336,7 +337,7 @@ export function GlacierCard({ event }: { event: EventWithGroup }) {
         </span>
       </div>
       <h3 className="font-semibold text-lg leading-snug text-balance group-hover:text-sunset-deep transition-colors -tracking-[0.01em]">
-        {event.title}
+        {displayTitle(event)}
       </h3>
       {event.description && (
         <p className="mt-2 text-sm text-ink-soft text-pretty line-clamp-2">

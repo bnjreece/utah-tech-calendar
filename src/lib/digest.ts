@@ -3,6 +3,7 @@ import type { FilterState } from "./filters";
 import { sourceLabel, TYPE_LABELS } from "./filters";
 import { SITE_URL, absoluteUrl } from "./seo";
 import { eventSlug } from "./slugs";
+import { displayTitle } from "./display";
 
 /* Human-readable filter description for the digest header + subject.
    Returns null when the slice is "everything" so the caller can fall
@@ -134,7 +135,8 @@ export function buildDigest(input: BuildDigestInput): DigestContent {
         ? "online"
         : [e.venueName, e.city].filter(Boolean).join(", ") || "Utah";
       const url = absoluteUrl(`/event/${eventSlug(e.title, e.id)}`);
-      textLines.push(`  ${fmtTime(start)} - ${e.title}`);
+      const title = displayTitle(e);
+      textLines.push(`  ${fmtTime(start)} - ${title}`);
       textLines.push(`    ${where}`);
       textLines.push(`    ${url}`);
       textLines.push("");
@@ -171,7 +173,7 @@ export function buildDigest(input: BuildDigestInput): DigestContent {
               </td>
               <td style="vertical-align:top;">
                 ${badges}
-                <a href="${url}" style="font-family:Georgia,'DM Serif Display',serif;font-size:20px;line-height:1.25;color:${INK};text-decoration:none;font-style:italic;">${escapeHtml(e.title)}</a>
+                <a href="${url}" style="font-family:Georgia,'DM Serif Display',serif;font-size:20px;line-height:1.25;color:${INK};text-decoration:none;font-style:italic;">${escapeHtml(displayTitle(e))}</a>
                 <div style="margin-top:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:${INK_SOFT};">${escapeHtml(where || "")}</div>
               </td>
             </tr>
