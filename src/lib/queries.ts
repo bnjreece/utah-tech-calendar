@@ -111,6 +111,36 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
   return enriched;
 }
 
+export async function getRecentlyAddedEvents(limit = 50): Promise<EventWithGroup[]> {
+  /* RSS "what's new" feed: newest rows we've ingested, narrowed to
+     upcoming + in-person + approved. Sorted by created_at desc so a
+     reader's "5 new today" grouping matches reality (vs ordering by
+     startsAt, which makes every event appear as "published on its
+     event date" and floods the today bucket). */
+  const rows = await db
+    .select({ event: events, group: groups })
+    .from(events)
+    .leftJoin(groups, eq(events.groupId, groups.id))
+    .where(
+      and(
+        eq(events.status, "approved"),
+        eq(events.isOnline, false),
+        gte(events.startsAt, new Date()),
+      ),
+    )
+    .orderBy(desc(events.createdAt))
+    .limit(limit);
+  return rows.map((r) => ({
+    ...r.event,
+    group: r.group,
+    region: categorizeRegion({
+      city: r.event.city,
+      venueName: r.event.venueName,
+      address: r.event.address,
+    }),
+  }));
+}
+
 export async function getEventById(id: string): Promise<EventWithGroup | null> {
   const [row] = await db
     .select({ event: events, group: groups })
