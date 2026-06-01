@@ -11,6 +11,10 @@
     "src/app/api/cron/health-alerts/route.ts": {
       "memory": 256,
       "maxDuration": 60
+    },
+    "src/app/api/cron/queue-digest/route.ts": {
+      "memory": 256,
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -25,6 +29,10 @@
     {
       "path": "/api/cron/health-alerts",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/queue-digest",
+      "schedule": "30 13 * * *"
     }
   ]
 }

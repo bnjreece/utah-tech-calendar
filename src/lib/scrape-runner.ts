@@ -34,9 +34,9 @@ function detectConference(item: EventItem): boolean {
    commits. Avoids false positives on community events that mention
    "training" casually. */
 const PAID_TITLE_RE =
-  /\b(certification training|training program|exam prep|bootcamp|cissp|capm|pmp|isc[²2]|ceh|comptia|isaca|itil|cpmai|caip)\b/i;
+  /\b(certification training|training program|exam prep|bootcamp|cissp|capm|pmp|isc[²2]|ceh|comptia|isaca|itil|cpmai|caip|scrum master|prince2|safe agile|tableau certification|six sigma|black belt|green belt|pmi-acp)\b/i;
 const PAID_NUMERIC_TRAINING_RE =
-  /\b\d+\s*(?:days?|hours?|weeks?|sessions?|weekends?)\s+(?:training|workshop|course|bootcamp)\b/i;
+  /\b\d+\s*(?:days?|hours?|weeks?|sessions?|weekends?)(?:\s+\w+){0,3}\s+(?:training|workshop|course|bootcamp|class(?:room)?)\b/i;
 
 function detectPaid(item: EventItem): boolean {
   return PAID_TITLE_RE.test(item.title) || PAID_NUMERIC_TRAINING_RE.test(item.title);
