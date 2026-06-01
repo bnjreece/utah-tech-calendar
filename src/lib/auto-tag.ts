@@ -67,11 +67,42 @@ const RULES: TagRule[] = [
   { tag: "meetup", re: /\b(meetup|networking|mixer|happy hour)\b/i },
 ];
 
+/* Cert-spam pattern - kept in sync with scrape-runner's PAID_TITLE_RE.
+   Two shapes: explicit cert keywords (CISSP, CPMAI, ...), and the
+   generic Eventbrite "N Days Training" / "N Hours Workshop" pattern
+   that ad sellers use to grab keyword traffic. Either gate flips the
+   "skip strong content tags" switch below. */
+const CERT_SPAM_KEYWORDS_RE =
+  /\b(certification|certification training|training program|exam prep|bootcamp|cissp|capm|pmp|isc[²2]|ceh|comptia|isaca|itil|cpmai|caip|caissp)\b/i;
+const NUMERIC_TRAINING_RE =
+  /\b\d+\s*(?:days?|hours?|weeks?|sessions?|weekends?)\s+(?:training|workshop|course|bootcamp)\b/i;
+function isCertSpamTitle(haystack: string): boolean {
+  return CERT_SPAM_KEYWORDS_RE.test(haystack) || NUMERIC_TRAINING_RE.test(haystack);
+}
+
+/* Strong content categories shouldn't accept a Salesforce-style
+   "PMI-CPMAI Certification weekend Training" event as legitimate AI
+   programming. Format tags (workshop/training/meetup) still apply to
+   these rows so they remain searchable, just not under the
+   audience-misleading content lens. */
+const STRONG_CONTENT_TAGS = new Set([
+  "ai",
+  "machine-learning",
+  "data",
+  "cybersecurity",
+  "cloud",
+  "blockchain",
+  "devops",
+]);
+
 export function inferTagsFromTitle(title: string, description?: string | null): string[] {
   const haystack = `${title} ${description ?? ""}`;
+  const isCertSpam = isCertSpamTitle(haystack);
   const tags = new Set<string>();
   for (const rule of RULES) {
-    if (rule.re.test(haystack)) tags.add(rule.tag);
+    if (!rule.re.test(haystack)) continue;
+    if (isCertSpam && STRONG_CONTENT_TAGS.has(rule.tag)) continue;
+    tags.add(rule.tag);
   }
   return [...tags];
 }
