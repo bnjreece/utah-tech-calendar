@@ -93,9 +93,9 @@ const TIME_FMT = new Intl.DateTimeFormat("en-US", {
 });
 
 function fmtWhen(iso: string | Date | null): string {
-  if (!iso) return "no date";
+  if (!iso) return "date tbd";
   const d = iso instanceof Date ? iso : new Date(iso);
-  if (Number.isNaN(d.getTime())) return "no date";
+  if (Number.isNaN(d.getTime())) return "date tbd";
   const date = DATE_FMT.format(d);
   const time = TIME_FMT.format(d).replace(" ", "").toLowerCase();
   return `${date} · ${time}`;
@@ -109,8 +109,13 @@ export function buildQueueDigestEmail(
   const total = eventCount + subCount;
 
   /* Subject mirrors the digest's "<count> Utah tech events…" rhythm.
-     One number, one noun, optionally a tail when both queues populated. */
+     One number, one noun, optionally a tail when both queues populated.
+     The cron route guards against `total === 0` before calling this
+     function, but the function is exported - guard here too so a
+     direct caller (preview script, test) doesn't render a nonsense
+     "0 submissions" subject. */
   const subject = (() => {
+    if (total === 0) return "Review queue is empty";
     if (eventCount > 0 && subCount > 0) {
       return `${total} in review · ${eventCount} scraped, ${subCount} submitted`;
     }
@@ -136,7 +141,7 @@ export function buildQueueDigestEmail(
       const title = displayTitle({
         title: row.event.title,
         link: row.event.link,
-        group: row.groupName ? { name: row.groupName, slug: "", description: null, source: null, externalId: null, website: null, imageUrl: null, defaultTags: null, status: "active", createdAt: new Date() } as unknown as Parameters<typeof displayTitle>[0]["group"] : null,
+        group: row.groupName ? { name: row.groupName } : null,
         source: row.event.source,
       });
       textLines.push(`  ${fmtWhen(row.event.startsAt)} - ${title}`);
@@ -163,9 +168,7 @@ export function buildQueueDigestEmail(
     const title = displayTitle({
       title: row.event.title,
       link: row.event.link,
-      group: row.groupName
-        ? ({ name: row.groupName } as unknown as Parameters<typeof displayTitle>[0]["group"])
-        : null,
+      group: row.groupName ? { name: row.groupName } : null,
       source: row.event.source,
     });
     const sourceTag = resolveSourceLabel(row.event.source);

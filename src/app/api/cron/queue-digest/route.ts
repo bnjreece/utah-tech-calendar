@@ -41,6 +41,9 @@ export async function GET(request: NextRequest) {
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
   const content = buildQueueDigestEmail(snapshot);
   if (dryRun) {
+    /* Include the rendered text/html bodies so the admin can curl
+       the endpoint and inspect the exact email that would ship -
+       gated behind the same Bearer auth as a live send, so no leak. */
     return Response.json({
       ok: true,
       dryRun: true,
@@ -48,6 +51,8 @@ export async function GET(request: NextRequest) {
       pendingEvents: snapshot.pendingEvents.length,
       pendingSubmissions: snapshot.pendingSubmissions.length,
       subject: content.subject,
+      text: content.text,
+      html: content.html,
     });
   }
 

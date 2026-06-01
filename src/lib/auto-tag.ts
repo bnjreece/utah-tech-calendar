@@ -72,15 +72,23 @@ const RULES: TagRule[] = [
    generic Eventbrite "N Days Training" / "N Hours Workshop" pattern
    that ad sellers use to grab keyword traffic. Either gate flips the
    "skip strong content tags" switch below. */
+/* `six sigma|black belt|green belt` will occasionally false-flag a
+   manufacturing-adjacent or martial-arts-themed legit event (e.g.
+   "Lean Six Sigma for Engineering Teams"). Accepted tradeoff: the
+   Eventbrite ad-spam volume far outweighs the rare crossover, and the
+   manual /admin/review queue gives the admin a path to undo. */
 const CERT_SPAM_KEYWORDS_RE =
   /\b(certification|certification training|training program|exam prep|bootcamp|cissp|capm|pmp|isc[²2]|ceh|comptia|isaca|itil|cpmai|caip|caissp|scrum master|prince2|safe agile|tableau certification|six sigma|black belt|green belt|pmi-acp)\b/i;
-/* The (?:\s+\w+){0,3} allows up to 3 filler words between the
-   duration and the activity noun, so "4 Days Classroom Training" and
-   "2 Hours Live Online Course" still match. The leading
-   \d+\s*(?:days?|hours?|...) is itself the strong cert-spam signal -
-   community events rarely lead with a numeric duration. */
+/* The middle slot is an allowlist of cert-spam adjectives (Classroom,
+   Hands-On, Live Online, Weekend, etc) rather than `\w+` filler. The
+   previous {0,3} \w+ slot false-flagged legit titles like
+   "30 Day Coding Challenge Workshop" - "Coding Challenge" is a tech
+   subject in the filler position, not a paid-class signal. Constraining
+   the filler to cert-spam-coded adjectives keeps "4 Days Classroom
+   Training" and "2 Hours Live Online Workshop" inside the net while
+   community events with subject-y phrasing slip through. */
 const NUMERIC_TRAINING_RE =
-  /\b\d+\s*(?:days?|hours?|weeks?|sessions?|weekends?)(?:\s+\w+){0,3}\s+(?:training|workshop|course|bootcamp|class(?:room)?)\b/i;
+  /\b\d+\s*(?:days?|hours?|weeks?|sessions?|weekends?)\s+(?:(?:live|online|virtual|in[- ]person|hybrid|classroom|hands[- ]on|weekend|intensive|certified|confirmed|advanced|basic|beginner)\s+){0,3}(?:training|workshop|bootcamp|course)\b/i;
 function isCertSpamTitle(haystack: string): boolean {
   return CERT_SPAM_KEYWORDS_RE.test(haystack) || NUMERIC_TRAINING_RE.test(haystack);
 }

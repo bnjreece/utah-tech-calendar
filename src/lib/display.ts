@@ -2,7 +2,18 @@
    so URLs (which use event.title for the slug) stay stable while the
    visible title can be prettified. */
 
-import type { EventWithGroup } from "./queries";
+/* displayTitle only ever reads `group?.name`, so callers don't need
+   to construct a full Group row. Exposing a Pick lets callers in
+   queue-digest.ts and similar surfaces pass `{ name: row.groupName }`
+   without lying through `as unknown as Group` ladders. If displayTitle
+   ever grows to read group.slug etc, this surface change is the
+   forcing function to revisit those call sites. */
+export interface DisplayTitleInput {
+  title: string;
+  link: string | null;
+  group: { name: string } | null;
+  source: string;
+}
 
 /* Detect Meetup-style placeholder titles. Two distinct shapes:
    - Bare placeholders ("TBD", "Speaker tbd") - need a group/source
@@ -30,9 +41,7 @@ function prettifyMeetupSlug(slug: string): string {
    back to the linked group name (or, failing that, the meetup-group
    slug parsed from the link) so listings read "Utah Go · TBD" instead
    of a bare "TBD". Non-TBD titles return verbatim. */
-export function displayTitle(
-  event: Pick<EventWithGroup, "title" | "link" | "group" | "source">,
-): string {
+export function displayTitle(event: DisplayTitleInput): string {
   const trimmed = event.title.trim();
 
   /* Prefixed flavor like "Utah Laravel - TBD" - the stored prefix is
