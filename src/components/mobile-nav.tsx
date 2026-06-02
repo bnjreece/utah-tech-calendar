@@ -8,11 +8,12 @@ interface MobileNavProps {
   links: Array<{ href: string; label: string }>;
 }
 
-/* Mobile hamburger menu. The desktop nav uses inline pills; below
-   sm: this surface takes over so the header doesn't get cramped as
-   we add admin / discover / submit / subscribe. Opens a small
-   editorial sheet rather than a full-screen overlay - we want it to
-   feel like the rest of the site, not a generic app drawer. */
+/* Mobile navigation. The desktop nav uses inline pills; below sm:
+   this surface takes over. Full-viewport editorial takeover matching
+   the site voice (Fraunces italic headlines + Plex Mono eyebrows +
+   generous whitespace), works in both light and dark themes via the
+   paper/ink token system. Slides in from the right with a quick
+   ease-out. */
 export function MobileNav({ links }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -24,7 +25,7 @@ export function MobileNav({ links }: MobileNavProps) {
   }, [pathname]);
 
   /* Lock body scroll while open to prevent the background from
-     scrolling under the open sheet. */
+     scrolling under the open overlay. */
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -34,7 +35,7 @@ export function MobileNav({ links }: MobileNavProps) {
     };
   }, [open]);
 
-  /* Close on Escape - standard a11y for any popover-like UI. */
+  /* Close on Escape - standard a11y for any modal-like UI. */
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -45,63 +46,122 @@ export function MobileNav({ links }: MobileNavProps) {
   }, [open]);
 
   return (
-    <div className="sm:hidden">
+    <>
       <button
         type="button"
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
+        aria-controls="mobile-nav-panel"
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center justify-center rounded-md p-2 -mr-2 text-ink-soft hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
       >
-        {/* Two-line hamburger; rotates to X via aria state if we want
-            to add that later. Keep simple for now - the open sheet
-            covers the icon anyway. */}
-        <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden>
-          <path d="M0 1.5h18M0 12.5h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <svg width="20" height="14" viewBox="0 0 20 14" aria-hidden>
+          <path
+            d="M0 1.5h20M0 12.5h20"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+          />
         </svg>
       </button>
 
-      {open && (
-        <>
-          <div
-            aria-hidden
-            className="fixed inset-0 z-40 bg-ink/40"
-            onClick={() => setOpen(false)}
-          />
-          <nav
-            aria-label="Site navigation"
-            className="fixed top-0 right-0 z-50 h-dvh w-[80vw] max-w-xs bg-paper border-l-2 border-ink shadow-xl flex flex-col"
-          >
-            <div className="flex items-center justify-between border-b border-ink/15 px-5 py-4">
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
-                Menu
-              </span>
-              <button
-                type="button"
-                aria-label="Close menu"
-                onClick={() => setOpen(false)}
-                className="text-ink-soft hover:text-ink p-1 -mr-1"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-            <ul className="flex flex-col px-2 py-4">
-              {links.map((l) => (
-                <li key={l.href}>
-                  <Link
-                    href={l.href}
-                    className="block px-3 py-3 rounded-md font-mono text-[12px] uppercase tracking-[0.2em] text-ink hover:bg-paper-deep transition-colors"
+      {/* Full-viewport overlay. Renders behind a slight blur so the
+          underlying schedule peeks through enough to feel like
+          context, not a totally different surface. */}
+      <div
+        id="mobile-nav-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Site navigation"
+        className={`fixed inset-0 z-50 bg-paper/95 backdrop-blur-md transition-opacity duration-200 ${
+          open
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div
+          className={`mx-auto flex h-dvh max-w-3xl flex-col px-6 transition-transform duration-300 ${
+            open ? "translate-y-0" : "-translate-y-2"
+          }`}
+        >
+          {/* Top bar - mirrors the site header rhythm. */}
+          <div className="flex items-center justify-between border-b border-ink/15 py-4">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+              Utah Tech Calendar
+            </span>
+            <button
+              type="button"
+              aria-label="Close menu"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center justify-center rounded-md p-2 -mr-2 text-ink-soft hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+                <path
+                  d="M1 1l16 16M17 1L1 17"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* Link list. Editorial display type with numbered eyebrows -
+              each entry reads like a section in a printed periodical. */}
+          <nav aria-label="Primary" className="flex-1 overflow-y-auto py-8">
+            <ul className="flex flex-col">
+              {links.map((l, i) => {
+                const isActive =
+                  pathname === l.href ||
+                  (l.href !== "/" && pathname.startsWith(l.href));
+                return (
+                  <li
+                    key={l.href}
+                    className="border-b border-ink/12 first:border-t first:border-ink/12"
                   >
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
+                    <Link
+                      href={l.href}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`group flex items-baseline gap-5 py-5 transition-colors ${
+                        isActive
+                          ? "text-ink"
+                          : "text-ink hover:text-sunset-deep"
+                      }`}
+                    >
+                      <span className="font-mono text-[10px] tabular-nums uppercase tracking-[0.22em] text-ink-soft w-8 shrink-0 mt-1.5">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span
+                        className="font-display text-3xl sm:text-4xl italic tracking-tight leading-[1.05] text-pretty"
+                        style={{
+                          fontFamily:
+                            "Fraunces, ui-serif, Georgia, serif",
+                        }}
+                      >
+                        {l.label}
+                      </span>
+                      <span
+                        aria-hidden
+                        className="ml-auto text-ink-soft group-hover:text-sunset-deep transition-colors"
+                      >
+                        →
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
-        </>
-      )}
-    </div>
+
+          {/* Footer signoff - tiny editorial signature, mirrors the
+              site footer voice. */}
+          <div className="border-t border-ink/15 py-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+              Cottonwood Heights, UT · updated nightly
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

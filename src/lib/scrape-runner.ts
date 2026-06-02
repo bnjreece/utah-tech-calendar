@@ -174,16 +174,25 @@ async function upsertEvent(
     return "updated" as const;
   }
   const isConference = detectConference(item);
-  const isPaid = detectPaid(item);
+  const isCertSpamHit = detectPaid(item);
   const isCraft = detectCraft(item);
-  /* Craft + cert-spam pattern matches insert as 'hidden' instead of
-     being silently dropped, so admin can audit false positives via
-     /admin without re-running the scrape. Status overrides
-     defaultStatus (incl. the 'pending' from requires_review sources)
-     - we don't want a known-junk event to end up on the moderation
-     queue. */
-  const status = isCraft ? "hidden" : isPaid ? "hidden" : defaultStatus;
-  const hiddenReason = isCraft ? "craft" : isPaid ? "cert-spam" : null;
+  /* Cert-spam and craft are TWO axes:
+     - "hidden + hiddenReason" hides the event from the public schedule
+     - is_paid is a content classification used by the "Free" type
+       filter and the is_accessible_for_free JSON-LD signal
+     Conflating them broke the /?types=paid filter (cert-spam hidden
+     rows still had is_paid=true, so the paid filter returned zero
+     rows alongside the actual paid conferences). Now cert-spam hits
+     hide the row WITHOUT setting is_paid - the row is junk, not a
+     "paid event". Real paid conferences still get is_paid=true via
+     the manual seed in research-dump commits. */
+  const status = isCraft || isCertSpamHit ? "hidden" : defaultStatus;
+  const hiddenReason = isCraft
+    ? "craft"
+    : isCertSpamHit
+      ? "cert-spam"
+      : null;
+  const isPaid = false;
   await db.insert(events).values({
     ...baseValues,
     status,
