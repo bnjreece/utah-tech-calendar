@@ -59,6 +59,20 @@ function detectCraft(item: EventItem): boolean {
   return CRAFT_REJECT_RE.test(item.title);
 }
 
+/* Webinar / virtual-event detection. Many upstream adapters (HTML
+   microdata, single-event Eventbrite, a few Luma calendars) don't
+   carry eventAttendanceMode in their feed, so we infer from title +
+   description. Hide-online-by-default on the home page would
+   otherwise leak virtual events into the in-person schedule. */
+const ONLINE_TITLE_RE =
+  /\b(webinar|virtual|zoom|online[- ]only|remote[- ]only|live[- ]stream|livestream)\b/i;
+function detectOnline(item: EventItem): boolean {
+  if (item.isOnline) return true;
+  if (ONLINE_TITLE_RE.test(item.title)) return true;
+  if (item.description && ONLINE_TITLE_RE.test(item.description)) return true;
+  return false;
+}
+
 /* Extract the `defaultTags` field from a source's jsonb config column.
    Per-source tag injection covers the case where a vertical-specific
    source (Utah Crypto Luma, 47G aerospace calendar) produces events
@@ -108,7 +122,7 @@ async function upsertEvent(
     externalId: item.externalId,
     startsAt: item.startsAt,
     endsAt: item.endsAt,
-    isOnline: item.isOnline,
+    isOnline: detectOnline(item),
     venueName: item.venueName,
     address: item.address,
     city: item.city,
