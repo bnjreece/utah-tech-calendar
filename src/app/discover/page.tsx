@@ -143,37 +143,49 @@ export default function DiscoverPage() {
           </p>
         </div>
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft mb-10">
-          From scatter, through curation, into schedule.
+          Many shapes in, one ontology out.
         </p>
 
         <Figure1 />
 
-        <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm text-ink-soft">
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-sm text-ink-soft">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-sunset-deep">
               01 · Sources
             </p>
             <p className="mt-2 text-pretty leading-relaxed">
               Calendars, listing sites, organizer pages, the
-              inbox. Scattered, unsorted, unread.
+              inbox. Scattered shapes, scattered schemas,
+              scattered signal.
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-sunset-deep">
+              02 · Refinement
+            </p>
+            <p className="mt-2 text-pretty leading-relaxed">
+              Cert-spam out, craft out, dupes deduped,
+              webinars flagged, past placeholders sunset.
+              The cleanup pass.
             </p>
           </div>
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-dusk-deep">
-              02 · Curation
+              03 · Ontology
             </p>
             <p className="mt-2 text-pretty leading-relaxed">
-              In-person, real, Utah, tech. Cert-spam out,
-              craft out, dupes deduped, verticals tagged.
+              One schema across thirteen sources. Verticals
+              tagged, regions placed, formats labeled. So
+              every event is queryable in the same vocabulary.
             </p>
           </div>
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-sage-deep">
-              03 · One schedule
+              04 · One schedule
             </p>
             <p className="mt-2 text-pretty leading-relaxed">
-              Ordered, dated, tagged, shareable. Same
-              data, every channel.
+              Scannable in one read. &ldquo;What&apos;s the AI thing
+              in Lehi on Thursday?&rdquo; answers itself.
             </p>
           </div>
         </div>
@@ -408,56 +420,63 @@ export default function DiscoverPage() {
 }
 
 /* Illustrated editorial figure for the "How the map gets drawn"
-   section. Three-part visual narrative rendered as one SVG so the
-   threadlines actually connect across the panels:
+   section. Four-stage visual narrative rendered as one SVG so the
+   threadlines connect across the whole pipeline:
    - LEFT: chaotic scatter of source nodes. Some labeled, some
-     anonymous, a few struck-through (sources we reject upfront).
-     Connector threads curve toward the center.
-   - MIDDLE: a thin vertical pinch labeled "curation." Threads
-     thread through the pinch; rejection markers ✗ float around it.
-   - RIGHT: threads emerge organized, landing on a horizontal grid
-     of dated event rows.
+     anonymous, with surrounding noise.
+   - PINCH 1 ("REFINEMENT"): the cleanup pass. Threads enter, junk
+     (cert-spam, craft, dupes, webinars) gets cut off with X marks.
+   - PINCH 2 ("ONTOLOGY"): the classification pass. Surviving threads
+     get color-coded with small vertical chips (ai, biotech, fintech,
+     founders, etc) as they pass through.
+   - RIGHT: threads land on a horizontal schedule grid of dated rows.
    Stroke widths and Y-offsets are hand-placed for a "deliberate but
-   not perfect" feel. The figure uses the existing stratum tokens so
-   it picks up dark-mode automatically. */
+   not perfect" feel. Uses stratum tokens so dark mode inherits. */
 function Figure1() {
-  /* Source labels along the left scatter. Position is roughly y%
-     across the left third (x: 60-380, y: 60-540 in viewBox). */
+  /* Source nodes scattered across the left third (x: 30-330,
+     y: 60-540 in viewBox). */
   const sources = [
-    { x: 110, y: 90, r: 4, label: "MEETUP", angle: -2 },
-    { x: 250, y: 70, r: 5, label: "LUMA", angle: 1 },
-    { x: 70, y: 200, r: 3, label: null, angle: 0 },
-    { x: 320, y: 140, r: 4, label: "SILICON SLOPES", angle: 2 },
-    { x: 150, y: 230, r: 6, label: "EVENTBRITE", angle: 1 },
-    { x: 60, y: 320, r: 3, label: null, angle: 0 },
-    { x: 290, y: 270, r: 4, label: "47G", angle: -1 },
-    { x: 180, y: 340, r: 5, label: "BIOUTAH", angle: 1 },
-    { x: 100, y: 420, r: 3, label: null, angle: 0 },
-    { x: 230, y: 420, r: 4, label: "SUBSTACK", angle: -1 },
-    { x: 340, y: 380, r: 3, label: null, angle: 0 },
-    { x: 150, y: 500, r: 5, label: "SUBMISSIONS", angle: 1 },
-    { x: 60, y: 500, r: 3, label: null, angle: 0 },
+    { x: 90, y: 90, r: 4, label: "MEETUP", angle: -2 },
+    { x: 220, y: 70, r: 5, label: "LUMA", angle: 1 },
+    { x: 50, y: 180, r: 3, label: null, angle: 0 },
+    { x: 280, y: 140, r: 4, label: "SILICON SLOPES", angle: 2 },
+    { x: 130, y: 220, r: 6, label: "EVENTBRITE", angle: 1 },
+    { x: 40, y: 290, r: 3, label: null, angle: 0 },
+    { x: 260, y: 240, r: 4, label: "47G", angle: -1 },
+    { x: 160, y: 320, r: 5, label: "BIOUTAH", angle: 1 },
+    { x: 80, y: 380, r: 3, label: null, angle: 0 },
+    { x: 210, y: 380, r: 4, label: "SUBSTACK", angle: -1 },
+    { x: 300, y: 340, r: 3, label: null, angle: 0 },
+    { x: 130, y: 460, r: 5, label: "SUBMISSIONS", angle: 1 },
+    { x: 50, y: 450, r: 3, label: null, angle: 0 },
+    { x: 290, y: 460, r: 3, label: null, angle: 0 },
   ];
 
-  /* A subset of sources get connector threads to the pinch
-     (x=620, y varies). The rest are noise/scatter. */
-  const threadIndices = [0, 1, 3, 4, 6, 7, 9, 11];
-  /* Rejected things - mark them with X near them, don't draw a thread. */
-  const rejected = [
-    { x: 65, y: 145, label: "CERT-SPAM" },
-    { x: 360, y: 320, label: "CRAFT" },
-    { x: 80, y: 370, label: "DUPE" },
+  /* Threads enter PINCH 1 (refinement) at x=440. Each survives or
+     gets rejected. Survivors continue to PINCH 2 (ontology) at x=620
+     where they pick up a vertical tag. */
+  const threads = [
+    { srcIdx: 0,  midY: 100, ok: true,  tag: { color: "text-sunset-deep", label: "FOUNDERS" } },
+    { srcIdx: 1,  midY: 150, ok: true,  tag: { color: "text-sage-deep", label: "DEVOPS" } },
+    { srcIdx: 4,  midY: 200, ok: false, rejection: "CERT-SPAM" },
+    { srcIdx: 3,  midY: 240, ok: true,  tag: { color: "text-dusk-deep", label: "AI" } },
+    { srcIdx: 6,  midY: 290, ok: true,  tag: { color: "text-terracotta-deep", label: "AEROSPACE" } },
+    { srcIdx: 7,  midY: 340, ok: true,  tag: { color: "text-sage-deep", label: "BIOTECH" } },
+    { srcIdx: 8,  midY: 380, ok: false, rejection: "CRAFT" },
+    { srcIdx: 9,  midY: 420, ok: true,  tag: { color: "text-dusk-deep", label: "FINTECH" } },
+    { srcIdx: 11, midY: 470, ok: true,  tag: { color: "text-sunset-deep", label: "MEETUP" } },
   ];
 
-  /* Pinch column on the right side of the curation lens. Threads
-     emerge from x=640 at staggered Y positions and reach to x=1140
-     (end of viewBox). */
+  /* Pinch X positions */
+  const P1 = 440;
+  const P2 = 660;
+  /* Output schedule rows on the right */
   const outputRows = [
-    { y: 130, day: "MON", label: "Founders dinner · Lehi" },
-    { y: 210, day: "WED", label: "Utah JS · SLC" },
+    { y: 110, day: "MON", label: "Founders dinner · Lehi" },
+    { y: 200, day: "WED", label: "Utah JS · SLC" },
     { y: 290, day: "THU", label: "BioHive demo day" },
-    { y: 370, day: "FRI", label: "AI Power Hour · Silicon Slopes" },
-    { y: 450, day: "SAT", label: "SAINTCON · Provo" },
+    { y: 380, day: "FRI", label: "AI Power Hour · Silicon Slopes" },
+    { y: 470, day: "SAT", label: "SAINTCON · Provo" },
   ];
 
   return (
@@ -548,58 +567,16 @@ function Figure1() {
           })}
         </g>
 
-        {/* REJECTED items - X marks with mono label */}
-        <g className="text-sunset-deep">
-          {rejected.map((r, i) => (
-            <g key={`rej-${i}`} opacity="0.55">
-              <line
-                x1={r.x - 5}
-                y1={r.y - 5}
-                x2={r.x + 5}
-                y2={r.y + 5}
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinecap="round"
-              />
-              <line
-                x1={r.x - 5}
-                y1={r.y + 5}
-                x2={r.x + 5}
-                y2={r.y - 5}
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinecap="round"
-              />
-              <text
-                x={r.x + 10}
-                y={r.y + 3}
-                fontSize="8"
-                fontFamily="IBM Plex Mono, ui-monospace, monospace"
-                letterSpacing="0.14em"
-                fill="currentColor"
-              >
-                {r.label}
-              </text>
-            </g>
-          ))}
-        </g>
-
-        {/* THREADS: bezier curves from source nodes to the pinch.
-            Each thread is its own gentle S-curve. */}
+        {/* THREADS — IN (source → P1): bezier from source node to
+            the refinement pinch. Each thread is one item flowing
+            through the pipeline. */}
         <g className="text-ink" fill="none">
-          {threadIndices.map((srcIdx, i) => {
-            const s = sources[srcIdx];
-            const targetY = 100 + (i / (threadIndices.length - 1)) * 400;
-            const ctrl1X = 380;
-            const ctrl1Y = s.y;
-            const ctrl2X = 480;
-            const ctrl2Y = targetY;
-            const endX = 600;
-            const endY = targetY;
+          {threads.map((t, i) => {
+            const s = sources[t.srcIdx];
             return (
               <path
-                key={`thread-${i}`}
-                d={`M ${s.x + s.r} ${s.y} C ${ctrl1X} ${ctrl1Y}, ${ctrl2X} ${ctrl2Y}, ${endX} ${endY}`}
+                key={`in-${i}`}
+                d={`M ${s.x + s.r} ${s.y} C 320 ${s.y}, 380 ${t.midY}, ${P1} ${t.midY}`}
                 stroke="url(#threadFade)"
                 strokeWidth={1 + (i % 3) * 0.25}
                 strokeLinecap="round"
@@ -608,13 +585,14 @@ function Figure1() {
           })}
         </g>
 
-        {/* PINCH: the curation slit. Thin vertical bar with a small
-            label below. Threads enter at x=600 and exit at x=640. */}
+        {/* PINCH 1 — REFINEMENT. Thin vertical bar with sunset accent.
+            Rejection X's float just past it for threads that don't
+            survive. */}
         <g>
           <line
-            x1="610"
+            x1={P1}
             y1="80"
-            x2="610"
+            x2={P1}
             y2="520"
             stroke="currentColor"
             strokeWidth="2"
@@ -622,82 +600,220 @@ function Figure1() {
             opacity="0.85"
           />
           <line
-            x1="625"
+            x1={P1 + 12}
             y1="80"
-            x2="625"
+            x2={P1 + 12}
+            y2="520"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-sunset-deep"
+            opacity="0.65"
+          />
+          <text
+            x={P1 + 6}
+            y="60"
+            fontSize="10"
+            fontFamily="IBM Plex Mono, ui-monospace, monospace"
+            letterSpacing="0.22em"
+            fill="currentColor"
+            textAnchor="middle"
+            className="text-sunset-deep"
+          >
+            REFINEMENT
+          </text>
+          {/* Tick marks along the pinch */}
+          <g className="text-ink-soft">
+            {threads.map((t, i) => (
+              <line
+                key={`p1-tick-${i}`}
+                x1={P1 - 4}
+                y1={t.midY}
+                x2={P1 + 16}
+                y2={t.midY}
+                stroke="currentColor"
+                strokeWidth="1.25"
+                opacity="0.5"
+              />
+            ))}
+          </g>
+        </g>
+
+        {/* REJECTIONS at PINCH 1 — X marks just past it for threads
+            that don't survive the cleanup pass. */}
+        <g className="text-sunset-deep">
+          {threads
+            .filter((t) => !t.ok)
+            .map((t, i) => {
+              const x = P1 + 30;
+              const y = t.midY;
+              return (
+                <g key={`rej-${i}`} opacity="0.75">
+                  <line
+                    x1={x - 5}
+                    y1={y - 5}
+                    x2={x + 5}
+                    y2={y + 5}
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                  <line
+                    x1={x - 5}
+                    y1={y + 5}
+                    x2={x + 5}
+                    y2={y - 5}
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                  <text
+                    x={x + 10}
+                    y={y + 3}
+                    fontSize="8"
+                    fontFamily="IBM Plex Mono, ui-monospace, monospace"
+                    letterSpacing="0.14em"
+                    fill="currentColor"
+                  >
+                    {t.rejection}
+                  </text>
+                </g>
+              );
+            })}
+        </g>
+
+        {/* THREADS — MID (P1 → P2): surviving threads run from
+            refinement to ontology, staying at the same Y. */}
+        <g fill="none">
+          {threads
+            .filter((t) => t.ok)
+            .map((t, i) => (
+              <path
+                key={`mid-${i}`}
+                d={`M ${P1 + 12} ${t.midY} L ${P2} ${t.midY}`}
+                stroke="currentColor"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+                opacity="0.55"
+                className="text-ink"
+              />
+            ))}
+        </g>
+
+        {/* PINCH 2 — ONTOLOGY. Thin vertical bar with dusk accent +
+            small vertical tag chips emerging at each thread's Y. */}
+        <g>
+          <line
+            x1={P2}
+            y1="80"
+            x2={P2}
+            y2="520"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="text-ink"
+            opacity="0.85"
+          />
+          <line
+            x1={P2 + 12}
+            y1="80"
+            x2={P2 + 12}
             y2="520"
             stroke="currentColor"
             strokeWidth="1"
             className="text-dusk-deep"
             opacity="0.65"
           />
-          {/* Filter labels stacked beside the pinch */}
-          <g className="text-dusk-deep">
-            <text
-              x="600"
-              y="60"
-              fontSize="10"
-              fontFamily="IBM Plex Mono, ui-monospace, monospace"
-              letterSpacing="0.22em"
-              fill="currentColor"
-              textAnchor="middle"
-            >
-              CURATION
-            </text>
-          </g>
-          {/* Tick marks along the pinch suggest the filter passes */}
-          <g className="text-ink-soft">
-            {[120, 180, 240, 300, 360, 420, 480].map((y, i) => (
-              <line
-                key={`tick-${i}`}
-                x1="606"
-                y1={y}
-                x2="614"
-                y2={y}
-                stroke="currentColor"
-                strokeWidth="1.25"
-                opacity="0.7"
-              />
-            ))}
-          </g>
+          <text
+            x={P2 + 6}
+            y="60"
+            fontSize="10"
+            fontFamily="IBM Plex Mono, ui-monospace, monospace"
+            letterSpacing="0.22em"
+            fill="currentColor"
+            textAnchor="middle"
+            className="text-dusk-deep"
+          >
+            ONTOLOGY
+          </text>
         </g>
 
-        {/* OUTPUT THREADS: emerge from pinch and run to schedule rows */}
-        <g className="text-ink" fill="none">
-          {outputRows.map((row, i) => {
-            const startY = 100 + (i / (outputRows.length - 1)) * 400;
-            return (
-              <path
-                key={`out-${i}`}
-                d={`M 640 ${startY} C 720 ${startY}, 760 ${row.y}, 840 ${row.y}`}
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinecap="round"
-                opacity="0.55"
-              />
-            );
-          })}
+        {/* Tag chips emerge from PINCH 2 — small pill labels in the
+            tag's accent color, attached to each surviving thread. */}
+        <g>
+          {threads
+            .filter((t) => t.ok)
+            .map((t, i) => {
+              if (!t.tag) return null;
+              const chipX = P2 + 20;
+              const chipY = t.midY;
+              const labelLen = t.tag.label.length;
+              const chipW = labelLen * 5.5 + 12;
+              return (
+                <g key={`tag-${i}`} className={t.tag.color}>
+                  <rect
+                    x={chipX}
+                    y={chipY - 7}
+                    width={chipW}
+                    height="14"
+                    rx="7"
+                    fill="currentColor"
+                    opacity="0.15"
+                  />
+                  <text
+                    x={chipX + chipW / 2}
+                    y={chipY + 2.5}
+                    fontSize="8"
+                    fontFamily="IBM Plex Mono, ui-monospace, monospace"
+                    letterSpacing="0.16em"
+                    fill="currentColor"
+                    textAnchor="middle"
+                  >
+                    {t.tag.label}
+                  </text>
+                </g>
+              );
+            })}
         </g>
 
-        {/* SCHEDULE GRID (RIGHT): 5 horizontal lines with day chip +
-            event title floating at the row. */}
+        {/* THREADS — OUT (P2 → schedule): tagged threads run from
+            ontology to their schedule row. Gentle S-curve to fan
+            out to the 5 output rows. */}
+        <g fill="none">
+          {threads
+            .filter((t) => t.ok)
+            .slice(0, outputRows.length)
+            .map((t, i) => {
+              const row = outputRows[i];
+              return (
+                <path
+                  key={`out-${i}`}
+                  d={`M ${P2 + 12} ${t.midY} C 820 ${t.midY}, 830 ${row.y}, 870 ${row.y}`}
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                  strokeLinecap="round"
+                  opacity="0.55"
+                  className="text-ink"
+                />
+              );
+            })}
+        </g>
+
+        {/* SCHEDULE GRID (RIGHT): horizontal baselines with day chip
+            + event title floating at the row. */}
         <g>
           {outputRows.map((row, i) => (
             <g key={`row-${i}`}>
-              {/* baseline */}
               <line
-                x1="840"
+                x1="870"
                 y1={row.y}
-                x2="1150"
+                x2="1170"
                 y2={row.y}
                 stroke="currentColor"
                 strokeWidth="1"
                 className="text-ink-soft"
                 opacity="0.4"
               />
-              {/* day chip */}
               <text
-                x="848"
+                x="878"
                 y={row.y - 6}
                 fontSize="9"
                 fontFamily="IBM Plex Mono, ui-monospace, monospace"
@@ -707,9 +823,8 @@ function Figure1() {
               >
                 {row.day}
               </text>
-              {/* event title */}
               <text
-                x="900"
+                x="918"
                 y={row.y - 6}
                 fontSize="13"
                 fontFamily="Fraunces, ui-serif, Georgia, serif"
@@ -719,9 +834,8 @@ function Figure1() {
               >
                 {row.label}
               </text>
-              {/* terminal dot - sage accent */}
               <circle
-                cx="845"
+                cx="873"
                 cy={row.y}
                 r="3.5"
                 fill="currentColor"
@@ -729,9 +843,8 @@ function Figure1() {
               />
             </g>
           ))}
-          {/* footer count */}
           <text
-            x="845"
+            x="873"
             y="530"
             fontSize="9"
             fontFamily="IBM Plex Mono, ui-monospace, monospace"
@@ -756,7 +869,7 @@ function Figure1() {
             CHAOS
           </text>
           <text
-            x="1140"
+            x="1170"
             y="40"
             fontSize="9"
             fontFamily="IBM Plex Mono, ui-monospace, monospace"
