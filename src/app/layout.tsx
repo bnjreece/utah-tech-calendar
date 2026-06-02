@@ -97,7 +97,7 @@ export default function RootLayout({
       </head>
       <body className="isolate min-h-dvh flex flex-col bg-background text-foreground antialiased">
         <ClerkProvider>
-          <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/10">
+          <header className="site-chrome sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/10">
             <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 sm:gap-6">
               <Link
                 href="/"
@@ -117,7 +117,7 @@ export default function RootLayout({
             </div>
           </header>
           <main className="flex-1">{children}</main>
-        <footer className="mt-12 border-t-2 border-ink">
+        <footer className="site-chrome mt-12 border-t-2 border-ink">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10">
             {/* Vertical index - internal linking to the curated tag
                 landing pages so Google can crawl them from every
@@ -164,6 +164,9 @@ export default function RootLayout({
                 </Link>
                 <Link href="/api/rss" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
                   rss
+                </Link>
+                <Link href="/subscribe#embed" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                  embed
                 </Link>
                 <Link href="/submit" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
                   submit

@@ -6,6 +6,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Embed routes hide the global chrome. The root layout marks its
+   sticky header + footer with .site-chrome; an embed page renders
+   a [data-embed] container which this :has() rule uses to suppress
+   those marked elements. Cleaner than threading layout context
+   through every page. */
+body:has([data-embed="true"]) .site-chrome {
+  display: none;
+}
+
 @theme inline {
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "DM Sans", ui-sans-serif, system-ui, sans-serif;
