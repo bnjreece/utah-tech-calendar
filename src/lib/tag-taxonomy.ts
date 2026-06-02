@@ -59,8 +59,8 @@ export const TAG_TAXONOMY: TagMeta[] = [
     seoDescription:
       "Utah fintech meetups, talks, and conferences - payments, banking, lending, neobanks, wealthtech. Lehi cluster + SLC events curated weekly.",
     intro:
-      "Utah's fintech corridor runs from Sandy to Lehi: Galileo, MX, SoFi, Finicity, Acima. This page lists in-person events for engineers, founders, and operators building in payments, banking infrastructure, lending, and digital assets.",
-    anchors: ["Galileo Financial Technologies", "MX", "SoFi", "Finicity", "Acima", "Pelago"],
+      "Utah's fintech corridor runs from Sandy to Lehi: Galileo, MX, SoFi, Finicity, Marqeta, Ramp. This page lists in-person events for engineers, founders, and operators building in payments, banking infrastructure, lending, and digital assets.",
+    anchors: ["Galileo Financial Technologies", "MX", "SoFi", "Finicity", "Marqeta", "Ramp", "FinWise Bank"],
     featured: true,
   },
   {
@@ -70,8 +70,8 @@ export const TAG_TAXONOMY: TagMeta[] = [
     seoDescription:
       "Utah healthtech meetups and conferences - digital health, EHR/EMR, telehealth, patient platforms. Oracle Health, Intermountain, Owlet, Recursion.",
     intro:
-      "Utah's healthtech employer base is unusually deep: Oracle Health (ex-Cerner), Intermountain Health's innovation org, Owlet, R1 RCM, and the patient-platform startups across Sandy and Lehi. This page collects in-person events for engineers and operators in digital health.",
-    anchors: ["Oracle Health", "Intermountain Health", "Owlet", "R1 RCM", "Recursion Pharmaceuticals"],
+      "Utah's healthtech employer base is unusually deep: Oracle Health, Intermountain Health's innovation org, Owlet, Nomi Health (Orem), Health Catalyst, and the patient-platform startups across Sandy and Lehi. This page collects in-person events for engineers and operators in digital health.",
+    anchors: ["Oracle Health", "Intermountain Health", "Nomi Health", "Health Catalyst", "Owlet", "Recursion Pharmaceuticals"],
     featured: true,
   },
   {
@@ -94,6 +94,28 @@ export const TAG_TAXONOMY: TagMeta[] = [
     intro:
       "Utah's edtech cluster centers on Lehi - Instructure (Canvas), Pluralsight, Civitas Learning - with deep BYU and U of U research crossover. This page lists the in-person events for engineers, learning designers, and founders building education tools.",
     anchors: ["Instructure (Canvas)", "Pluralsight", "Civitas Learning", "BYU OpenCourseWare", "U of U EdTech"],
+    featured: true,
+  },
+  {
+    tag: "aerospace",
+    display: "Aerospace & Defense",
+    seoTitle: "Utah Aerospace & Defense Events · Hill AFB, 47G · Utah Tech Calendar",
+    seoDescription:
+      "Utah aerospace and defense events - 47G meetups, Hill AFB industry days, Zero Gravity Summit. Northrop Grumman, Boeing, L3Harris, BAE.",
+    intro:
+      "Utah's aerospace and defense corridor is built around Hill Air Force Base in Layton. 47G organizes the year-round calendar - the Zero Gravity Summit, Day on the Hill, quarterly industry roundtables. This page collects the in-person events for engineers, founders, and operators in the cluster.",
+    anchors: ["47G", "Northrop Grumman", "Boeing", "L3Harris", "BAE Systems", "Lockheed Martin", "Fortem Technologies"],
+    featured: true,
+  },
+  {
+    tag: "gamedev",
+    display: "Game Dev",
+    seoTitle: "Utah Game Dev Events · Unity, Unreal, Indie · Utah Tech Calendar",
+    seoDescription:
+      "Utah game development events - indie game jams, Unity meetups, BYU EAE / U of U Entertainment Arts showcases. WB Games SLC, Smart Bomb alumni.",
+    intro:
+      "Utah's game dev scene is split between two anchors: WB Games SLC (formerly Avalanche) and the BYU + U of U game programs that feed indie studios across the front. This page lists Utah Indie Game meetups, jams, showcases, and the occasional Unity / Unreal user-group night.",
+    anchors: ["WB Games SLC", "Smart Bomb Interactive", "BYU EAE", "U of U Entertainment Arts", "Utah Indie Games"],
     featured: true,
   },
   {

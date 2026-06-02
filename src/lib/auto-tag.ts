@@ -43,7 +43,13 @@ const RULES: TagRule[] = [
   { tag: "flutter", re: /\bflutter\b/i },
 
   /* Topics */
-  { tag: "ai", re: /\b(ai|artificial intelligence|generative ai|genai|llm|llms|agents?|agentic|chatgpt|claude|copilot)\b/i },
+  /* Tightened: bare `agents?` and `claude`/`copilot` collide with real
+     estate agents, insurance agents, the literal model name in an
+     unrelated career-fair listing, etc. Require the AI sense via
+     "AI agents" / "agentic" / "agent framework", and skip the bare
+     model names since they're already covered by the broader AI/LLM
+     vocabulary. */
+  { tag: "ai", re: /\b(ai|artificial intelligence|generative ai|genai|llm|llms|ai agents?|agentic|agent framework|chatgpt|gpt-?\d|anthropic|openai)\b/i },
   { tag: "machine-learning", re: /\b(machine learning|\bml\b|mlops|deep learning|neural network)\b/i },
   { tag: "data", re: /\b(data engineering|data science|data analytics|sql|postgres|postgresql|big data|warehouse|databricks|snowflake|airflow|dbt)\b/i },
   { tag: "cybersecurity", re: /\b(cybersecurity|security|infosec|cissp|cisa|penetration test|pentest|hacking|ethical hacking|ceh|comptia)\b/i },
@@ -55,19 +61,35 @@ const RULES: TagRule[] = [
   { tag: "product-management", re: /\b(product manager|product management|pm\b|prodmgmt)\b/i },
   { tag: "mobile", re: /\b(android|ios|mobile app|native app)\b/i },
   { tag: "web", re: /\b(web dev|web development|frontend|backend|fullstack|full[- ]stack)\b/i },
-  { tag: "gaming", re: /\b(game dev|game design|unity|unreal|godot)\b/i },
   { tag: "biotech", re: /\b(biotech|life sciences|genomics|medical device|drug discovery|clinical trial|cell therapy|gene therapy|crispr)\b/i },
-  /* Utah's fintech corridor (Galileo/MX/SoFi/Finicity/Acima) and the
-     adjacent payments/banking/lending vocabulary. Whole-word matching
-     keeps a "venture capital" event from sliding under the tag. */
-  { tag: "fintech", re: /\b(fintech|fin[- ]tech|payments?\s+(?:platform|infra|engineer|tech|industry|company|product|api)|banking\s+(?:tech|infra|platform|api|software)|neobank|defi|wealthtech|insurtech|paytech|stripe\s+(?:user|engineer|api)|plaid|galileo|finicity|acima)\b/i },
+  /* Utah's fintech corridor (Galileo/MX/SoFi/Finicity) plus payments/
+     banking infra vocabulary. Anchor employer names must be scoped to
+     a fintech context - bare "Galileo" collides with the telescope,
+     bare "Plaid" with the clothing pattern. "Acima" dropped: lease-
+     to-own retail credit is fintech-adjacent at best, and dilutes
+     the tag. */
+  { tag: "fintech", re: /\b(fintech|fin[- ]tech|payments?\s+(?:platform|infra|engineer|tech|industry|company|product|api)|banking\s+(?:tech|infra|platform|api|software)|neobank|defi|wealthtech|insurtech|paytech|galileo\s+financial|finicity|plaid\s+(?:api|developer|engineer|fintech))\b/i },
   /* Healthtech = software side of healthcare (distinct from biotech
-     wet-lab work). Match digital health vocab + Utah employer names
-     so an Oracle Health career night gets tagged. */
-  { tag: "healthtech", re: /\b(healthtech|health[- ]tech|digital health|healthcare\s+(?:tech|innovation|engineer|software|platform|startup)|telehealth|telemedicine|ehr\b|emr\b|patient\s+(?:platform|portal|experience|engagement)|oracle\s+health|intermountain\s+health|owlet)\b/i },
+     wet-lab work). Anchor names scoped: bare `owlet` had no Utah-
+     event collisions today but "Owlet" as a generic word does exist.
+     `patient experience` retained despite UX-conference crossover -
+     low Utah volume, worth the tradeoff. */
+  { tag: "healthtech", re: /\b(healthtech|health[- ]tech|digital health|healthcare\s+(?:tech|innovation|engineer|software|platform|startup)|telehealth|telemedicine|ehr\b|emr\b|patient\s+(?:platform|portal|experience|engagement)|oracle\s+health|intermountain\s+health|owlet\s+(?:health|baby|monitor|engineer))\b/i },
   /* Edtech = K-12 + higher ed + corporate learning. Instructure
-     (Canvas), Pluralsight anchor the Lehi cluster. */
-  { tag: "edtech", re: /\b(edtech|ed[- ]tech|learning\s+(?:management|platform|tech|design|engineer)|lms\b|online\s+learning|education\s+(?:tech|software|startup)|canvas\s+(?:lms|instructure|university)|instructure|pluralsight|civitas\s+learning)\b/i },
+     (Canvas), Pluralsight anchor the Lehi cluster. `lms\b` dropped
+     - overloaded with Lawn Mower Service, Lab Management System, etc. */
+  { tag: "edtech", re: /\b(edtech|ed[- ]tech|learning\s+(?:management\s+system|platform|tech|design|engineer)|online\s+learning|education\s+(?:tech|software|startup)|canvas\s+(?:lms|instructure|university)|instructure|pluralsight|civitas\s+learning)\b/i },
+  /* Utah aerospace + defense corridor - Northrop Grumman / Boeing /
+     L3Harris / BAE around Hill AFB, plus the 47G industry group.
+     "Aerospace" alone is too broad (NASA hobbyist meetups, BYU rocket
+     club shows up as is_paid by accident, etc), so anchor on the
+     industry vocabulary. */
+  { tag: "aerospace", re: /\b(aerospace|defense\s+(?:tech|industry|contractor|engineer)|hill\s+air\s+force|northrop\s+grumman|raytheon|l3harris|lockheed\s+martin|space\s+(?:industry|tech|systems)|satellite\s+(?:engineer|tech|industry)|47g\b)\b/i },
+  /* Game development - small but real Utah scene (WB Games SLC, Smart
+     Bomb, BYU EAE, U of U Entertainment Arts). Match dev/design
+     vocabulary scoped to gaming so a generic "Game Night" social
+     doesn't get tagged. */
+  { tag: "gamedev", re: /\b(game\s+(?:dev|developer|design|designer|engine|jam|night|programming|studio|industry)|indie\s+game|gamedev|unity\s+(?:engine|game|developer)|unreal\s+engine|godot\s+engine|byu\s+eae)\b/i },
 
   /* Format / audience */
   { tag: "founders", re: /\b(founders?|founding|startup|entrepreneurs?)\b/i },

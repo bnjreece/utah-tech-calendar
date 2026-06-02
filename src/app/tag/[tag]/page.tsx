@@ -82,7 +82,7 @@ export async function generateMetadata({
   const title = meta?.seoTitle ?? `Utah ${display} Events`;
   const description =
     meta?.seoDescription ??
-    `Upcoming Utah ${display} events — meetups, conferences, workshops, and developer nights. Curated from Meetup, Eventbrite, Luma, and Silicon Slopes.`;
+    `Upcoming Utah ${display} events, meetups, conferences, workshops, and developer nights. Curated from Meetup, Eventbrite, Luma, and Silicon Slopes.`;
   return {
     title,
     description,
@@ -107,7 +107,11 @@ export default async function TagPage({
   const evts = await fetchTagEvents(tag);
   const display = meta?.display ?? tagTitle(tag);
 
-  const itemList = {
+  /* Only emit ItemList JSON-LD when we have content - Google treats an
+     empty ItemList as a soft-quality signal, so a dry-week vertical
+     page is better off with no structured-data hint than a misleading
+     one claiming "0 items in this list". */
+  const itemList = evts.length > 0 ? {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: `Utah ${display} events`,
@@ -117,11 +121,11 @@ export default async function TagPage({
       url: absoluteUrl(`/event/${eventSlug(e.title, e.id)}`),
       name: e.title,
     })),
-  };
+  } : null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-12 theme-editorial">
-      <JsonLd data={itemList} />
+      {itemList && <JsonLd data={itemList} />}
 
       <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
         <Link href="/" className="hover:text-ink transition-colors">
@@ -141,21 +145,25 @@ export default async function TagPage({
             ? `${evts.length} upcoming in-person Utah ${display} ${evts.length === 1 ? "event" : "events"}. Meetups, conferences, workshops, and developer talks tagged ${tag}. Curated from ${SITE_NAME}.`
             : `Nothing on the schedule with the ${tag} tag right now. Check back soon, or submit one below.`)}
       </p>
-      {meta?.anchors && meta.anchors.length > 0 && (
-        <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 max-w-[68ch]">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
-            Anchor employers
-          </span>
-          {meta.anchors.map((a, i) => (
-            <span key={a} className="text-sm text-ink">
-              {a}
-              {i < (meta.anchors?.length ?? 0) - 1 && (
-                <span aria-hidden className="text-ink-soft"> · </span>
-              )}
+      {(() => {
+        const anchors = meta?.anchors;
+        if (!anchors || anchors.length === 0) return null;
+        return (
+          <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 max-w-[68ch]">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+              Anchor employers
             </span>
-          ))}
-        </div>
-      )}
+            {anchors.map((a, i) => (
+              <span key={a} className="text-sm text-ink">
+                {a}
+                {i < anchors.length - 1 && (
+                  <span aria-hidden className="text-ink-soft"> · </span>
+                )}
+              </span>
+            ))}
+          </div>
+        );
+      })()}
 
       <div className="mt-10 pb-3 border-b-2 border-ink flex items-baseline justify-between gap-4">
         <h2 className="font-display text-2xl sm:text-3xl tracking-tight italic">
