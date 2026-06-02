@@ -17,19 +17,6 @@ export const metadata: Metadata = {
   },
 };
 
-/* Source pills as they appear in the flow diagram. Names match the
-   actual scrape sources, ordered roughly by event volume. */
-const SOURCES = [
-  "Meetup",
-  "Luma",
-  "Eventbrite",
-  "Silicon Slopes",
-  "BioUtah",
-  "47G",
-  "Substack",
-  "Submissions",
-];
-
 const STATS = [
   { value: "25+", label: "Sources watched" },
   { value: "9", label: "Curated verticals" },
@@ -141,10 +128,10 @@ export default function DiscoverPage() {
       </section>
 
       {/* ============================================================
-          FLOW DIAGRAM — the whole product in one image
+          FLOW DIAGRAM — illustrated editorial figure
           ============================================================ */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-24">
-        <div className="flex items-baseline justify-between gap-6 flex-wrap mb-10">
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-24">
+        <div className="flex items-baseline justify-between gap-6 flex-wrap mb-2">
           <h2
             className="font-display italic tracking-tight text-ink text-3xl sm:text-4xl"
             style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
@@ -155,89 +142,39 @@ export default function DiscoverPage() {
             Figure 1
           </p>
         </div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft mb-10">
+          From scatter, through curation, into schedule.
+        </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr_auto_1fr] gap-y-8 gap-x-6 items-center">
-          {/* Column 1 — sources */}
-          <div className="flex flex-col gap-3">
+        <Figure1 />
+
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm text-ink-soft">
+          <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-sunset-deep">
               01 · Sources
             </p>
-            <div className="rounded-2xl bg-paper-deep p-5 ring-1 ring-ink/10">
-              <ul className="flex flex-wrap gap-2">
-                {SOURCES.map((s) => (
-                  <li
-                    key={s}
-                    className="inline-flex items-center rounded-full bg-paper px-3 py-1 text-xs font-mono uppercase tracking-[0.16em] text-ink-soft ring-1 ring-ink/10"
-                  >
-                    {s}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-4 text-sm text-ink-soft text-pretty">
-                Calendars, listing sites, organizer pages, the
-                inbox. Scattered.
-              </p>
-            </div>
+            <p className="mt-2 text-pretty leading-relaxed">
+              Calendars, listing sites, organizer pages, the
+              inbox. Scattered, unsorted, unread.
+            </p>
           </div>
-
-          <FlowArrow className="hidden lg:block" />
-
-          {/* Column 2 — filter */}
-          <div className="flex flex-col gap-3">
+          <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-dusk-deep">
               02 · Curation
             </p>
-            <div className="rounded-2xl bg-ink text-paper p-5">
-              <p
-                className="font-display italic tracking-tight leading-[1.1] text-2xl"
-                style={{
-                  fontFamily: "Fraunces, ui-serif, Georgia, serif",
-                }}
-              >
-                In-person, real, Utah, tech.
-              </p>
-              <ul className="mt-4 flex flex-col gap-1.5 text-xs font-mono uppercase tracking-[0.18em] text-paper/70">
-                <li>· cert-spam filtered</li>
-                <li>· craft cross-posts dropped</li>
-                <li>· dupes deduped</li>
-                <li>· verticals tagged</li>
-              </ul>
-            </div>
+            <p className="mt-2 text-pretty leading-relaxed">
+              In-person, real, Utah, tech. Cert-spam out,
+              craft out, dupes deduped, verticals tagged.
+            </p>
           </div>
-
-          <FlowArrow className="hidden lg:block" />
-
-          {/* Column 3 — output */}
-          <div className="flex flex-col gap-3">
+          <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-sage-deep">
               03 · One schedule
             </p>
-            <div className="rounded-2xl bg-paper-deep p-5 ring-1 ring-ink/10 flex flex-col gap-2">
-              {[
-                { d: "Mon", t: "Founders dinner · Lehi" },
-                { d: "Wed", t: "Utah JS · SLC" },
-                { d: "Thu", t: "BioHive demo day" },
-                { d: "Fri", t: "AI Power Hour" },
-              ].map((row) => (
-                <div
-                  key={row.d}
-                  className="flex items-baseline gap-3 border-b border-ink/10 last:border-0 pb-2 last:pb-0"
-                >
-                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft w-8">
-                    {row.d}
-                  </span>
-                  <span className="text-sm text-ink">{row.t}</span>
-                </div>
-              ))}
-              <p className="mt-2 text-xs font-mono uppercase tracking-[0.18em] text-ink-soft">
-                + 170 more this season
-              </p>
-            </div>
-          </div>
-
-          {/* Mobile arrows */}
-          <div className="lg:hidden flex justify-center text-ink-soft">
-            <FlowArrow vertical />
+            <p className="mt-2 text-pretty leading-relaxed">
+              Ordered, dated, tagged, shareable. Same
+              data, every channel.
+            </p>
           </div>
         </div>
       </section>
@@ -470,52 +407,367 @@ export default function DiscoverPage() {
   );
 }
 
-/* Inline SVG arrow used in the flow diagram. Horizontal by default,
-   vertical for the mobile stacking. Picks up currentColor so it
-   inherits ink-soft from the parent. */
-function FlowArrow({
-  vertical = false,
-  className = "",
-}: {
-  vertical?: boolean;
-  className?: string;
-}) {
-  if (vertical) {
-    return (
-      <svg
-        width="14"
-        height="32"
-        viewBox="0 0 14 32"
-        className={className}
-        aria-hidden
-      >
-        <path
-          d="M7 0v26m-6-6l6 6 6-6"
-          stroke="currentColor"
-          strokeWidth="1.25"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
+/* Illustrated editorial figure for the "How the map gets drawn"
+   section. Three-part visual narrative rendered as one SVG so the
+   threadlines actually connect across the panels:
+   - LEFT: chaotic scatter of source nodes. Some labeled, some
+     anonymous, a few struck-through (sources we reject upfront).
+     Connector threads curve toward the center.
+   - MIDDLE: a thin vertical pinch labeled "curation." Threads
+     thread through the pinch; rejection markers ✗ float around it.
+   - RIGHT: threads emerge organized, landing on a horizontal grid
+     of dated event rows.
+   Stroke widths and Y-offsets are hand-placed for a "deliberate but
+   not perfect" feel. The figure uses the existing stratum tokens so
+   it picks up dark-mode automatically. */
+function Figure1() {
+  /* Source labels along the left scatter. Position is roughly y%
+     across the left third (x: 60-380, y: 60-540 in viewBox). */
+  const sources = [
+    { x: 110, y: 90, r: 4, label: "MEETUP", angle: -2 },
+    { x: 250, y: 70, r: 5, label: "LUMA", angle: 1 },
+    { x: 70, y: 200, r: 3, label: null, angle: 0 },
+    { x: 320, y: 140, r: 4, label: "SILICON SLOPES", angle: 2 },
+    { x: 150, y: 230, r: 6, label: "EVENTBRITE", angle: 1 },
+    { x: 60, y: 320, r: 3, label: null, angle: 0 },
+    { x: 290, y: 270, r: 4, label: "47G", angle: -1 },
+    { x: 180, y: 340, r: 5, label: "BIOUTAH", angle: 1 },
+    { x: 100, y: 420, r: 3, label: null, angle: 0 },
+    { x: 230, y: 420, r: 4, label: "SUBSTACK", angle: -1 },
+    { x: 340, y: 380, r: 3, label: null, angle: 0 },
+    { x: 150, y: 500, r: 5, label: "SUBMISSIONS", angle: 1 },
+    { x: 60, y: 500, r: 3, label: null, angle: 0 },
+  ];
+
+  /* A subset of sources get connector threads to the pinch
+     (x=620, y varies). The rest are noise/scatter. */
+  const threadIndices = [0, 1, 3, 4, 6, 7, 9, 11];
+  /* Rejected things - mark them with X near them, don't draw a thread. */
+  const rejected = [
+    { x: 65, y: 145, label: "CERT-SPAM" },
+    { x: 360, y: 320, label: "CRAFT" },
+    { x: 80, y: 370, label: "DUPE" },
+  ];
+
+  /* Pinch column on the right side of the curation lens. Threads
+     emerge from x=640 at staggered Y positions and reach to x=1140
+     (end of viewBox). */
+  const outputRows = [
+    { y: 130, day: "MON", label: "Founders dinner · Lehi" },
+    { y: 210, day: "WED", label: "Utah JS · SLC" },
+    { y: 290, day: "THU", label: "BioHive demo day" },
+    { y: 370, day: "FRI", label: "AI Power Hour · Silicon Slopes" },
+    { y: 450, day: "SAT", label: "SAINTCON · Provo" },
+  ];
+
   return (
-    <svg
-      width="32"
-      height="14"
-      viewBox="0 0 32 14"
-      className={`text-ink-soft ${className}`}
-      aria-hidden
-    >
-      <path
-        d="M0 7h26m-6-6l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div className="relative">
+      <svg
+        viewBox="0 0 1200 600"
+        className="w-full h-auto"
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label="Diagram: scattered source nodes thread through a curation pinch and emerge as an organized schedule grid."
+      >
+        {/* Subtle dotted grid across the whole figure - editorial
+            "graph paper" texture without being a literal grid. */}
+        <defs>
+          <pattern
+            id="dots"
+            x="0"
+            y="0"
+            width="24"
+            height="24"
+            patternUnits="userSpaceOnUse"
+          >
+            <circle cx="1.5" cy="1.5" r="0.6" fill="currentColor" opacity="0.18" />
+          </pattern>
+          <linearGradient id="threadFade" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.15" />
+            <stop offset="48%" stopColor="currentColor" stopOpacity="0.45" />
+            <stop offset="52%" stopColor="currentColor" stopOpacity="0.65" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0.35" />
+          </linearGradient>
+        </defs>
+
+        <rect
+          x="0"
+          y="0"
+          width="1200"
+          height="600"
+          fill="url(#dots)"
+          className="text-ink-soft"
+        />
+
+        {/* SCATTER (LEFT): source nodes with floating labels. */}
+        <g className="text-ink-soft">
+          {sources.map((s, i) => (
+            <g key={`src-${i}`}>
+              <circle
+                cx={s.x}
+                cy={s.y}
+                r={s.r}
+                fill="currentColor"
+                opacity="0.75"
+              />
+              {s.label && (
+                <text
+                  x={s.x + s.r + 8}
+                  y={s.y + 3}
+                  fontSize="9"
+                  fontFamily="IBM Plex Mono, ui-monospace, monospace"
+                  letterSpacing="0.12em"
+                  fill="currentColor"
+                  className="text-ink"
+                  transform={`rotate(${s.angle} ${s.x + s.r + 8} ${s.y + 3})`}
+                >
+                  {s.label}
+                </text>
+              )}
+            </g>
+          ))}
+
+          {/* Tiny chaos sprinkles - dots that aren't sources, give
+              the field texture. */}
+          {Array.from({ length: 28 }).map((_, i) => {
+            /* Stable pseudo-random via index. */
+            const seed = i * 137.508;
+            const x = 30 + ((seed * 7) % 380);
+            const y = 40 + ((seed * 11) % 540);
+            const r = 0.8 + ((seed * 3) % 1.2);
+            return (
+              <circle
+                key={`sprinkle-${i}`}
+                cx={x}
+                cy={y}
+                r={r}
+                fill="currentColor"
+                opacity="0.25"
+              />
+            );
+          })}
+        </g>
+
+        {/* REJECTED items - X marks with mono label */}
+        <g className="text-sunset-deep">
+          {rejected.map((r, i) => (
+            <g key={`rej-${i}`} opacity="0.55">
+              <line
+                x1={r.x - 5}
+                y1={r.y - 5}
+                x2={r.x + 5}
+                y2={r.y + 5}
+                stroke="currentColor"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+              />
+              <line
+                x1={r.x - 5}
+                y1={r.y + 5}
+                x2={r.x + 5}
+                y2={r.y - 5}
+                stroke="currentColor"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+              />
+              <text
+                x={r.x + 10}
+                y={r.y + 3}
+                fontSize="8"
+                fontFamily="IBM Plex Mono, ui-monospace, monospace"
+                letterSpacing="0.14em"
+                fill="currentColor"
+              >
+                {r.label}
+              </text>
+            </g>
+          ))}
+        </g>
+
+        {/* THREADS: bezier curves from source nodes to the pinch.
+            Each thread is its own gentle S-curve. */}
+        <g className="text-ink" fill="none">
+          {threadIndices.map((srcIdx, i) => {
+            const s = sources[srcIdx];
+            const targetY = 100 + (i / (threadIndices.length - 1)) * 400;
+            const ctrl1X = 380;
+            const ctrl1Y = s.y;
+            const ctrl2X = 480;
+            const ctrl2Y = targetY;
+            const endX = 600;
+            const endY = targetY;
+            return (
+              <path
+                key={`thread-${i}`}
+                d={`M ${s.x + s.r} ${s.y} C ${ctrl1X} ${ctrl1Y}, ${ctrl2X} ${ctrl2Y}, ${endX} ${endY}`}
+                stroke="url(#threadFade)"
+                strokeWidth={1 + (i % 3) * 0.25}
+                strokeLinecap="round"
+              />
+            );
+          })}
+        </g>
+
+        {/* PINCH: the curation slit. Thin vertical bar with a small
+            label below. Threads enter at x=600 and exit at x=640. */}
+        <g>
+          <line
+            x1="610"
+            y1="80"
+            x2="610"
+            y2="520"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="text-ink"
+            opacity="0.85"
+          />
+          <line
+            x1="625"
+            y1="80"
+            x2="625"
+            y2="520"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-dusk-deep"
+            opacity="0.65"
+          />
+          {/* Filter labels stacked beside the pinch */}
+          <g className="text-dusk-deep">
+            <text
+              x="600"
+              y="60"
+              fontSize="10"
+              fontFamily="IBM Plex Mono, ui-monospace, monospace"
+              letterSpacing="0.22em"
+              fill="currentColor"
+              textAnchor="middle"
+            >
+              CURATION
+            </text>
+          </g>
+          {/* Tick marks along the pinch suggest the filter passes */}
+          <g className="text-ink-soft">
+            {[120, 180, 240, 300, 360, 420, 480].map((y, i) => (
+              <line
+                key={`tick-${i}`}
+                x1="606"
+                y1={y}
+                x2="614"
+                y2={y}
+                stroke="currentColor"
+                strokeWidth="1.25"
+                opacity="0.7"
+              />
+            ))}
+          </g>
+        </g>
+
+        {/* OUTPUT THREADS: emerge from pinch and run to schedule rows */}
+        <g className="text-ink" fill="none">
+          {outputRows.map((row, i) => {
+            const startY = 100 + (i / (outputRows.length - 1)) * 400;
+            return (
+              <path
+                key={`out-${i}`}
+                d={`M 640 ${startY} C 720 ${startY}, 760 ${row.y}, 840 ${row.y}`}
+                stroke="currentColor"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+                opacity="0.55"
+              />
+            );
+          })}
+        </g>
+
+        {/* SCHEDULE GRID (RIGHT): 5 horizontal lines with day chip +
+            event title floating at the row. */}
+        <g>
+          {outputRows.map((row, i) => (
+            <g key={`row-${i}`}>
+              {/* baseline */}
+              <line
+                x1="840"
+                y1={row.y}
+                x2="1150"
+                y2={row.y}
+                stroke="currentColor"
+                strokeWidth="1"
+                className="text-ink-soft"
+                opacity="0.4"
+              />
+              {/* day chip */}
+              <text
+                x="848"
+                y={row.y - 6}
+                fontSize="9"
+                fontFamily="IBM Plex Mono, ui-monospace, monospace"
+                letterSpacing="0.2em"
+                fill="currentColor"
+                className="text-ink-soft"
+              >
+                {row.day}
+              </text>
+              {/* event title */}
+              <text
+                x="900"
+                y={row.y - 6}
+                fontSize="13"
+                fontFamily="Fraunces, ui-serif, Georgia, serif"
+                fontStyle="italic"
+                fill="currentColor"
+                className="text-ink"
+              >
+                {row.label}
+              </text>
+              {/* terminal dot - sage accent */}
+              <circle
+                cx="845"
+                cy={row.y}
+                r="3.5"
+                fill="currentColor"
+                className="text-sage-deep"
+              />
+            </g>
+          ))}
+          {/* footer count */}
+          <text
+            x="845"
+            y="530"
+            fontSize="9"
+            fontFamily="IBM Plex Mono, ui-monospace, monospace"
+            letterSpacing="0.2em"
+            fill="currentColor"
+            className="text-ink-soft"
+          >
+            + 170 MORE THIS SEASON
+          </text>
+        </g>
+
+        {/* Edge labels - subtle markers at the top of each band */}
+        <g className="text-ink-soft" opacity="0.55">
+          <text
+            x="60"
+            y="40"
+            fontSize="9"
+            fontFamily="IBM Plex Mono, ui-monospace, monospace"
+            letterSpacing="0.22em"
+            fill="currentColor"
+          >
+            CHAOS
+          </text>
+          <text
+            x="1140"
+            y="40"
+            fontSize="9"
+            fontFamily="IBM Plex Mono, ui-monospace, monospace"
+            letterSpacing="0.22em"
+            fill="currentColor"
+            textAnchor="end"
+          >
+            ORDER
+          </text>
+        </g>
+      </svg>
+    </div>
   );
 }
