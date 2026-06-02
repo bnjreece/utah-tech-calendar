@@ -47,11 +47,14 @@ export function FilterBar({ cities, tags, sources }: Props) {
   const activeQs = filtersToSearchParams(filters).toString();
   const [savedQs, setSavedQs] = useState<string | null>(null);
 
-  /* Persist the active filter querystring to localStorage on every
-     change, so a return visit can offer "Restore your last view".
-     Saving the empty string when the user clears is intentional - it
-     dismisses the restore prompt without an extra cookie nag flag. */
+  /* Persist the active filter querystring to localStorage so a return
+     visit can offer "Restore your last view". Critically, we skip the
+     write when activeQs is empty so a visitor opening someone else's
+     shared link and clearing it doesn't stomp THEIR prior saved
+     state. Explicit dismissal goes through the X button on the
+     restore prompt instead, which calls removeItem(). */
   useEffect(() => {
+    if (activeQs.length === 0) return;
     try {
       window.localStorage.setItem(FILTERS_LSK, activeQs);
     } catch {

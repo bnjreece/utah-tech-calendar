@@ -36,22 +36,36 @@ export function ShareFilterButton({ href, label = "Share", className }: ShareFil
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      return;
     } catch {
-      /* Clipboard write can fail on insecure contexts or denied perms.
-         Last resort: select a synthetic input so the user can ⌘C. */
-      const textarea = document.createElement("textarea");
-      textarea.value = url;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand("copy");
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } finally {
-        document.body.removeChild(textarea);
-      }
+      /* Clipboard API blocked (insecure context, denied perms). Fall
+         through to the deprecated execCommand path. */
+    }
+    /* Last resort: select a synthetic textarea and exec copy. Returns
+       false on failure - we honor that and prompt the user to copy
+       manually rather than silently lying about "Copied". */
+    const textarea = document.createElement("textarea");
+    textarea.value = url;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    let succeeded = false;
+    try {
+      succeeded = document.execCommand("copy");
+    } catch {
+      succeeded = false;
+    } finally {
+      document.body.removeChild(textarea);
+    }
+    if (succeeded) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      /* Visible failure path - prompt() is ugly but truthful, and
+         the user can ⌘C from the prompt's selected text on most
+         platforms. Beats "Copied" lying to them. */
+      window.prompt("Copy this link:", url);
     }
   };
 

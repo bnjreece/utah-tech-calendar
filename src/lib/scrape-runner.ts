@@ -73,8 +73,16 @@ function detectCraft(item: EventItem): boolean {
      Workshop" don't get hidden. */
 const ONLINE_STRONG_RE =
   /\b(webinar|live[- ]stream|livestream|online[- ]only|remote[- ]only)\b/i;
+/* Bound the co-occurrence window to ~3 tokens on either side so the
+   greedy `.*` from the prior version can't pair "Virtual" with a
+   "Workshop Building" venue name 30 characters later. The narrower
+   word list (`meetup|session|talk|panel|seminar|networking|happy
+   hour`) drops `workshop`/`class`/`conference`/`event` - those are
+   too common to anchor reliably without producing false hides on
+   "Virtual Reality Hackathon at the Workshop Building" style
+   titles. */
 const ONLINE_AMBIGUOUS_RE =
-  /\b(virtual|zoom)\b.*\b(event|meetup|workshop|session|talk|panel|conference|class|seminar|networking|happy hour)\b|\b(event|meetup|workshop|session|talk|panel|conference|class|seminar|networking|happy hour)\b.*\b(virtual|zoom)\b/i;
+  /\b(virtual|zoom)(?:\W+\w+){0,3}\W+(meetup|session|talk|panel|seminar|networking|happy hour)\b|\b(meetup|session|talk|panel|seminar|networking|happy hour)(?:\W+\w+){0,3}\W+(virtual|zoom)\b/i;
 function detectOnline(item: EventItem): boolean {
   if (item.isOnline) return true;
   const t = item.title;

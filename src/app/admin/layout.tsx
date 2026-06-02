@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ClerkProvider } from "@clerk/nextjs";
 import { requireAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +20,7 @@ export default async function AdminLayout({
   const user = await requireAdmin();
 
   return (
-    <ClerkProvider>
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-10">
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-10">
         <header className="border-b-2 border-ink pb-4">
           <div className="flex items-baseline justify-between gap-4 flex-wrap">
             <div>
@@ -51,6 +49,5 @@ export default async function AdminLayout({
         </header>
         <div className="mt-10">{children}</div>
       </div>
-    </ClerkProvider>
   );
 }

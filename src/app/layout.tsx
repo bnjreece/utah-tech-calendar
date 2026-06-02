@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ReflectionShimmerLogo } from "@/components/logos";
+import { SiteNav } from "@/components/site-nav";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
 import "./globals.css";
@@ -88,51 +90,27 @@ export default function RootLayout({
         />
       </head>
       <body className="isolate min-h-dvh flex flex-col bg-background text-foreground antialiased">
-        <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/10">
-          <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 sm:gap-6">
-            <Link
-              href="/"
-              aria-label="Homepage"
-              className="group flex items-center gap-2.5 hover:text-sunset-deep transition-colors min-w-0"
-            >
-              <ReflectionShimmerLogo
-                className="text-ink group-hover:text-sunset-deep transition-colors shrink-0"
-                style={{ width: "32px", height: "32px", transform: "translateY(3px)" }}
-              />
-              <span className="font-display text-2xl tracking-tight leading-none truncate">
-                <span className="hidden sm:inline">utah tech calendar</span>
-                <span className="sm:hidden">UTC</span>
-              </span>
-            </Link>
-            <nav className="flex items-baseline gap-4 sm:gap-5 font-mono text-[11px] uppercase tracking-[0.18em] shrink-0">
+        <ClerkProvider>
+          <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/10">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 sm:gap-6">
               <Link
                 href="/"
-                className="hidden sm:inline text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
+                aria-label="Homepage"
+                className="group flex items-center gap-2.5 hover:text-sunset-deep transition-colors min-w-0"
               >
-                events
+                <ReflectionShimmerLogo
+                  className="text-ink group-hover:text-sunset-deep transition-colors shrink-0"
+                  style={{ width: "32px", height: "32px", transform: "translateY(3px)" }}
+                />
+                <span className="font-display text-2xl tracking-tight leading-none truncate">
+                  <span className="hidden sm:inline">utah tech calendar</span>
+                  <span className="sm:hidden">UTC</span>
+                </span>
               </Link>
-              <Link
-                href="/discover"
-                className="hidden sm:inline text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
-              >
-                discover
-              </Link>
-              <Link
-                href="/subscribe"
-                className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
-              >
-                subscribe
-              </Link>
-              <Link
-                href="/submit"
-                className="text-ink hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors"
-              >
-                submit
-              </Link>
-            </nav>
-          </div>
-        </header>
-        <main className="flex-1">{children}</main>
+              <SiteNav />
+            </div>
+          </header>
+          <main className="flex-1">{children}</main>
         <footer className="mt-12 border-t-2 border-ink">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10">
             {/* Vertical index - internal linking to the curated tag
@@ -185,6 +163,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+        </ClerkProvider>
         <Analytics />
         <SpeedInsights />
       </body>

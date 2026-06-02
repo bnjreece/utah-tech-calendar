@@ -31,18 +31,19 @@ export default function DiscoverPage() {
       </h1>
 
       <p className="mt-8 text-lg sm:text-xl text-ink leading-relaxed text-pretty">
-        That&apos;s the whole problem with the Utah tech scene. An enormous
-        amount is happening every week, across half a dozen verticals
-        and a dozen cities, and most of it only reaches you if someone
-        in your group chat happens to mention it. Word-of-mouth is a
-        slow signal in a fast community.
+        That&apos;s the whole problem with the Utah tech scene and the
+        founders, designers, scientists, and operators building around
+        it. An enormous amount is happening every week, across nearly
+        a dozen verticals and a dozen cities, and most of it only
+        reaches you if someone in your group chat happens to mention
+        it. Word-of-mouth is a slow signal in a fast community.
       </p>
 
       <p className="mt-5 text-base sm:text-lg text-ink-soft leading-relaxed text-pretty">
         Discoverability is the first step to connection. {SITE_NAME} is
-        the map: one page, every in-person Utah tech event we can find,
-        run as a free public service. No login, no profile, no tracking.
-        Just a place to see what&apos;s on this week.
+        the map: one page, every in-person Utah tech and tech-adjacent
+        event we can find, run as a free public service. No login, no
+        profile, no tracking. Just a place to see what&apos;s on this week.
       </p>
 
       {/* The promise */}
@@ -58,13 +59,13 @@ export default function DiscoverPage() {
           />
           <Feature
             eyebrow="Verticals"
-            title="Eight curated content tags, hand-tuned for Utah."
+            title="Nine curated content tags, hand-tuned for Utah."
             body={
               <>
-                AI, fintech, biotech, healthtech, aerospace, cybersecurity,
-                game dev, and the founder/startup track. Each one has its
-                own page with the anchor employers, the regular meetups,
-                and the events on the schedule right now.{" "}
+                AI, fintech, biotech, healthtech, edtech, aerospace,
+                cybersecurity, game dev, and the founder/startup track.
+                Each one has its own page with the anchor employers, the
+                regular meetups, and the events on the schedule right now.{" "}
                 <Link
                   href="/tag/biotech"
                   className="underline decoration-1 underline-offset-4 hover:text-sunset-deep"
@@ -172,9 +173,10 @@ export default function DiscoverPage() {
             <span aria-hidden className="font-mono text-ink-soft mt-1">·</span>
             <span>
               <strong>No tracking.</strong> No third-party advertising scripts,
-              no cross-site pixel, no behavioral profile. Vercel ships a
-              minimal privacy-respecting analytics counter so we can see
-              the calendar is being used; that&apos;s the entire data trail.
+              no cross-site pixel, no behavioral profile. Vercel&apos;s built-in
+              analytics + speed insights collect aggregated page-view and
+              performance metrics so we know the calendar is being used and
+              loading fast; that&apos;s the entire data trail.
             </span>
           </li>
           <li className="flex gap-3">
