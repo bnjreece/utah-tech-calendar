@@ -56,7 +56,18 @@ const RULES: TagRule[] = [
   { tag: "mobile", re: /\b(android|ios|mobile app|native app)\b/i },
   { tag: "web", re: /\b(web dev|web development|frontend|backend|fullstack|full[- ]stack)\b/i },
   { tag: "gaming", re: /\b(game dev|game design|unity|unreal|godot)\b/i },
-  { tag: "biotech", re: /\b(biotech|life sciences|genomics|medical device)\b/i },
+  { tag: "biotech", re: /\b(biotech|life sciences|genomics|medical device|drug discovery|clinical trial|cell therapy|gene therapy|crispr)\b/i },
+  /* Utah's fintech corridor (Galileo/MX/SoFi/Finicity/Acima) and the
+     adjacent payments/banking/lending vocabulary. Whole-word matching
+     keeps a "venture capital" event from sliding under the tag. */
+  { tag: "fintech", re: /\b(fintech|fin[- ]tech|payments?\s+(?:platform|infra|engineer|tech|industry|company|product|api)|banking\s+(?:tech|infra|platform|api|software)|neobank|defi|wealthtech|insurtech|paytech|stripe\s+(?:user|engineer|api)|plaid|galileo|finicity|acima)\b/i },
+  /* Healthtech = software side of healthcare (distinct from biotech
+     wet-lab work). Match digital health vocab + Utah employer names
+     so an Oracle Health career night gets tagged. */
+  { tag: "healthtech", re: /\b(healthtech|health[- ]tech|digital health|healthcare\s+(?:tech|innovation|engineer|software|platform|startup)|telehealth|telemedicine|ehr\b|emr\b|patient\s+(?:platform|portal|experience|engagement)|oracle\s+health|intermountain\s+health|owlet)\b/i },
+  /* Edtech = K-12 + higher ed + corporate learning. Instructure
+     (Canvas), Pluralsight anchor the Lehi cluster. */
+  { tag: "edtech", re: /\b(edtech|ed[- ]tech|learning\s+(?:management|platform|tech|design|engineer)|lms\b|online\s+learning|education\s+(?:tech|software|startup)|canvas\s+(?:lms|instructure|university)|instructure|pluralsight|civitas\s+learning)\b/i },
 
   /* Format / audience */
   { tag: "founders", re: /\b(founders?|founding|startup|entrepreneurs?)\b/i },

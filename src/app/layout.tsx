@@ -4,7 +4,15 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ReflectionShimmerLogo } from "@/components/logos";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
 import "./globals.css";
+
+/* Snapshot at module load (server-only) so we don't re-resolve on
+   every render. The list is hand-curated, not data-driven. */
+const FOOTER_VERTICALS = getFeaturedVerticals().map((v) => ({
+  tag: v.tag,
+  display: v.display,
+}));
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -23,6 +31,11 @@ export const metadata: Metadata = {
     "Silicon Slopes events",
     "Utah JavaScript meetup",
     "Utah AI meetup",
+    "Utah fintech events",
+    "Utah healthtech events",
+    "Utah edtech events",
+    "Utah biotech events",
+    "Utah cybersecurity events",
     "Utah startup events",
     "Lehi tech meetups",
     "Ogden tech events",
@@ -115,29 +128,51 @@ export default function RootLayout({
         </header>
         <main className="flex-1">{children}</main>
         <footer className="mt-12 border-t-2 border-ink">
-          <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2.5">
-              <ReflectionShimmerLogo
-                className="text-ink"
-                style={{ width: "16px", height: "16px", transform: "translateY(2px)" }}
-              />
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
-                compiled in cottonwood heights, utah · updated nightly
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10">
+            {/* Vertical index - internal linking to the curated tag
+                landing pages so Google can crawl them from every
+                surface, and visitors can drill into their corner of
+                the scene without learning the URL structure. */}
+            <div className="pb-8 border-b border-ink/15">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft mb-3">
+                Browse by vertical
               </p>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em]">
+                {FOOTER_VERTICALS.map((v) => (
+                  <Link
+                    key={v.tag}
+                    href={`/tag/${v.tag}`}
+                    className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
+                  >
+                    {v.display}
+                  </Link>
+                ))}
+              </div>
             </div>
-            <div className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
-              <Link href="/about" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
-                about
-              </Link>
-              <Link href="/api/ical" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
-                ical
-              </Link>
-              <Link href="/api/rss" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
-                rss
-              </Link>
-              <Link href="/submit" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
-                submit
-              </Link>
+            <div className="pt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2.5">
+                <ReflectionShimmerLogo
+                  className="text-ink"
+                  style={{ width: "16px", height: "16px", transform: "translateY(2px)" }}
+                />
+                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+                  compiled in cottonwood heights, utah · updated nightly
+                </p>
+              </div>
+              <div className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
+                <Link href="/about" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                  about
+                </Link>
+                <Link href="/api/ical" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                  ical
+                </Link>
+                <Link href="/api/rss" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                  rss
+                </Link>
+                <Link href="/submit" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                  submit
+                </Link>
+              </div>
             </div>
           </div>
         </footer>

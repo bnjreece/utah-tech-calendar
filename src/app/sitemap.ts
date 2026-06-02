@@ -4,6 +4,7 @@ import { db, events, groups } from "@/lib/db";
 import { SITE_URL } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
 import { listUpcomingPeriodSlugs } from "@/lib/period";
+import { getAllCanonicalTags } from "@/lib/tag-taxonomy";
 
 /* Dynamic sitemap. Pulls every approved upcoming event so Google can
    crawl each detail page (using the canonical slug URL); also includes
@@ -97,7 +98,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  /* Tag landing pages - one per unique tag on upcoming approved events. */
+  /* Tag landing pages. Two sources combined + deduped:
+     - Curated canonical verticals (fintech, healthtech, edtech, etc)
+       always appear so Google indexes them even on a dry week. Higher
+       priority because these are the SEO targets.
+     - Tags that exist on actual upcoming events. Covers the long tail
+       (laravel, rust, etc) that aren't curated but earn an indexable
+       page by virtue of having content. */
+  const tagSlugs = new Set<string>();
+  for (const meta of getAllCanonicalTags()) {
+    const slug = toSlug(meta.tag);
+    tagSlugs.add(slug);
+    routes.push({
+      url: `${SITE_URL}/tag/${slug}`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: meta.featured ? 0.8 : 0.7,
+    });
+  }
   const tagRows = await db.execute<{ tag: string }>(sql`
     SELECT DISTINCT lower(tag) AS tag
     FROM events, unnest(tags) AS tag
@@ -105,8 +123,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   `);
   const tags = (Array.isArray(tagRows) ? tagRows : tagRows.rows ?? []) as Array<{ tag: string }>;
   for (const t of tags) {
+    const slug = toSlug(t.tag);
+    if (tagSlugs.has(slug)) continue;
+    tagSlugs.add(slug);
     routes.push({
-      url: `${SITE_URL}/tag/${toSlug(t.tag)}`,
+      url: `${SITE_URL}/tag/${slug}`,
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.6,

@@ -9,13 +9,21 @@ import { EditorialLinearCard } from "@/components/variant-cards";
 import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { toSlug, eventSlug } from "@/lib/slugs";
+import { getTagMeta, getAllCanonicalTags, type TagMeta } from "@/lib/tag-taxonomy";
 
 export const dynamic = "force-dynamic";
 
-/* Look up the canonical tag display string from a URL slug. Tags are
-   user-supplied strings stored as text[]; canonical form is whatever
-   appears most-often in approved upcoming events. */
-async function tagFromSlug(slug: string): Promise<string | null> {
+/* Resolve a URL slug to a canonical tag. Two-pass lookup:
+   1. The curated taxonomy (TAG_TAXONOMY) is the source of truth for
+      "verticals we want indexed even on dry weeks" - so fintech /
+      healthtech / edtech etc. render with editorial intros even
+      before a single event matches.
+   2. Otherwise fall back to whatever tag strings actually exist on
+      approved upcoming events. */
+async function tagFromSlug(slug: string): Promise<{ tag: string; meta: TagMeta | null }> {
+  for (const t of getAllCanonicalTags()) {
+    if (toSlug(t.tag) === slug) return { tag: t.tag, meta: t };
+  }
   const rows = await db.execute<{ tag: string }>(sql`
     SELECT DISTINCT lower(tag) AS tag
     FROM events, unnest(tags) AS tag
@@ -23,9 +31,9 @@ async function tagFromSlug(slug: string): Promise<string | null> {
   `);
   const tagList = (Array.isArray(rows) ? rows : rows.rows ?? []) as Array<{ tag: string }>;
   for (const r of tagList) {
-    if (toSlug(r.tag) === slug) return r.tag;
+    if (toSlug(r.tag) === slug) return { tag: r.tag, meta: getTagMeta(r.tag) };
   }
-  return null;
+  return { tag: "", meta: null };
 }
 
 async function fetchTagEvents(tag: string): Promise<EventWithGroup[]> {
@@ -68,15 +76,13 @@ export async function generateMetadata({
   params: Promise<{ tag: string }>;
 }): Promise<Metadata> {
   const { tag: slug } = await params;
-  const tag = await tagFromSlug(slug);
+  const { tag, meta } = await tagFromSlug(slug);
   if (!tag) return { title: "Tag not found" };
-  const evts = await fetchTagEvents(tag);
-  const display = tagTitle(tag);
-  const title = `Utah ${display} Events`;
+  const display = meta?.display ?? tagTitle(tag);
+  const title = meta?.seoTitle ?? `Utah ${display} Events`;
   const description =
-    evts.length > 0
-      ? `${evts.length} upcoming Utah ${display} events — meetups, conferences, workshops, and developer nights. Curated from Meetup, Eventbrite, Luma, and Silicon Slopes.`
-      : `Upcoming Utah ${display} events. Meetups, conferences, and workshops when scheduled.`;
+    meta?.seoDescription ??
+    `Upcoming Utah ${display} events — meetups, conferences, workshops, and developer nights. Curated from Meetup, Eventbrite, Luma, and Silicon Slopes.`;
   return {
     title,
     description,
@@ -96,10 +102,10 @@ export default async function TagPage({
   params: Promise<{ tag: string }>;
 }) {
   const { tag: slug } = await params;
-  const tag = await tagFromSlug(slug);
+  const { tag, meta } = await tagFromSlug(slug);
   if (!tag) notFound();
   const evts = await fetchTagEvents(tag);
-  const display = tagTitle(tag);
+  const display = meta?.display ?? tagTitle(tag);
 
   const itemList = {
     "@context": "https://schema.org",
@@ -124,16 +130,32 @@ export default async function TagPage({
       </p>
 
       <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-        Topic
+        Vertical
       </p>
       <h1 className="mt-3 font-display text-4xl sm:text-5xl tracking-tight italic text-ink">
         Utah {display} events
       </h1>
       <p className="mt-4 max-w-[62ch] text-pretty text-base sm:text-lg text-ink-soft leading-relaxed">
-        {evts.length > 0
-          ? `${evts.length} upcoming in-person Utah ${display} ${evts.length === 1 ? "event" : "events"}. Meetups, conferences, workshops, and developer talks tagged ${tag}. Curated from ${SITE_NAME}.`
-          : `Nothing on the schedule with the ${tag} tag right now. Check back soon, or submit one below.`}
+        {meta?.intro ??
+          (evts.length > 0
+            ? `${evts.length} upcoming in-person Utah ${display} ${evts.length === 1 ? "event" : "events"}. Meetups, conferences, workshops, and developer talks tagged ${tag}. Curated from ${SITE_NAME}.`
+            : `Nothing on the schedule with the ${tag} tag right now. Check back soon, or submit one below.`)}
       </p>
+      {meta?.anchors && meta.anchors.length > 0 && (
+        <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 max-w-[68ch]">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+            Anchor employers
+          </span>
+          {meta.anchors.map((a, i) => (
+            <span key={a} className="text-sm text-ink">
+              {a}
+              {i < (meta.anchors?.length ?? 0) - 1 && (
+                <span aria-hidden className="text-ink-soft"> · </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="mt-10 pb-3 border-b-2 border-ink flex items-baseline justify-between gap-4">
         <h2 className="font-display text-2xl sm:text-3xl tracking-tight italic">
