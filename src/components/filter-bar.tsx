@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { UTAH_REGIONS, type UtahRegion } from "@/lib/regions";
 import {
   parseFilters,
@@ -13,11 +13,19 @@ import {
 } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
+import { ShareFilterButton } from "@/components/share-filter-button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+/* localStorage key for the last applied filter querystring. Lets us
+   offer a one-click "Restore your last view" link when the user lands
+   on a bare URL. NOT auto-applied - explicit click means no surprise
+   reorientation, no cookie banner required (first-party functional
+   storage, GDPR-safe). */
+const FILTERS_LSK = "utc:lastFilterQs";
 
 interface CountedOption {
   value: string;
@@ -36,6 +44,41 @@ export function FilterBar({ cities, tags, sources }: Props) {
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const filters = parseFilters(searchParams);
+  const activeQs = filtersToSearchParams(filters).toString();
+  const [savedQs, setSavedQs] = useState<string | null>(null);
+
+  /* Persist the active filter querystring to localStorage on every
+     change, so a return visit can offer "Restore your last view".
+     Saving the empty string when the user clears is intentional - it
+     dismisses the restore prompt without an extra cookie nag flag. */
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(FILTERS_LSK, activeQs);
+    } catch {
+      /* Storage quota or privacy mode - silent. */
+    }
+  }, [activeQs]);
+
+  /* On mount: read any saved querystring and surface a restore link
+     if (a) the URL is currently bare AND (b) the saved string has
+     real content. No auto-apply, no popup. */
+  useEffect(() => {
+    if (activeQs.length > 0) return;
+    try {
+      const raw = window.localStorage.getItem(FILTERS_LSK);
+      if (raw && raw.length > 0) setSavedQs(raw);
+    } catch {
+      /* same */
+    }
+  }, [activeQs]);
+
+  function restoreSaved() {
+    if (!savedQs) return;
+    startTransition(() => {
+      router.push(`${pathname}?${savedQs}`);
+    });
+    setSavedQs(null);
+  }
 
   function update(next: Partial<FilterState>) {
     const merged: FilterState = { ...filters, ...next };
@@ -238,6 +281,40 @@ export function FilterBar({ cities, tags, sources }: Props) {
             className="ml-1 text-xs text-foreground/55 hover:text-foreground transition-colors"
           >
             Clear all
+          </button>
+          {/* Share the exact filtered view. Native share sheet on
+              mobile, clipboard copy on desktop. Quietly. */}
+          <ShareFilterButton label="Share view" />
+        </div>
+      )}
+
+      {/* Restore-last-view prompt: only when the URL is bare AND there
+          is a stored prior filter. Inline link, one click to apply, X
+          to dismiss. No modal, no overlay, no cookie banner - this is
+          first-party functional storage. */}
+      {activeCount === 0 && savedQs && (
+        <div className="flex items-center gap-2 pt-1 text-xs text-foreground/55">
+          <button
+            type="button"
+            onClick={restoreSaved}
+            className="underline decoration-1 underline-offset-4 hover:text-foreground transition-colors"
+          >
+            Restore your last view
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                window.localStorage.removeItem(FILTERS_LSK);
+              } catch {
+                /* same */
+              }
+              setSavedQs(null);
+            }}
+            aria-label="Dismiss restore prompt"
+            className="text-foreground/40 hover:text-foreground"
+          >
+            ×
           </button>
         </div>
       )}

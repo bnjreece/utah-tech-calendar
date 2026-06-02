@@ -240,8 +240,8 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
         )}
       </div>
 
-      {/* Three delivery channels for the same filter slice */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+      {/* Four delivery channels for the same filter slice */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
         <div className="border border-ink/15 rounded-2xl p-5 bg-paper flex flex-col">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
             Calendar
@@ -290,6 +290,78 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
             <RssSubscribe feedQuery={feedQuery} />
           </div>
         </div>
+        <div className="border border-ink/15 rounded-2xl p-5 bg-paper flex flex-col">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+            Share
+          </p>
+          <h3 className="mt-2 font-display text-xl italic tracking-tight">
+            Or send it to a friend.
+          </h3>
+          <p className="mt-2 text-sm text-ink-soft leading-relaxed flex-1">
+            Built a view someone else would care about? Copy the link.
+            It opens this exact filter for them, no signup required.
+          </p>
+          <div className="mt-4">
+            <ShareLinkCard feedQuery={feedQuery} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Surfaces the homepage URL with the current filter querystring +
+   copy/native-share buttons. Kept inside FeedBuilder so it reacts to
+   the live filter state, but renders the canonical SITE_URL host on
+   SSR so the visible URL is real from the first paint - same anchor
+   trick RssSubscribe uses. */
+function ShareLinkCard({ feedQuery }: { feedQuery: string }) {
+  const [copied, setCopied] = useState(false);
+  const shareUrl = `${SITE_URL}/${feedQuery ? `?${feedQuery}` : ""}`;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked - fall back to the visible URL */
+    }
+  }
+
+  async function nativeShare() {
+    if (typeof navigator.share !== "function") return copy();
+    try {
+      await navigator.share({ url: shareUrl, title: "Utah Tech Calendar" });
+    } catch {
+      /* user cancelled - silent */
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        type="url"
+        readOnly
+        value={shareUrl}
+        onFocus={(e) => e.currentTarget.select()}
+        className="w-full rounded-md bg-paper-deep px-3 py-2 text-xs font-mono text-ink/80 ring-1 ring-ink/10 outline-none focus:ring-ink/30"
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={copy}
+          className="flex-1 inline-flex items-center justify-center rounded-full bg-ink px-4 py-2 text-xs font-medium text-paper hover:bg-ink/85 transition-colors"
+        >
+          {copied ? "Copied" : "Copy link"}
+        </button>
+        <button
+          type="button"
+          onClick={nativeShare}
+          className="inline-flex items-center justify-center rounded-full ring-1 ring-ink/15 px-4 py-2 text-xs font-medium text-ink hover:bg-paper-deep transition-colors"
+        >
+          Share
+        </button>
       </div>
     </div>
   );
