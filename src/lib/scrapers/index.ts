@@ -6,6 +6,7 @@ import { siliconSlopesAdapter } from "./adapters/silicon-slopes";
 import { substackAdapter } from "./adapters/substack";
 import { utahGeekEventsAdapter } from "./adapters/utah-geek-events";
 import { recurrenceAdapter } from "./adapters/recurrence";
+import { htmlCalendarAdapter } from "./adapters/html-calendar";
 
 export * from "./types";
 
@@ -17,6 +18,7 @@ export const eventAdapters: Record<string, Adapter<EventItem>> = {
   substack: substackAdapter,
   utahGeekEvents: utahGeekEventsAdapter,
   recurrence: recurrenceAdapter,
+  htmlCalendar: htmlCalendarAdapter,
 };
 
 export function getEventAdapter(name: string): Adapter<EventItem> {

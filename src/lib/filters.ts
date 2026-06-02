@@ -30,6 +30,12 @@ export const SOURCE_LABELS: Record<string, string> = {
   silicon_slopes: "Silicon Slopes",
   forge_utah: "Forge Utah",
   utah_geek_events: "Utah Geek Events",
+  /* HTML-calendar adapter sources all share source='html'. The per-
+     source friendly label (BioUtah, Altitude Lab, SAINTCON, etc.)
+     lives in source.config.sourceLabel and gets resolved by callers
+     that have the source row. For event-card rendering where we only
+     have event.source, fall through to this generic label. */
+  html: "Web",
   /* Recurrence-adapter series get an explicit label per slug. Add an
      entry whenever you stand up a new `recurrence:<slug>` source so
      event cards, filter chips, and OG images render cleanly. */

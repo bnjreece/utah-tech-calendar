@@ -12,6 +12,7 @@ const SOURCE_TO_STRATUM: Record<string, Stratum> = {
   manual: "sage",
   silicon_slopes: "terracotta",
   forge_utah: "sand",
+  html: "sage",
 };
 
 export function stratumForEvent(source: string): Stratum {
