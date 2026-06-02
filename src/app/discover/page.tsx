@@ -17,136 +17,310 @@ export const metadata: Metadata = {
   },
 };
 
+/* Source pills as they appear in the flow diagram. Names match the
+   actual scrape sources, ordered roughly by event volume. */
+const SOURCES = [
+  "Meetup",
+  "Luma",
+  "Eventbrite",
+  "Silicon Slopes",
+  "BioUtah",
+  "47G",
+  "Substack",
+  "Submissions",
+];
+
+const STATS = [
+  { value: "25+", label: "Sources watched" },
+  { value: "9", label: "Curated verticals" },
+  { value: "4", label: "Delivery channels" },
+  { value: "0", label: "Accounts required" },
+];
+
 const VERTICALS = getFeaturedVerticals();
+
+const CHANNELS = [
+  {
+    eyebrow: "01 — Calendar",
+    title: "Pipe it into Apple or Google Calendar",
+    note: "iCal subscription. Updates live as we scrape.",
+  },
+  {
+    eyebrow: "02 — Email",
+    title: "Monday morning, your filter",
+    note: "Weekly digest of just the events you tagged.",
+  },
+  {
+    eyebrow: "03 — RSS",
+    title: "Read it in Feedly or NetNewsWire",
+    note: "Same filters, syndicated.",
+  },
+  {
+    eyebrow: "04 — Share link",
+    title: "Send the filter to a friend",
+    note: "Build a view, copy the URL. No signup on their end.",
+  },
+];
+
+const FILTERED = [
+  { kept: false, label: "PMP 4 Days Classroom Training", reason: "Cert-spam" },
+  { kept: true, label: "Utah JS Meetup: TanStack Query patterns", reason: "Real meetup" },
+  { kept: false, label: "Woodturning: Intro to Lathe Basics", reason: "Craft, not tech" },
+  { kept: true, label: "Wilson Sonsini Medical Device Conference", reason: "Real conference" },
+  { kept: false, label: "Cyber Security 1-Day Workshop x6 cities", reason: "Cross-post spam" },
+  { kept: true, label: "Weekly AI Power Hour at Silicon Slopes", reason: "Real recurring meetup" },
+];
+
+const NEGATIVES = [
+  { word: "Accounts", note: "Nothing to sign up for." },
+  { word: "Tracking", note: "No pixels, no behavioral profile." },
+  { word: "Cookie nag", note: "No tracking cookies to consent to." },
+  { word: "Paywall", note: "Free, run as a public service." },
+];
 
 export default function DiscoverPage() {
   return (
-    <article className="mx-auto max-w-3xl px-4 sm:px-6 py-10 sm:py-14 theme-editorial">
-      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-        Discover Utah Tech
-      </p>
-
-      <h1 className="mt-4 font-display text-4xl sm:text-6xl tracking-tight italic text-ink leading-[1.05]">
-        You don&apos;t know what you don&apos;t know.
-      </h1>
-
-      <p className="mt-8 text-lg sm:text-xl text-ink leading-relaxed text-pretty">
-        That&apos;s the whole problem with the Utah tech scene and the
-        founders, designers, scientists, and operators building around
-        it. An enormous amount is happening every week, across nearly
-        a dozen verticals and a dozen cities, and most of it only
-        reaches you if someone in your group chat happens to mention
-        it. Word-of-mouth is a slow signal in a fast community.
-      </p>
-
-      <p className="mt-5 text-base sm:text-lg text-ink-soft leading-relaxed text-pretty">
-        Discoverability is the first step to connection. {SITE_NAME} is
-        the map: one page, every in-person Utah tech and tech-adjacent
-        event we can find, run as a free public service. No login, no
-        profile, no tracking. Just a place to see what&apos;s on this week.
-      </p>
-
-      {/* The promise */}
-      <section className="mt-16 border-t-2 border-ink pt-8">
-        <h2 className="font-display text-2xl sm:text-3xl italic tracking-tight">
-          What you get.
-        </h2>
-        <ul className="mt-6 flex flex-col gap-5 text-base text-ink leading-relaxed">
-          <Feature
-            eyebrow="The schedule"
-            title="Every in-person tech event in Utah, in one feed."
-            body="We watch the calendars you&apos;d have to check by hand: Meetup groups, Luma calendars, Silicon Slopes, Eventbrite organizer pages, industry-group sites. New events show up here as soon as they&apos;re posted there."
-          />
-          <Feature
-            eyebrow="Verticals"
-            title="Nine curated content tags, hand-tuned for Utah."
-            body={
-              <>
-                AI, fintech, biotech, healthtech, edtech, aerospace,
-                cybersecurity, game dev, and the founder/startup track.
-                Each one has its own page with the anchor employers, the
-                regular meetups, and the events on the schedule right now.{" "}
-                <Link
-                  href="/tag/biotech"
-                  className="underline decoration-1 underline-offset-4 hover:text-sunset-deep"
-                >
-                  Try biotech.
-                </Link>
-              </>
-            }
-          />
-          <Feature
-            eyebrow="Cities"
-            title="Slice by region and city, not just by topic."
-            body="Filter to Salt Lake County, Provo, Lehi, Ogden, or any neighborhood that&apos;s populated enough to have its own scene. In-person only, online events hidden by default."
-          />
-          <Feature
-            eyebrow="Pipelines"
-            title="Four ways to stay on it."
-            body={
-              <>
-                Subscribe to the iCal feed and it lives in your Apple or
-                Google Calendar. Get the Monday morning email digest with
-                just the events on your filter. Pull the RSS feed into
-                whatever reader you use. Or build a filtered view and
-                share the link with someone who&apos;d care.{" "}
-                <Link
-                  href="/subscribe"
-                  className="underline decoration-1 underline-offset-4 hover:text-sunset-deep"
-                >
-                  Set one up.
-                </Link>
-              </>
-            }
-          />
-          <Feature
-            eyebrow="Quality"
-            title="Aggressive curation, transparent rules."
-            body="Eventbrite cert-spam (the &ldquo;PMP 4 Days Training&rdquo; sprawl), make-and-take craft workshops cross-posted to every tech meetup, and stale 2030-dated placeholder events all get filtered out before they reach the public schedule. If something slips through, the source-attribution is on every card so you know where it came from."
-          />
-          <Feature
-            eyebrow="Submissions"
-            title="Anyone can submit an event we&apos;re missing."
-            body={
-              <>
-                If you know about a meetup, conference, or recurring event
-                that isn&apos;t here, send it our way. We&apos;d rather have it on
-                the calendar than not.{" "}
-                <Link
-                  href="/submit"
-                  className="underline decoration-1 underline-offset-4 hover:text-sunset-deep"
-                >
-                  Submit one.
-                </Link>{" "}
-                Same goes for whole sources, if you&apos;re an organizer running a
-                calendar we could pull from.
-              </>
-            }
-          />
-        </ul>
+    <div className="theme-editorial">
+      {/* ============================================================
+          HERO — quiet, editorial, the thesis in two lines
+          ============================================================ */}
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-12 pb-16 sm:pt-16 sm:pb-24">
+        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-ink-soft">
+          Discover Utah Tech
+        </p>
+        <h1
+          className="mt-5 font-display italic tracking-tight text-ink leading-[1.02] text-balance text-[44px] sm:text-[72px] lg:text-[88px]"
+          style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+        >
+          You don&apos;t know <br className="hidden sm:block" />
+          what you don&apos;t know.
+        </h1>
+        <p className="mt-8 max-w-[58ch] text-lg sm:text-xl text-ink-soft leading-relaxed text-pretty">
+          A map of the in-person Utah tech and tech-adjacent scene.
+          Founders, designers, scientists, operators, anyone building
+          here. One page, no signup.
+        </p>
+        <div className="mt-10 flex flex-wrap items-center gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-sunset-deep transition-colors"
+          >
+            Open the schedule
+            <span aria-hidden>→</span>
+          </Link>
+          <Link
+            href="/subscribe"
+            className="inline-flex items-center gap-2 rounded-full ring-1 ring-ink/25 px-5 py-2.5 text-sm font-medium text-ink hover:bg-paper-deep transition-colors"
+          >
+            Build your view
+          </Link>
+        </div>
       </section>
 
-      {/* Verticals quick-jump */}
-      <section className="mt-16 border-t-2 border-ink pt-8">
-        <h2 className="font-display text-2xl sm:text-3xl italic tracking-tight">
-          Drop into a vertical.
-        </h2>
-        <p className="mt-3 text-base text-ink-soft text-pretty leading-relaxed">
-          Each page reads like a quick orientation: who the anchor
-          employers are, what&apos;s on the schedule, where the community
-          meets.
-        </p>
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {/* ============================================================
+          STATS RIBBON — quick proof-of-shape
+          ============================================================ */}
+      <section className="border-y border-ink/15 bg-paper-deep/40">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
+          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-y-6">
+            {STATS.map((s) => (
+              <div key={s.label} className="flex flex-col gap-1">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+                  {s.label}
+                </dt>
+                <dd
+                  className="font-display italic tracking-tight text-ink text-4xl sm:text-5xl tabular-nums"
+                  style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+                >
+                  {s.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      {/* ============================================================
+          FLOW DIAGRAM — the whole product in one image
+          ============================================================ */}
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-24">
+        <div className="flex items-baseline justify-between gap-6 flex-wrap mb-10">
+          <h2
+            className="font-display italic tracking-tight text-ink text-3xl sm:text-4xl"
+            style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+          >
+            How the map gets drawn.
+          </h2>
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+            Figure 1
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr_auto_1fr] gap-y-8 gap-x-6 items-center">
+          {/* Column 1 — sources */}
+          <div className="flex flex-col gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-sunset-deep">
+              01 · Sources
+            </p>
+            <div className="rounded-2xl bg-paper-deep p-5 ring-1 ring-ink/10">
+              <ul className="flex flex-wrap gap-2">
+                {SOURCES.map((s) => (
+                  <li
+                    key={s}
+                    className="inline-flex items-center rounded-full bg-paper px-3 py-1 text-xs font-mono uppercase tracking-[0.16em] text-ink-soft ring-1 ring-ink/10"
+                  >
+                    {s}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 text-sm text-ink-soft text-pretty">
+                Calendars, listing sites, organizer pages, the
+                inbox. Scattered.
+              </p>
+            </div>
+          </div>
+
+          <FlowArrow className="hidden lg:block" />
+
+          {/* Column 2 — filter */}
+          <div className="flex flex-col gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-dusk-deep">
+              02 · Curation
+            </p>
+            <div className="rounded-2xl bg-ink text-paper p-5">
+              <p
+                className="font-display italic tracking-tight leading-[1.1] text-2xl"
+                style={{
+                  fontFamily: "Fraunces, ui-serif, Georgia, serif",
+                }}
+              >
+                In-person, real, Utah, tech.
+              </p>
+              <ul className="mt-4 flex flex-col gap-1.5 text-xs font-mono uppercase tracking-[0.18em] text-paper/70">
+                <li>· cert-spam filtered</li>
+                <li>· craft cross-posts dropped</li>
+                <li>· dupes deduped</li>
+                <li>· verticals tagged</li>
+              </ul>
+            </div>
+          </div>
+
+          <FlowArrow className="hidden lg:block" />
+
+          {/* Column 3 — output */}
+          <div className="flex flex-col gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-sage-deep">
+              03 · One schedule
+            </p>
+            <div className="rounded-2xl bg-paper-deep p-5 ring-1 ring-ink/10 flex flex-col gap-2">
+              {[
+                { d: "Mon", t: "Founders dinner · Lehi" },
+                { d: "Wed", t: "Utah JS · SLC" },
+                { d: "Thu", t: "BioHive demo day" },
+                { d: "Fri", t: "AI Power Hour" },
+              ].map((row) => (
+                <div
+                  key={row.d}
+                  className="flex items-baseline gap-3 border-b border-ink/10 last:border-0 pb-2 last:pb-0"
+                >
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft w-8">
+                    {row.d}
+                  </span>
+                  <span className="text-sm text-ink">{row.t}</span>
+                </div>
+              ))}
+              <p className="mt-2 text-xs font-mono uppercase tracking-[0.18em] text-ink-soft">
+                + 170 more this season
+              </p>
+            </div>
+          </div>
+
+          {/* Mobile arrows */}
+          <div className="lg:hidden flex justify-center text-ink-soft">
+            <FlowArrow vertical />
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+          WHAT IN / WHAT OUT — visible curation
+          ============================================================ */}
+      <section className="border-t border-ink/15 bg-paper-deep/30">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-20">
+          <div className="flex items-baseline justify-between gap-6 flex-wrap mb-10">
+            <h2
+              className="font-display italic tracking-tight text-ink text-3xl sm:text-4xl"
+              style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+            >
+              What gets in, what doesn&apos;t.
+            </h2>
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+              A working sample
+            </p>
+          </div>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {FILTERED.map((row) => (
+              <li
+                key={row.label}
+                className={`flex items-start gap-3 rounded-xl px-4 py-3.5 ring-1 ${
+                  row.kept
+                    ? "bg-paper ring-ink/12"
+                    : "bg-paper/40 ring-ink/8 line-through decoration-1 decoration-ink/40"
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className={`mt-1 font-mono text-base ${
+                    row.kept ? "text-sage-deep" : "text-sunset-deep"
+                  }`}
+                >
+                  {row.kept ? "✓" : "✗"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-ink text-pretty leading-snug">
+                    {row.label}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                    {row.reason}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* ============================================================
+          VERTICALS — visual chip mosaic, deep links
+          ============================================================ */}
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-24">
+        <div className="flex items-baseline justify-between gap-6 flex-wrap mb-8">
+          <h2
+            className="font-display italic tracking-tight text-ink text-3xl sm:text-4xl"
+            style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+          >
+            Drop into a vertical.
+          </h2>
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+            Each one is its own page
+          </p>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {VERTICALS.map((v) => (
             <Link
               key={v.tag}
               href={`/tag/${v.tag}`}
-              className="group flex flex-col gap-1.5 rounded-2xl border border-ink/15 bg-paper p-4 transition-colors hover:border-ink/40"
+              className="group flex flex-col gap-2 rounded-2xl border border-ink/12 bg-paper p-4 transition-colors hover:border-ink/35"
             >
               <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft group-hover:text-sunset-deep transition-colors">
-                {v.tag}
+                /tag/{v.tag}
               </span>
-              <span className="font-display text-lg italic tracking-tight text-ink">
+              <span
+                className="font-display text-xl italic tracking-tight text-ink leading-tight"
+                style={{
+                  fontFamily: "Fraunces, ui-serif, Georgia, serif",
+                }}
+              >
                 {v.display}
               </span>
             </Link>
@@ -154,94 +328,194 @@ export default function DiscoverPage() {
         </div>
       </section>
 
-      {/* What we do not do */}
-      <section className="mt-16 border-t-2 border-ink pt-8">
-        <h2 className="font-display text-2xl sm:text-3xl italic tracking-tight">
+      {/* ============================================================
+          CHANNELS — 4 delivery surfaces
+          ============================================================ */}
+      <section className="border-t border-ink/15 bg-paper-deep/30">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-20">
+          <div className="flex items-baseline justify-between gap-6 flex-wrap mb-10">
+            <h2
+              className="font-display italic tracking-tight text-ink text-3xl sm:text-4xl"
+              style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+            >
+              Four ways to stay on it.
+            </h2>
+            <Link
+              href="/subscribe"
+              className="font-mono text-[10px] uppercase tracking-[0.22em] text-sunset-deep hover:underline decoration-1 underline-offset-4"
+            >
+              Set one up →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {CHANNELS.map((c) => (
+              <div
+                key={c.eyebrow}
+                className="rounded-2xl bg-paper p-5 ring-1 ring-ink/10 flex flex-col gap-2"
+              >
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-sunset-deep">
+                  {c.eyebrow}
+                </p>
+                <h3
+                  className="font-display italic tracking-tight text-ink text-lg leading-snug"
+                  style={{
+                    fontFamily: "Fraunces, ui-serif, Georgia, serif",
+                  }}
+                >
+                  {c.title}
+                </h3>
+                <p className="text-xs text-ink-soft text-pretty leading-relaxed">
+                  {c.note}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+          WHAT WE DON'T DO — 4 negative chips
+          ============================================================ */}
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-20">
+        <h2
+          className="font-display italic tracking-tight text-ink text-3xl sm:text-4xl mb-10"
+          style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+        >
           What we don&apos;t do.
         </h2>
-        <ul className="mt-6 flex flex-col gap-4 text-base text-ink leading-relaxed">
-          <li className="flex gap-3">
-            <span aria-hidden className="font-mono text-ink-soft mt-1">·</span>
-            <span>
-              <strong>No accounts.</strong> There&apos;s nothing to sign up for.
-              No profile, no password, no &ldquo;continue with Google.&rdquo;
-              The email digest is the one optional channel and you can
-              unsubscribe with a link.
-            </span>
-          </li>
-          <li className="flex gap-3">
-            <span aria-hidden className="font-mono text-ink-soft mt-1">·</span>
-            <span>
-              <strong>No tracking.</strong> No third-party advertising scripts,
-              no cross-site pixel, no behavioral profile. Vercel&apos;s built-in
-              analytics + speed insights collect aggregated page-view and
-              performance metrics so we know the calendar is being used and
-              loading fast; that&apos;s the entire data trail.
-            </span>
-          </li>
-          <li className="flex gap-3">
-            <span aria-hidden className="font-mono text-ink-soft mt-1">·</span>
-            <span>
-              <strong>No cookie banner.</strong> Because there are no
-              tracking cookies to consent to.
-            </span>
-          </li>
-          <li className="flex gap-3">
-            <span aria-hidden className="font-mono text-ink-soft mt-1">·</span>
-            <span>
-              <strong>No paywall, no donations page, no upsell.</strong> The
-              calendar is free, run as a service to the Utah tech community,
-              and intended to stay that way.
-            </span>
-          </li>
+        <ul className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {NEGATIVES.map((n) => (
+            <li
+              key={n.word}
+              className="rounded-2xl ring-1 ring-ink/15 px-4 py-5 flex flex-col items-start gap-2"
+            >
+              <span
+                aria-hidden
+                className="font-mono text-[14px] text-sunset-deep"
+              >
+                ✗
+              </span>
+              <span
+                className="font-display italic tracking-tight text-ink text-xl leading-tight"
+                style={{
+                  fontFamily: "Fraunces, ui-serif, Georgia, serif",
+                }}
+              >
+                {n.word}
+              </span>
+              <span className="text-xs text-ink-soft leading-relaxed text-pretty">
+                {n.note}
+              </span>
+            </li>
+          ))}
         </ul>
       </section>
 
-      {/* The principle */}
-      <section className="mt-16 border-t-2 border-ink pt-8">
-        <h2 className="font-display text-2xl sm:text-3xl italic tracking-tight">
-          The principle.
-        </h2>
-        <p className="mt-6 text-base sm:text-lg text-ink leading-relaxed text-pretty">
-          Word-of-mouth is a beautiful signal at the table you happen to
-          be sitting at. It is a terrible signal across a community of
-          thousands. The right way to make a scene visible is to make a
-          map of it - public, neutral, free to use, easy to share.
-        </p>
-        <p className="mt-4 text-base text-ink leading-relaxed text-pretty">
-          That&apos;s what this is.
-        </p>
+      {/* ============================================================
+          CTA — anyone can submit
+          ============================================================ */}
+      <section className="border-t border-ink/15 bg-paper-deep/40">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-24 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+            Anyone can contribute
+          </p>
+          <h2
+            className="mt-5 font-display italic tracking-tight text-ink text-3xl sm:text-5xl leading-[1.05] max-w-[20ch] mx-auto"
+            style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+          >
+            Know an event we don&apos;t? Tell us.
+          </h2>
+          <p className="mt-5 max-w-[52ch] mx-auto text-base text-ink-soft text-pretty leading-relaxed">
+            Submissions go straight to the moderation queue. Or
+            send us a whole source - a Meetup group, a Luma
+            calendar, an org we haven&apos;t found yet.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/submit"
+              className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-sunset-deep transition-colors"
+            >
+              Submit an event
+              <span aria-hidden>→</span>
+            </Link>
+            <a
+              href="mailto:b@bnjmn.org?subject=Utah%20Tech%20Calendar%3A%20new%20source"
+              className="inline-flex items-center gap-2 rounded-full ring-1 ring-ink/25 px-5 py-2.5 text-sm font-medium text-ink hover:bg-paper-deep transition-colors"
+            >
+              Suggest a source
+            </a>
+          </div>
+        </div>
       </section>
 
-      <p className="mt-14 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-        <Link href="/" className="hover:text-ink transition-colors">
-          ← back to the schedule
-        </Link>
-      </p>
-    </article>
+      {/* ============================================================
+          PRINCIPLE — one-line signoff
+          ============================================================ */}
+      <section className="mx-auto max-w-3xl px-4 sm:px-6 py-16 sm:py-20 text-center">
+        <p
+          className="font-display italic tracking-tight text-ink text-2xl sm:text-3xl leading-relaxed text-balance"
+          style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
+        >
+          Word-of-mouth is a beautiful signal at one table. A
+          terrible one across a scene. We&apos;re drawing the map so
+          it&apos;s easier to find each other.
+        </p>
+        <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+          <Link href="/" className="hover:text-ink transition-colors">
+            ← back to the schedule
+          </Link>
+        </p>
+      </section>
+    </div>
   );
 }
 
-function Feature({
-  eyebrow,
-  title,
-  body,
+/* Inline SVG arrow used in the flow diagram. Horizontal by default,
+   vertical for the mobile stacking. Picks up currentColor so it
+   inherits ink-soft from the parent. */
+function FlowArrow({
+  vertical = false,
+  className = "",
 }: {
-  eyebrow: string;
-  title: string;
-  body: React.ReactNode;
+  vertical?: boolean;
+  className?: string;
 }) {
+  if (vertical) {
+    return (
+      <svg
+        width="14"
+        height="32"
+        viewBox="0 0 14 32"
+        className={className}
+        aria-hidden
+      >
+        <path
+          d="M7 0v26m-6-6l6 6 6-6"
+          stroke="currentColor"
+          strokeWidth="1.25"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
   return (
-    <li className="flex flex-col gap-1.5 border-t border-ink/15 pt-5 first:border-t-0 first:pt-0">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-sunset-deep">
-        {eyebrow}
-      </span>
-      <h3 className="font-display text-lg sm:text-xl italic tracking-tight text-ink">
-        {title}
-      </h3>
-      <p className="text-base text-ink-soft leading-relaxed text-pretty">
-        {body}
-      </p>
-    </li>
+    <svg
+      width="32"
+      height="14"
+      viewBox="0 0 32 14"
+      className={`text-ink-soft ${className}`}
+      aria-hidden
+    >
+      <path
+        d="M0 7h26m-6-6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
