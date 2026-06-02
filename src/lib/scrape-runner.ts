@@ -1,7 +1,7 @@
 import { sql, eq } from "drizzle-orm";
 import { db, events, sources, groups } from "./db";
 import { eventAdapters, type EventItem } from "./scrapers";
-import { inferTagsFromTitle } from "./auto-tag";
+import { inferTagsFromTitle, isCertSpam, CERT_SPAM_STRIPPED_TAGS } from "./auto-tag";
 
 export interface ScrapeResult {
   sourceId: string;
@@ -63,13 +63,25 @@ function detectCraft(item: EventItem): boolean {
    microdata, single-event Eventbrite, a few Luma calendars) don't
    carry eventAttendanceMode in their feed, so we infer from title +
    description. Hide-online-by-default on the home page would
-   otherwise leak virtual events into the in-person schedule. */
-const ONLINE_TITLE_RE =
-  /\b(webinar|virtual|zoom|online[- ]only|remote[- ]only|live[- ]stream|livestream)\b/i;
+   otherwise leak virtual events into the in-person schedule.
+
+   Two layers:
+   - Unambiguous tokens (webinar, livestream, online-only, remote-only)
+     fire on their own.
+   - Ambiguous tokens (virtual, zoom) require a co-occurring event noun
+     in the title so "Virtual Reality Hackathon" and "Zoom Photography
+     Workshop" don't get hidden. */
+const ONLINE_STRONG_RE =
+  /\b(webinar|live[- ]stream|livestream|online[- ]only|remote[- ]only)\b/i;
+const ONLINE_AMBIGUOUS_RE =
+  /\b(virtual|zoom)\b.*\b(event|meetup|workshop|session|talk|panel|conference|class|seminar|networking|happy hour)\b|\b(event|meetup|workshop|session|talk|panel|conference|class|seminar|networking|happy hour)\b.*\b(virtual|zoom)\b/i;
 function detectOnline(item: EventItem): boolean {
   if (item.isOnline) return true;
-  if (ONLINE_TITLE_RE.test(item.title)) return true;
-  if (item.description && ONLINE_TITLE_RE.test(item.description)) return true;
+  const t = item.title;
+  if (ONLINE_STRONG_RE.test(t)) return true;
+  if (ONLINE_AMBIGUOUS_RE.test(t)) return true;
+  const d = item.description;
+  if (d && ONLINE_STRONG_RE.test(d)) return true;
   return false;
 }
 
@@ -104,14 +116,24 @@ async function upsertEvent(
      title (and description if present) so /tag/[tag] landing pages have
      actual content. Then union with source-injected defaultTags so a
      "Utah Crypto" source row tags all its events with `fintech` even
-     when the title says nothing crypto-flavored. */
+     when the title says nothing crypto-flavored.
+
+     Cert-spam scrubber applies to BOTH inferred AND injected: a
+     `bioutah` row tagged `[biotech, healthtech]` ingesting a PMP cert-
+     spam event would otherwise smuggle the strong content tag past
+     the scrubber that exists to protect /tag/ai etc from spam. */
   const inferred =
     item.tags && item.tags.length > 0
       ? item.tags
       : inferTagsFromTitle(item.title, item.description);
+  const haystack = `${item.title} ${item.description ?? ""}`;
+  const certSpam = isCertSpam(haystack);
+  const scrubbedInjected = certSpam
+    ? injectedTags.filter((t) => !CERT_SPAM_STRIPPED_TAGS.has(t))
+    : injectedTags;
   const tags =
-    injectedTags.length > 0
-      ? Array.from(new Set([...inferred, ...injectedTags]))
+    scrubbedInjected.length > 0
+      ? Array.from(new Set([...inferred, ...scrubbedInjected]))
       : inferred;
 
   const baseValues = {
@@ -146,13 +168,14 @@ async function upsertEvent(
   const isConference = detectConference(item);
   const isPaid = detectPaid(item);
   const isCraft = detectCraft(item);
-  /* Craft-pattern matches insert as 'hidden' instead of being silently
-     dropped, so admin can audit false positives via /admin without
-     re-running the scrape. Status overrides defaultStatus (incl. the
-     'pending' from requires_review sources) - we don't want a craft
-     event to end up on the moderation queue. */
-  const status = isCraft ? "hidden" : defaultStatus;
-  const hiddenReason = isCraft ? "craft" : null;
+  /* Craft + cert-spam pattern matches insert as 'hidden' instead of
+     being silently dropped, so admin can audit false positives via
+     /admin without re-running the scrape. Status overrides
+     defaultStatus (incl. the 'pending' from requires_review sources)
+     - we don't want a known-junk event to end up on the moderation
+     queue. */
+  const status = isCraft ? "hidden" : isPaid ? "hidden" : defaultStatus;
+  const hiddenReason = isCraft ? "craft" : isPaid ? "cert-spam" : null;
   await db.insert(events).values({
     ...baseValues,
     status,

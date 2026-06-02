@@ -152,3 +152,12 @@ export function inferTagsFromTitle(title: string, description?: string | null): 
   }
   return [...tags];
 }
+
+/* Public re-exports so scrape-runner can apply the same cert-spam
+   scrub to source-injected defaultTags. Without this, an event from
+   a vertical source (bioutah=[biotech], luma-slc=[ai]) would carry
+   the strong content tag even when its title is "PMP 4 Days Training"
+   - the scrubber that exists for inferred tags has to apply to
+   injected tags too. */
+export { isCertSpamTitle as isCertSpam };
+export const CERT_SPAM_STRIPPED_TAGS: ReadonlySet<string> = STRONG_CONTENT_TAGS;
