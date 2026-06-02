@@ -112,10 +112,104 @@ function safeDate(s: string | undefined): Date | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d;
 }
 
+/* Parse American-style microdata datetimes like "9/17/2026 5:30:00 PM"
+   that GrowthZone-hosted calendars (BioUtah etc) emit in their
+   itemprop="startDate" content attributes. Date.parse handles this
+   format on V8/Node but not consistently across runtimes, so we
+   parse manually as a fallback. Returns wall-clock UTC assuming the
+   datetime is implicitly America/Denver - which is the case for every
+   Utah-org calendar we target. */
+const US_DATETIME_RE =
+  /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
+function parseUsDenverDatetime(s: string): Date | undefined {
+  const m = s.trim().match(US_DATETIME_RE);
+  if (!m) return undefined;
+  const month = Number(m[1]);
+  const day = Number(m[2]);
+  const year = Number(m[3]);
+  let hour = Number(m[4]);
+  const minute = Number(m[5]);
+  const second = m[6] ? Number(m[6]) : 0;
+  const ampm = m[7]?.toUpperCase();
+  if (ampm === "PM" && hour < 12) hour += 12;
+  if (ampm === "AM" && hour === 12) hour = 0;
+  /* Try both DST and standard offsets and pick the one whose UTC
+     round-trips back to the input wall-clock in Denver - same trick
+     used in utah-geek-events.ts for DST correctness. */
+  for (const offsetH of [6, 7] as const) {
+    const candidate = new Date(Date.UTC(year, month - 1, day, hour + offsetH, minute, second));
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Denver",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(candidate);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value;
+    if (
+      Number(get("year")) === year &&
+      Number(get("month")) === month &&
+      Number(get("day")) === day &&
+      Number(get("hour")) === hour &&
+      Number(get("minute")) === minute
+    ) {
+      return candidate;
+    }
+  }
+  /* DST gap fallback. */
+  return new Date(Date.UTC(year, month - 1, day, hour + 6, minute, second));
+}
+
+function safeDateLenient(s: string | undefined): Date | undefined {
+  if (!s) return undefined;
+  return safeDate(s) ?? parseUsDenverDatetime(s);
+}
+
+/* Walk schema.org/Event MICRODATA - the itemprop-attribute variant of
+   structured data, used by GrowthZone-hosted Chamber of Commerce /
+   industry-group calendars (BioUtah is one). Same vocabulary as JSON-
+   LD, different delivery. We pull every element with
+   itemtype="http://schema.org/Event" and read its itemprop children. */
+function extractMicrodataEvents($: cheerio.CheerioAPI): JsonLdEvent[] {
+  const out: JsonLdEvent[] = [];
+  $('[itemtype$="schema.org/Event"]').each((_, root) => {
+    const $root = $(root);
+    const get = (prop: string): string | undefined => {
+      /* :first not :first-of-type because we want the first
+         descendant by document order, not the first child of its
+         tag. content attribute wins over text - itemprop="startDate"
+         lives on a <meta> tag whose visible text is empty. */
+      const el = $root.find(`[itemprop="${prop}"]`).first();
+      if (!el.length) return undefined;
+      const content = el.attr("content");
+      if (content) return content.trim();
+      const src = el.attr("src") ?? el.attr("href");
+      if (src) return src.trim();
+      const text = el.text().trim();
+      return text || undefined;
+    };
+    const name = get("name");
+    const startRaw = get("startDate");
+    if (!name || !startRaw) return;
+    out.push({
+      "@type": "Event",
+      name,
+      description: get("about") ?? get("description"),
+      url: get("url"),
+      startDate: startRaw,
+      endDate: get("endDate"),
+      image: get("image"),
+    });
+  });
+  return out;
+}
+
 function normalize(event: JsonLdEvent, config: HtmlCalendarConfig, pageUrl: string): EventItem | null {
   const title = event.name?.trim();
   if (!title) return null;
-  const startsAt = safeDate(event.startDate);
+  const startsAt = safeDateLenient(event.startDate);
   if (!startsAt) return null;
   /* eventStatus can suppress an item without removing it from the
      page - respect cancellations and postponements. */
@@ -133,7 +227,7 @@ function normalize(event: JsonLdEvent, config: HtmlCalendarConfig, pageUrl: stri
      back to a derived hash from title+startsAt+pageUrl when the
      JSON-LD omits url. */
   const externalId = event.url ?? event["@id"] ?? `${pageUrl}#${title}@${startsAt.toISOString()}`;
-  const endsAt = safeDate(event.endDate);
+  const endsAt = safeDateLenient(event.endDate);
   const isOnline =
     typeof event.eventAttendanceMode === "string" &&
     /OnlineEventAttendanceMode/i.test(event.eventAttendanceMode);
@@ -188,6 +282,11 @@ export const htmlCalendarAdapter: Adapter<EventItem> = {
     });
     const events: EventItem[] = [];
     const seen = new Set<string>();
+    /* JSON-LD first - more structured, more reliable for sites that
+       emit it. Microdata is the fallback for sites that don't, and
+       only kicks in if JSON-LD finds nothing (otherwise the same
+       event would dedup via externalId but the cost adds up across
+       large pages). */
     for (const raw of blocks) {
       let parsed: unknown;
       try {
@@ -196,6 +295,16 @@ export const htmlCalendarAdapter: Adapter<EventItem> = {
         continue;
       }
       for (const evt of walkJsonLdEvents(parsed)) {
+        const item = normalize(evt, config, url);
+        if (!item) continue;
+        if (seen.has(item.externalId)) continue;
+        seen.add(item.externalId);
+        events.push(item);
+        if (maxItems && events.length >= maxItems) return events;
+      }
+    }
+    if (events.length === 0) {
+      for (const evt of extractMicrodataEvents($)) {
         const item = normalize(evt, config, url);
         if (!item) continue;
         if (seen.has(item.externalId)) continue;
