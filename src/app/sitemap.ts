@@ -3,7 +3,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { SITE_URL } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
-import { listUpcomingPeriodSlugs } from "@/lib/period";
+import { listUpcomingPeriodSlugs, listPastPeriodSlugs } from "@/lib/period";
 import { getAllCanonicalTags } from "@/lib/tag-taxonomy";
 
 /* Dynamic sitemap. Pulls every approved upcoming event so Google can
@@ -140,13 +140,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  /* Date archive pages for the next 12 months + 4 seasons. */
+  /* Date archive pages: next 12 months at priority 0.6 (active SEO
+     target) + last 12 months at 0.4 (reference). The archive index
+     page itself sits in between. */
   for (const slug of listUpcomingPeriodSlugs(now)) {
     routes.push({
       url: `${SITE_URL}/events/${slug}`,
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.6,
+    });
+  }
+  routes.push({
+    url: `${SITE_URL}/archive`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.5,
+  });
+  for (const p of listPastPeriodSlugs(now, 12)) {
+    routes.push({
+      url: `${SITE_URL}/events/${p.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.4,
     });
   }
 

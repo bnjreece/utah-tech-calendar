@@ -44,7 +44,22 @@ export function SubmitFlow() {
   return (
     <div className="flex flex-col gap-8">
       <ModePicker mode={mode} setMode={setMode} />
-      {mode === "event" ? <EventByUrl /> : <SourceByUrl />}
+      <div
+        id="submit-mode-event"
+        role="tabpanel"
+        aria-labelledby="submit-tab-event"
+        hidden={mode !== "event"}
+      >
+        {mode === "event" && <EventByUrl />}
+      </div>
+      <div
+        id="submit-mode-source"
+        role="tabpanel"
+        aria-labelledby="submit-tab-source"
+        hidden={mode !== "source"}
+      >
+        {mode === "source" && <SourceByUrl />}
+      </div>
     </div>
   );
 }
@@ -69,8 +84,11 @@ function ModePicker({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void 
         <button
           key={opt.id}
           type="button"
+          id={`submit-tab-${opt.id}`}
           role="tab"
           aria-selected={mode === opt.id}
+          aria-controls={`submit-mode-${opt.id}`}
+          tabIndex={mode === opt.id ? 0 : -1}
           onClick={() => setMode(opt.id)}
           className={`group flex flex-col items-start gap-0.5 rounded-full px-4 py-2.5 text-left transition-colors ${
             mode === opt.id

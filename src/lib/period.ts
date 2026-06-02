@@ -44,7 +44,9 @@ export function parsePeriod(slug: string): PeriodRange | null {
 }
 
 /* Slugs for the current month + next 11. Past months never make it into
-   the sitemap so we don't ship thin pages full of past events. */
+   the sitemap as part of the upcoming list - they're surfaced via the
+   /archive page + listPastPeriodSlugs so the SEO target is "what's
+   coming up" not "what already happened". */
 export function listUpcomingPeriodSlugs(now = new Date()): string[] {
   const slugs: string[] = [];
   for (let i = 0; i < 12; i++) {
@@ -52,4 +54,27 @@ export function listUpcomingPeriodSlugs(now = new Date()): string[] {
     slugs.push(`${MONTH_NAMES[d.getUTCMonth()]}-${d.getUTCFullYear()}`);
   }
   return slugs;
+}
+
+/* Past months. Bounded to 24 months back so the sitemap doesn't grow
+   linearly forever as the calendar ages. Returns most-recent first. */
+export function listPastPeriodSlugs(now = new Date(), monthsBack = 24): Array<{
+  slug: string;
+  display: string;
+  monthIndex: number;
+  year: number;
+}> {
+  const out: Array<{ slug: string; display: string; monthIndex: number; year: number }> = [];
+  for (let i = 1; i <= monthsBack; i++) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const m = d.getUTCMonth();
+    const y = d.getUTCFullYear();
+    out.push({
+      slug: `${MONTH_NAMES[m]}-${y}`,
+      display: `${MONTH_NAMES[m][0].toUpperCase()}${MONTH_NAMES[m].slice(1)} ${y}`,
+      monthIndex: m,
+      year: y,
+    });
+  }
+  return out;
 }

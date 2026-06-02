@@ -5,6 +5,9 @@ import { eq } from "drizzle-orm";
 import { db, events, sources, adminSettings, pendingSubmissions } from "@/lib/db";
 import type { SubmissionPayload } from "@/lib/submission-payload";
 import { requireAdmin } from "@/lib/admin-auth";
+import { notifySubmitterEvent, notifySubmitterSource } from "@/lib/submitter-followup";
+import { absoluteUrl } from "@/lib/seo";
+import { eventSlug } from "@/lib/slugs";
 
 /* Detect a source-suggestion row (from /api/submit-source) vs an
    event draft (from /api/submit). Source rows carry type:"source"
@@ -129,6 +132,17 @@ export async function approveSubmission(id: string) {
       .update(pendingSubmissions)
       .set({ status: "approved", reviewedAt: new Date() })
       .where(eq(pendingSubmissions.id, id));
+    /* Best-effort - any failure here just logs and continues. */
+    try {
+      await notifySubmitterSource({
+        submitterEmail: submission.submitterEmail,
+        submitterName: submission.submitterName,
+        url: sourceUrl,
+        decision: "approved",
+      });
+    } catch (err) {
+      console.warn("[admin] submitter source approval email failed", err);
+    }
     revalidatePath("/admin/review");
     revalidatePath("/admin/sources");
     return;
@@ -154,20 +168,67 @@ export async function approveSubmission(id: string) {
     tags: payload.tags,
     status: "approved",
   });
+  const [inserted] = await db
+    .select({ id: events.id, title: events.title })
+    .from(events)
+    .where(eq(events.externalId, submission.id))
+    .limit(1);
   await db
     .update(pendingSubmissions)
     .set({ status: "approved", reviewedAt: new Date() })
     .where(eq(pendingSubmissions.id, id));
+  try {
+    await notifySubmitterEvent({
+      submitterEmail: submission.submitterEmail,
+      submitterName: submission.submitterName,
+      title: payload.title,
+      decision: "approved",
+      publishedUrl: inserted
+        ? absoluteUrl(`/event/${eventSlug(inserted.title, inserted.id)}`)
+        : undefined,
+    });
+  } catch (err) {
+    console.warn("[admin] submitter event approval email failed", err);
+  }
   revalidatePath("/admin/review");
   revalidatePath("/");
 }
 
 export async function rejectSubmission(id: string) {
   await requireAdmin();
+  const [submission] = await db
+    .select()
+    .from(pendingSubmissions)
+    .where(eq(pendingSubmissions.id, id))
+    .limit(1);
   await db
     .update(pendingSubmissions)
     .set({ status: "rejected", reviewedAt: new Date() })
     .where(eq(pendingSubmissions.id, id));
+  /* Notify submitter of the rejection. Distinguishes event vs
+     source by payload type so the body copy fits. */
+  if (submission && submission.submitterEmail) {
+    try {
+      if (isSourcePayload(submission.payload)) {
+        await notifySubmitterSource({
+          submitterEmail: submission.submitterEmail,
+          submitterName: submission.submitterName,
+          url: submission.payload.url,
+          decision: "rejected",
+        });
+      } else {
+        const p = submission.payload as SubmissionPayload;
+        await notifySubmitterEvent({
+          submitterEmail: submission.submitterEmail,
+          submitterName: submission.submitterName,
+          title: p.title ?? "(untitled draft)",
+          decision: "rejected",
+        });
+      }
+    } catch (err) {
+      console.warn("[admin] submitter rejection email failed", err);
+    }
+  }
   revalidatePath("/admin/review");
 }
 

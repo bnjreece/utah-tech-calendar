@@ -272,12 +272,45 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
   }
 }
 
+/* Concurrency cap for the scrape sweep. The previous sequential loop
+   was redlining Vercel's 300s maxDuration at ~25 sources x 10s each.
+   Going parallel buys headroom for the next ~50 sources without
+   pushing function timeouts. Cap chosen so we don't hammer any
+   one host (Meetup / Eventbrite / Luma) with more than ~2 concurrent
+   requests in practice - their adapters are the slow ones and most
+   sources route through them. */
+const SCRAPE_CONCURRENCY = 5;
+
+/* Minimal in-process semaphore. p-limit would do the same job with
+   nicer ergonomics but we already have zero runtime deps for this
+   and it's ~12 lines. */
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  async function next(): Promise<void> {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= items.length) return;
+      results[idx] = await worker(items[idx]);
+    }
+  }
+  const runners = Array.from({ length: Math.min(limit, items.length) }, () => next());
+  await Promise.all(runners);
+  return results;
+}
+
 export async function runAllEnabledSources(): Promise<ScrapeResult[]> {
   const rows = await db.select({ id: sources.id }).from(sources).where(eq(sources.enabled, true));
-  const results: ScrapeResult[] = [];
-  for (const r of rows) {
-    results.push(await runSourceScrape(r.id));
-  }
+  /* Parallel with a small cap. runSourceScrape catches its own errors
+     and persists them onto sources.last_error, so a thrown adapter
+     can't take down the sweep. Results land in original order. */
+  const results = await runWithConcurrency(rows, SCRAPE_CONCURRENCY, (r) =>
+    runSourceScrape(r.id),
+  );
   // After all sources, sweep cross-posted SEO-spam clusters (e.g. one
   // training listing per city). Hides non-canonical members; idempotent.
   const { sweepCrossPostDuplicates } = await import("./dedup-sweep");

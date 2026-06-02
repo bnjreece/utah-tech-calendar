@@ -22,11 +22,17 @@ function pickAdapter(url: URL): { adapter: string; reason: string } {
   if (host === "eventbrite.com" || host === "www.eventbrite.com") {
     return { adapter: "eventbrite", reason: "eventbrite host" };
   }
-  /* siliconSlopes adapter ignores its url argument - it always pulls
-     the global Silicon Slopes event list. For a single-event URL
-     paste we want htmlCalendar (which parses JSON-LD) to read THAT
-     event. Only route the SS adapter when the URL is the events
-     index, which the calendar cron does separately. */
+  if (host === "siliconslopes.com" || host === "www.siliconslopes.com") {
+    /* Explicit: the siliconSlopes adapter ignores its url argument
+       (always hits the global community_events endpoint), so a
+       single-event paste needs htmlCalendar to parse the page's
+       JSON-LD instead. Documenting intent so future-me doesn't
+       "fix" the routing back to siliconSlopes by mistake. */
+    return {
+      adapter: "htmlCalendar",
+      reason: "silicon slopes single-event page (parse JSON-LD)",
+    };
+  }
   return { adapter: "htmlCalendar", reason: "generic html (json-ld or microdata)" };
 }
 
@@ -52,6 +58,14 @@ function toMtDatetimeLocal(d: Date): string {
 /* Trim an EventItem down to the wire shape the submit form expects -
    matches submissionPayloadSchema field names. */
 function toSubmissionShape(item: EventItem) {
+  /* state default is "UT" but defer to the adapter if it parsed
+     something else - a Luma event in CA shouldn't get relabeled
+     just because the calendar's primary audience is Utah. */
+  const state =
+    typeof (item as { state?: string }).state === "string" &&
+    (item as { state?: string }).state!.length > 0
+      ? (item as { state?: string }).state!.slice(0, 50)
+      : "UT";
   return {
     title: item.title.slice(0, 200),
     description: (item.description ?? "").slice(0, 5000),
@@ -63,7 +77,7 @@ function toSubmissionShape(item: EventItem) {
     venueName: (item.venueName ?? "").slice(0, 200),
     address: (item.address ?? "").slice(0, 300),
     city: (item.city ?? "").slice(0, 100),
-    state: "UT",
+    state,
     postalCode: (item.postalCode ?? "").slice(0, 20),
     tags: (item.tags ?? []).slice(0, 10),
     imageUrl: item.imageUrl ?? "",

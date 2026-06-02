@@ -153,6 +153,9 @@ export default function RootLayout({
                 <Link href="/discover" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
                   discover
                 </Link>
+                <Link href="/archive" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                  archive
+                </Link>
                 <Link href="/about" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
                   about
                 </Link>
