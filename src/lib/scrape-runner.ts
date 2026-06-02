@@ -59,7 +59,27 @@ function detectCraft(item: EventItem): boolean {
   return CRAFT_REJECT_RE.test(item.title);
 }
 
-async function upsertEvent(item: EventItem, groupId: string | undefined, defaultStatus: string = "approved") {
+/* Extract the `defaultTags` field from a source's jsonb config column.
+   Per-source tag injection covers the case where a vertical-specific
+   source (Utah Crypto Luma, 47G aerospace calendar) produces events
+   whose titles don't carry keyword anchors - title-only auto-tagging
+   leaves them untagged, so the /tag/<vertical> landing page misses
+   them. Source-injected tags are trusted unconditionally: they bypass
+   the cert-spam STRONG_CONTENT_TAGS scrubber by being unioned in
+   AFTER inference, not before. */
+function sourceDefaultTags(config: unknown): string[] {
+  if (!config || typeof config !== "object") return [];
+  const v = (config as Record<string, unknown>).defaultTags;
+  if (!Array.isArray(v)) return [];
+  return v.filter((t): t is string => typeof t === "string" && t.length > 0);
+}
+
+async function upsertEvent(
+  item: EventItem,
+  groupId: string | undefined,
+  defaultStatus: string,
+  injectedTags: string[],
+) {
   const existing = await db
     .select({ id: events.id })
     .from(events)
@@ -68,11 +88,17 @@ async function upsertEvent(item: EventItem, groupId: string | undefined, default
 
   /* If the scraper supplied tags, trust them. Otherwise infer from the
      title (and description if present) so /tag/[tag] landing pages have
-     actual content. */
-  const tags =
+     actual content. Then union with source-injected defaultTags so a
+     "Utah Crypto" source row tags all its events with `fintech` even
+     when the title says nothing crypto-flavored. */
+  const inferred =
     item.tags && item.tags.length > 0
       ? item.tags
       : inferTagsFromTitle(item.title, item.description);
+  const tags =
+    injectedTags.length > 0
+      ? Array.from(new Set([...inferred, ...injectedTags]))
+      : inferred;
 
   const baseValues = {
     title: item.title,
@@ -145,6 +171,7 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
   }
 
   let groupId: string | undefined = source.groupId ?? undefined;
+  const injectedTags = sourceDefaultTags(source.config);
 
   try {
     const items = await adapter.scrape({
@@ -166,7 +193,7 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
       }
 
       const defaultStatus = source.requiresReview ? "pending" : "approved";
-      const outcome = await upsertEvent(item, groupId, defaultStatus);
+      const outcome = await upsertEvent(item, groupId, defaultStatus, injectedTags);
       if (outcome === "inserted") inserted++;
       else updated++;
     }
