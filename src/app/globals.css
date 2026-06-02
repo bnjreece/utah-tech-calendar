@@ -370,6 +370,41 @@
   font-family: "JetBrains Mono", ui-monospace, monospace !important;
 }
 
+/* Editorial dark mode. The default theme-editorial wins over the
+   base .dark block via specificity (both are single-class selectors,
+   editorial comes later in the cascade), so we redefine the editorial
+   tokens here with dark-mode values. Combo selector .dark.theme-editorial
+   matches <html class="theme-editorial dark">.
+
+   Design intent: same editorial restraint, just inverted - deep
+   slate paper, near-white ink, warmer sunset that doesn't burn the
+   eyes at midnight. Stratum accents brightened a notch so the source
+   color bars stay legible against the darker card. */
+.dark.theme-editorial {
+  --background: oklch(0.16 0.012 60);
+  --foreground: oklch(0.93 0.012 80);
+  --card: oklch(0.20 0.014 60);
+  --card-foreground: oklch(0.93 0.012 80);
+  --popover: oklch(0.22 0.015 60);
+  --popover-foreground: oklch(0.93 0.012 80);
+  --muted: oklch(0.26 0.015 60);
+  --muted-foreground: oklch(0.66 0.014 60);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+  --color-paper: oklch(0.16 0.012 60);
+  --color-paper-deep: oklch(0.22 0.014 60);
+  --color-ink: oklch(0.93 0.012 80);
+  --color-ink-soft: oklch(0.60 0.012 80);
+  --color-sunset: oklch(0.68 0.18 22);
+  --color-sunset-deep: oklch(0.60 0.18 22);
+  --color-dusk: oklch(0.65 0.16 280);
+  --color-dusk-deep: oklch(0.55 0.15 280);
+  --color-terracotta: oklch(0.65 0.16 32);
+  --color-terracotta-deep: oklch(0.55 0.16 32);
+  --color-sage: oklch(0.65 0.10 145);
+  --color-sage-deep: oklch(0.55 0.10 145);
+}
+
 /* Old theme-apartment alias kept for any back-refs */
 .theme-apartment {
   --background: oklch(0.97 0.008 85);

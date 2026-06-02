@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { MobileNav } from "./mobile-nav";
+import { ThemeToggle } from "./theme-toggle";
 
 /* Allowlist parallel to lib/admin-auth.ts. Server-side requireAdmin
    is the actual gate; this surface only decides whether to surface
@@ -33,7 +34,7 @@ export function SiteNav() {
   return (
     <>
       {/* Desktop nav - inline pills */}
-      <nav className="hidden sm:flex items-baseline gap-4 sm:gap-5 font-mono text-[11px] uppercase tracking-[0.18em] shrink-0">
+      <nav className="hidden sm:flex items-center gap-4 sm:gap-5 font-mono text-[11px] uppercase tracking-[0.18em] shrink-0">
         {links.map((l) => (
           <Link
             key={l.href}
@@ -43,12 +44,18 @@ export function SiteNav() {
             {l.label}
           </Link>
         ))}
+        <ThemeToggle />
       </nav>
 
-      {/* Mobile - hamburger that opens a sheet with all links */}
-      <MobileNav
-        links={links.map((l) => ({ href: l.href, label: l.label }))}
-      />
+      {/* Mobile - theme toggle outside the hamburger so it's reachable
+          without opening the sheet (common pattern for a low-friction
+          control). Hamburger holds the actual nav links. */}
+      <div className="flex items-center sm:hidden">
+        <ThemeToggle />
+        <MobileNav
+          links={links.map((l) => ({ href: l.href, label: l.label }))}
+        />
+      </div>
     </>
   );
 }

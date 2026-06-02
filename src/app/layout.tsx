@@ -77,6 +77,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full theme-editorial">
       <head>
+        {/* Pre-paint dark-mode bootstrapper, served as a static asset
+            so we can attach beforeInteractive without inlining JS in
+            the document body. Reads the same localStorage key as
+            components/theme-toggle.tsx and applies .dark to <html>
+            before React hydrates. */}
+        <script src="/theme-init.js" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://api.fontshare.com" />
