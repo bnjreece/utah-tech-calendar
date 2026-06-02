@@ -28,7 +28,7 @@ interface SourceFollowupArgs extends SubmitterContext {
   decision: "approved" | "rejected";
 }
 
-const SIGNATURE = `— ${SITE_NAME}\n${SITE_URL}`;
+const SIGNATURE = `- ${SITE_NAME}\n${SITE_URL}`;
 
 export async function notifySubmitterEvent(args: EventFollowupArgs): Promise<void> {
   if (!args.submitterEmail) return;

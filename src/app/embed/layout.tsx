@@ -26,7 +26,7 @@ export default function EmbedLayout({
      layout uses to suppress them when embed context is active.
      Simpler: just add a body-level CSS rule via a data attribute. */
   return (
-    <div data-embed="true" className="contents">
+    <div data-embed-context="true" className="contents">
       {children}
     </div>
   );

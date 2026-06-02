@@ -18,6 +18,11 @@ export const runtime = "nodejs";
 export const alt = "Utah Tech Calendar";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+/* Cache the rendered card. Twitter/LinkedIn/Slack hit this URL once
+   per share preview and refresh on their own cadence; a 1h ISR
+   budget keeps Postgres off the share-card hot path while still
+   surfacing event-count changes within a reasonable window. */
+export const revalidate = 3600;
 
 const PAPER = "#F7F3EA";
 const INK = "#1A1815";

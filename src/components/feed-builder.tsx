@@ -332,17 +332,21 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
    to SITE_URL so the snippet works the moment a user pastes it on a
    public site - no localhost surprises in dev. */
 function EmbedSnippet({ feedQuery }: { feedQuery: string }) {
-  const [copied, setCopied] = useState(false);
+  const [buttonLabel, setButtonLabel] = useState("Copy embed code");
   const embedUrl = `${SITE_URL}/embed${feedQuery ? `?${feedQuery}` : ""}`;
   const snippet = `<iframe src="${embedUrl}" width="100%" height="640" frameborder="0" style="border:0;border-radius:12px;max-width:640px;" title="Utah Tech Calendar"></iframe>`;
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(snippet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setButtonLabel("Copied");
+      setTimeout(() => setButtonLabel("Copy embed code"), 1500);
     } catch {
-      /* clipboard blocked - fall back to the visible textarea */
+      /* Clipboard blocked (insecure context, denied perms). The
+         textarea is still selectable - tell the user to use the
+         keyboard instead of silently no-op'ing. */
+      setButtonLabel("Press Cmd+C from the box");
+      setTimeout(() => setButtonLabel("Copy embed code"), 3000);
     }
   }
 
@@ -360,7 +364,7 @@ function EmbedSnippet({ feedQuery }: { feedQuery: string }) {
         onClick={copy}
         className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-2 text-xs font-medium text-paper hover:bg-ink/85 transition-colors"
       >
-        {copied ? "Copied" : "Copy embed code"}
+        {buttonLabel}
       </button>
     </div>
   );

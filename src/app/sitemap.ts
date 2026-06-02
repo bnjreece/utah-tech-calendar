@@ -157,7 +157,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly",
     priority: 0.5,
   });
-  for (const p of listPastPeriodSlugs(now, 12)) {
+  /* Past months are only worth indexing if they actually had events.
+     Empty months produce thin pages that dilute SEO and waste crawl
+     budget. One COUNT(*) per past month is cheap and avoids surfacing
+     dead URLs to Google. */
+  const pastSlugs = listPastPeriodSlugs(now, 12);
+  const pastWithCounts = await Promise.all(
+    pastSlugs.map(async (p) => {
+      const from = new Date(Date.UTC(p.year, p.monthIndex, 1));
+      const to = new Date(Date.UTC(p.year, p.monthIndex + 1, 1));
+      const [row] = await db
+        .select({ c: sql<number>`count(*)::int` })
+        .from(events)
+        .where(
+          and(
+            eq(events.status, "approved"),
+            gte(events.startsAt, from),
+            sql`${events.startsAt} < ${to}`,
+          ),
+        );
+      return { ...p, count: row?.c ?? 0 };
+    }),
+  );
+  for (const p of pastWithCounts) {
+    if (p.count === 0) continue;
     routes.push({
       url: `${SITE_URL}/events/${p.slug}`,
       lastModified: now,

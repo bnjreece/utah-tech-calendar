@@ -3,9 +3,15 @@ import Link from "next/link";
 import { parseFilters } from "@/lib/filters";
 import { queryEvents } from "@/lib/queries";
 import { EditorialLinearCard } from "@/components/variant-cards";
+import { EmbedLinkTarget } from "@/components/embed-link-target";
 import { SITE_NAME, SITE_URL } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+/* Cache the embed render for 5 minutes - a popular embedder hitting
+   us 10k times/day would otherwise pound Neon on every iframe view.
+   With revalidate=300 the same filter slice serves from Vercel's
+   edge for 5 min. New events still surface within 5 min of the
+   next scrape; the freshness budget is fine for an embedded widget. */
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: `${SITE_NAME} embed`,
@@ -35,21 +41,23 @@ export default async function EmbedPage({
   searchParams: Promise<EmbedSearchParams>;
 }) {
   const params = await searchParams;
-  const filters = parseFilters(params);
-  const limitRaw = typeof params.limit === "string" ? Number(params.limit) : 15;
+  /* Strip embed-only knobs so they don't leak into parseFilters and
+     accidentally match a future filter field with the same name. */
+  const { theme: rawTheme, limit: rawLimit, attribution: rawAttribution, ...filterParams } = params;
+  const filters = parseFilters(filterParams);
+  const limitRaw = typeof rawLimit === "string" ? Number(rawLimit) : 15;
   const limit = Number.isFinite(limitRaw) ? Math.min(50, Math.max(1, limitRaw)) : 15;
-  const theme = typeof params.theme === "string" ? params.theme : "auto";
-  const attribution = params.attribution !== "false";
+  const theme = typeof rawTheme === "string" ? rawTheme : "auto";
+  const attribution = rawAttribution !== "false";
 
   const evts = await queryEvents(filters, limit);
 
   /* Build a deep link back to the full filtered view so an embed
-     visitor can click through to the source-of-truth schedule. */
+     visitor can click through to the source-of-truth schedule. Uses
+     the filter-only params we already separated above. */
   const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (typeof v === "string" && k !== "theme" && k !== "limit" && k !== "attribution") {
-      sp.set(k, v);
-    }
+  for (const [k, v] of Object.entries(filterParams)) {
+    if (typeof v === "string") sp.set(k, v);
   }
   const fullViewUrl = `${SITE_URL}/${sp.toString() ? `?${sp.toString()}` : ""}`;
 
@@ -68,6 +76,11 @@ export default async function EmbedPage({
           loads with strategy=beforeInteractive and matches first
           paint inside the iframe. */}
       {theme === "auto" && <script src="/embed-theme-auto.js" />}
+      {/* Promote all <a> links inside the embed to target=_top so
+          clicks open in the embedder's parent window, not inside the
+          iframe. Otherwise the event detail page would render the
+          full site chrome squeezed into 640px. */}
+      <EmbedLinkTarget />
       <div className="px-4 sm:px-6 py-6">
         {evts.length === 0 ? (
           <p className="font-display italic text-lg text-ink-soft text-center py-10">

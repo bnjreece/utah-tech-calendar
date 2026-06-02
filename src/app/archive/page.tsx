@@ -8,7 +8,7 @@ import { listPastPeriodSlugs } from "@/lib/period";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Archive — past Utah tech events",
+  title: "Archive - past Utah tech events",
   description:
     "Browse what happened, month by month. Past Utah tech meetups, conferences, founder mixers, AI nights, and biotech demos archived for reference.",
   alternates: { canonical: "/archive" },

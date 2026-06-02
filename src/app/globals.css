@@ -7,11 +7,13 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Embed routes hide the global chrome. The root layout marks its
-   sticky header + footer with .site-chrome; an embed page renders
-   a [data-embed] container which this :has() rule uses to suppress
-   those marked elements. Cleaner than threading layout context
-   through every page. */
-body:has([data-embed="true"]) .site-chrome {
+   sticky header + footer with .site-chrome; the embed layout renders
+   a [data-embed-context="true"] container which this :has() rule
+   uses to suppress those marked elements. Selector is intentionally
+   the long-form attribute name (not a bare data-embed) so a future
+   refactor that adds [data-embed="..."] somewhere doesn't accidentally
+   hide the homepage chrome. */
+body:has([data-embed-context="true"]) .site-chrome {
   display: none;
 }
 
