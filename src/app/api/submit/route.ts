@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { db, pendingSubmissions } from "@/lib/db";
 import { submissionPayloadSchema } from "@/lib/submission-payload";
 import { createToken } from "@/lib/moderation";
+import { rateLimit, assertSameOrigin } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,18 @@ function buildBaseUrl(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
+  const origin = assertSameOrigin(request);
+  if (!origin.ok) {
+    return Response.json({ ok: false, error: origin.reason }, { status: 403 });
+  }
+  const rl = rateLimit(request, "submit", { capacity: 3, refillPerSec: 0.2 });
+  if (!rl.ok) {
+    return Response.json(
+      { ok: false, error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

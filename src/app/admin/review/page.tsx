@@ -14,17 +14,24 @@ import { mtDate, mtTime } from "@/lib/time";
 export const dynamic = "force-dynamic";
 
 interface SubmissionPayload {
+  type?: unknown;
   title?: unknown;
   description?: unknown;
   link?: unknown;
   startsAt?: unknown;
   venueName?: unknown;
   city?: unknown;
+  url?: unknown;
+  note?: unknown;
 }
 
 function strField(p: SubmissionPayload, key: keyof SubmissionPayload): string | null {
   const v = p[key];
   return typeof v === "string" && v.trim().length > 0 ? v : null;
+}
+
+function isSourceSuggestion(p: SubmissionPayload): boolean {
+  return p?.type === "source" && typeof p?.url === "string";
 }
 
 export default async function ReviewQueuePage() {
@@ -35,13 +42,22 @@ export default async function ReviewQueuePage() {
     .where(eq(events.status, "pending"))
     .orderBy(asc(events.startsAt));
 
-  const submissionRows = await db
+  const allPending = await db
     .select()
     .from(pendingSubmissions)
     .where(eq(pendingSubmissions.status, "pending"))
     .orderBy(asc(pendingSubmissions.createdAt));
 
-  if (eventRows.length === 0 && submissionRows.length === 0) {
+  /* Two flavors of pending row land here: event drafts (from /submit)
+     and source suggestions (from /submit-source). Split for clarity. */
+  const submissionRows = allPending.filter(
+    (r) => !isSourceSuggestion((r.payload ?? {}) as SubmissionPayload),
+  );
+  const sourceRows = allPending.filter((r) =>
+    isSourceSuggestion((r.payload ?? {}) as SubmissionPayload),
+  );
+
+  if (eventRows.length === 0 && submissionRows.length === 0 && sourceRows.length === 0) {
     return (
       <div className="py-20 text-center">
         <p className="font-display text-2xl italic text-ink-soft">
@@ -59,6 +75,7 @@ export default async function ReviewQueuePage() {
     <div className="flex flex-col gap-12">
       <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
         {eventRows.length} scraped · {submissionRows.length} submitted
+        {sourceRows.length > 0 ? ` · ${sourceRows.length} source suggestions` : ""}
       </p>
 
       {eventRows.length > 0 && (
@@ -208,6 +225,87 @@ export default async function ReviewQueuePage() {
                         className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
                       >
                         Approve
+                      </button>
+                    </form>
+                    <form action={rejectSubmission.bind(null, s.id)}>
+                      <button
+                        type="submit"
+                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
+                      >
+                        Reject
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {sourceRows.length > 0 && (
+        <section>
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-sage-deep mb-4">
+            Source suggestions · {sourceRows.length}
+          </h2>
+          <p className="text-xs text-ink-soft mb-5 max-w-[60ch] text-pretty">
+            Whole-calendar suggestions from{" "}
+            <code className="font-mono">/submit</code>. Approving
+            registers the URL as a scrape source with{" "}
+            <code className="font-mono">requires_review</code> on, so
+            its first round of events lands here too before going
+            public.
+          </p>
+          <ul role="list" className="flex flex-col">
+            {sourceRows.map((s) => {
+              const p = (s.payload as SubmissionPayload) ?? {};
+              const url = strField(p, "url") ?? "";
+              const note = strField(p, "note");
+              const submitter = s.submitterName ?? s.submitterEmail ?? "anonymous";
+              let host = url;
+              try {
+                host = new URL(url).hostname;
+              } catch {
+                /* leave as-is */
+              }
+              return (
+                <li
+                  key={s.id}
+                  className="grid grid-cols-[3px_1fr_auto] gap-x-5 items-start py-6 border-t border-ink/15 first:border-t-0"
+                >
+                  <div className="self-stretch bg-sage-deep/40" aria-hidden />
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-3 flex-wrap font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                      <span>from {submitter}</span>
+                      <span aria-hidden>·</span>
+                      <span>source suggestion</span>
+                    </div>
+                    <h3 className="mt-1.5 font-display text-xl leading-snug -tracking-[0.005em] text-ink">
+                      {host}
+                    </h3>
+                    {note && (
+                      <p className="mt-1.5 text-sm text-ink-soft text-pretty line-clamp-3 max-w-[68ch]">
+                        {note}
+                      </p>
+                    )}
+                    <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft break-all">
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-ink hover:underline decoration-1 underline-offset-2"
+                      >
+                        {url} ↗
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 self-start">
+                    <form action={approveSubmission.bind(null, s.id)}>
+                      <button
+                        type="submit"
+                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
+                      >
+                        Register source
                       </button>
                     </form>
                     <form action={rejectSubmission.bind(null, s.id)}>

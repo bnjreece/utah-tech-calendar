@@ -31,10 +31,10 @@ export default function SubmitPage() {
 
       <div className="mt-12 border-t border-ink/12 pt-6 text-sm text-ink-soft leading-relaxed">
         <p>
-          What works as a URL? Luma, Eventbrite, Meetup, Silicon Slopes, BioUtah,
-          47G, conference homepages with structured data. If you have something
-          else, send it in the &ldquo;suggest a source&rdquo; mode and we&apos;ll
-          take a look.
+          What works as a URL? Luma, Eventbrite, Meetup, plus any
+          conference page that emits schema.org event structured data.
+          If you have a calendar that&apos;s hand-built, use the
+          &ldquo;suggest a source&rdquo; mode and we&apos;ll take a look.
         </p>
       </div>
     </div>

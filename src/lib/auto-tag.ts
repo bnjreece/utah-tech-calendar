@@ -73,8 +73,11 @@ const RULES: TagRule[] = [
      wet-lab work). Anchor names scoped: bare `owlet` had no Utah-
      event collisions today but "Owlet" as a generic word does exist.
      `patient experience` retained despite UX-conference crossover -
-     low Utah volume, worth the tradeoff. */
-  { tag: "healthtech", re: /\b(healthtech|health[- ]tech|digital health|healthcare\s+(?:tech|innovation|engineer|software|platform|startup)|telehealth|telemedicine|ehr\b|emr\b|patient\s+(?:platform|portal|experience|engagement)|oracle\s+health|intermountain\s+health|owlet\s+(?:health|baby|monitor|engineer))\b/i },
+     low Utah volume, worth the tradeoff. Added "healthcare company /
+     ceo / executive / operator" to catch founder-talk titles like
+     "From a Three-Person Startup to a Public Healthcare Company"
+     where the speaker is an anchor employer's CEO. */
+  { tag: "healthtech", re: /\b(healthtech|health[- ]tech|digital health|healthcare\s+(?:tech|innovation|engineer|software|platform|startup|company|ceo|executive|operator|industry|leader)|telehealth|telemedicine|ehr\b|emr\b|patient\s+(?:platform|portal|experience|engagement)|oracle\s+health|intermountain\s+health|owlet\s+(?:health|baby|monitor|engineer)|health\s+catalyst|nomi\s+health|recursion\s+pharmaceuticals|biohive\b)\b/i },
   /* Edtech = K-12 + higher ed + corporate learning. Instructure
      (Canvas), Pluralsight anchor the Lehi cluster. `lms\b` dropped
      - overloaded with Lawn Mower Service, Lab Management System, etc. */
