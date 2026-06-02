@@ -83,7 +83,7 @@ export default function DiscoverPage() {
           what you don&apos;t know.
         </h1>
         <p className="mt-8 max-w-[58ch] text-lg sm:text-xl text-ink-soft leading-relaxed text-pretty">
-          A map of the in-person Utah tech and tech-adjacent scene.
+          An index of the in-person Utah tech and tech-adjacent scene.
           Founders, designers, scientists, operators, anyone building
           here. One page, no signup.
         </p>
@@ -136,7 +136,7 @@ export default function DiscoverPage() {
             className="font-display italic tracking-tight text-ink text-3xl sm:text-4xl"
             style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
           >
-            How the map gets drawn.
+            How the index gets built.
           </h2>
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
             Figure 1
@@ -406,7 +406,7 @@ export default function DiscoverPage() {
           style={{ fontFamily: "Fraunces, ui-serif, Georgia, serif" }}
         >
           Word-of-mouth is a beautiful signal at one table. A
-          terrible one across a scene. We&apos;re drawing the map so
+          terrible one across a scene. We&apos;re building the index so
           it&apos;s easier to find each other.
         </p>
         <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
@@ -419,7 +419,7 @@ export default function DiscoverPage() {
   );
 }
 
-/* Illustrated editorial figure for the "How the map gets drawn"
+/* Illustrated editorial figure for the "How the index gets built"
    section. Four-stage visual narrative rendered as one SVG so the
    threadlines connect across the whole pipeline:
    - LEFT: chaotic scatter of source nodes. Some labeled, some
