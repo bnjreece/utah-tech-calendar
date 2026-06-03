@@ -1,5 +1,5 @@
 import { sql, eq } from "drizzle-orm";
-import { db, events, sources, groups } from "./db";
+import { db, events, sources, groups, scrapeRuns } from "./db";
 import { eventAdapters, type EventItem } from "./scrapers";
 import { inferTagsFromTitle, isCertSpam, CERT_SPAM_STRIPPED_TAGS } from "./auto-tag";
 
@@ -203,7 +203,41 @@ async function upsertEvent(
   return "inserted" as const;
 }
 
+/* Record one scrape attempt into scrape_runs. Best-effort - a failed
+   history insert shouldn't change the scrape outcome the caller sees. */
+async function recordRun(
+  sourceId: string,
+  adapter: string,
+  startedAt: Date,
+  durationMs: number,
+  status: "ok" | "error",
+  itemCount: number,
+  inserted: number,
+  updated: number,
+  error: string | null,
+): Promise<void> {
+  try {
+    await db.insert(scrapeRuns).values({
+      sourceId,
+      adapter,
+      startedAt,
+      durationMs,
+      status,
+      itemCount,
+      inserted,
+      updated,
+      error: error?.slice(0, 500) ?? null,
+    });
+  } catch (err) {
+    console.warn("[scrape] run-history insert failed", err);
+  }
+}
+
 export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
+  const startedAt = new Date();
+  const t0 = performance.now();
+  const elapsed = () => Math.round(performance.now() - t0);
+
   const [source] = await db
     .select()
     .from(sources)
@@ -221,6 +255,7 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
       .update(sources)
       .set({ lastScrapedAt: new Date(), lastStatus: "error", lastError: err })
       .where(eq(sources.id, sourceId));
+    await recordRun(sourceId, source.adapter, startedAt, elapsed(), "error", 0, 0, 0, err);
     return { sourceId, adapter: source.adapter, url: source.url, status: "error", inserted: 0, updated: 0, error: err };
   }
 
@@ -261,6 +296,7 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
       })
       .where(eq(sources.id, sourceId));
 
+    await recordRun(sourceId, source.adapter, startedAt, elapsed(), "ok", items.length, inserted, updated, null);
     return { sourceId, adapter: source.adapter, url: source.url, status: "ok", inserted, updated };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -268,52 +304,114 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
       .update(sources)
       .set({ lastScrapedAt: new Date(), lastStatus: "error", lastError: msg })
       .where(eq(sources.id, sourceId));
+    await recordRun(sourceId, source.adapter, startedAt, elapsed(), "error", 0, 0, 0, msg);
     return { sourceId, adapter: source.adapter, url: source.url, status: "error", inserted: 0, updated: 0, error: msg };
   }
 }
 
-/* Concurrency cap for the scrape sweep. The previous sequential loop
-   was redlining Vercel's 300s maxDuration at ~25 sources x 10s each.
-   Going parallel buys headroom for the next ~50 sources without
-   pushing function timeouts. Cap chosen so we don't hammer any
-   one host (Meetup / Eventbrite / Luma) with more than ~2 concurrent
-   requests in practice - their adapters are the slow ones and most
-   sources route through them. */
-const SCRAPE_CONCURRENCY = 5;
+/* Global ceiling on concurrent scrapes across all hosts. Bounds
+   function memory + CPU. With fetch-based adapters each scrape is
+   light, so this can be generous. */
+const GLOBAL_CONCURRENCY = 8;
 
-/* Minimal in-process semaphore. p-limit would do the same job with
-   nicer ergonomics but we already have zero runtime deps for this
-   and it's ~12 lines. */
-async function runWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  worker: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
+/* Max concurrent requests to a SINGLE host. The bot-detection concern
+   is bursts of MANY simultaneous requests from one IP, not a steady
+   3-at-a-time - that's normal calendar-aggregator behavior and well
+   under any real rate limit. Meetup (33 sources) + Eventbrite (11)
+   are the only hosts this binds; the rest have 1-2 sources each.
+   At 3/host the Meetup lane finishes in ~11 batches instead of 33
+   serial steps. */
+const PER_HOST_CONCURRENCY = 3;
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "unknown-host";
+  }
+}
+
+/* Bounded scheduler with BOTH a global cap and a per-host cap. Workers
+   pull the next source whose host isn't already at PER_HOST_CONCURRENCY;
+   if every remaining source is host-blocked, the worker yields a tick
+   and retries. The global cap is enforced by the number of workers
+   (GLOBAL_CONCURRENCY of them). This is the politeness layer: no single
+   host ever sees more than PER_HOST_CONCURRENCY in-flight requests. */
+async function runHostLimited(
+  items: Array<{ id: string; host: string }>,
+): Promise<ScrapeResult[]> {
+  const results: ScrapeResult[] = [];
+  const inFlightByHost = new Map<string, number>();
   let cursor = 0;
-  async function next(): Promise<void> {
+  const pending = [...items];
+
+  async function worker(): Promise<void> {
     while (true) {
-      const idx = cursor++;
-      if (idx >= items.length) return;
-      results[idx] = await worker(items[idx]);
+      /* Find the next source whose host has a free slot. */
+      let pickedIdx = -1;
+      for (let i = 0; i < pending.length; i++) {
+        const h = pending[i].host;
+        if ((inFlightByHost.get(h) ?? 0) < PER_HOST_CONCURRENCY) {
+          pickedIdx = i;
+          break;
+        }
+      }
+      if (pickedIdx === -1) {
+        /* Everything left is host-blocked. If nothing is in flight we
+           are done; otherwise yield and let an in-flight scrape free a
+           host slot. */
+        if (pending.length === 0) return;
+        const anyInFlight = [...inFlightByHost.values()].some((n) => n > 0);
+        if (!anyInFlight) return;
+        await new Promise((r) => setTimeout(r, 50));
+        continue;
+      }
+      const [item] = pending.splice(pickedIdx, 1);
+      void cursor;
+      inFlightByHost.set(item.host, (inFlightByHost.get(item.host) ?? 0) + 1);
+      try {
+        /* runSourceScrape catches its own errors + persists them to
+           sources.last_error + scrape_runs, so one bad adapter can't
+           take down the sweep. */
+        const res = await runSourceScrape(item.id);
+        results.push(res);
+      } finally {
+        inFlightByHost.set(item.host, (inFlightByHost.get(item.host) ?? 1) - 1);
+      }
     }
   }
-  const runners = Array.from({ length: Math.min(limit, items.length) }, () => next());
-  await Promise.all(runners);
+
+  const workers = Array.from(
+    { length: Math.min(GLOBAL_CONCURRENCY, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
   return results;
 }
 
 export async function runAllEnabledSources(): Promise<ScrapeResult[]> {
-  const rows = await db.select({ id: sources.id }).from(sources).where(eq(sources.enabled, true));
-  /* Parallel with a small cap. runSourceScrape catches its own errors
-     and persists them onto sources.last_error, so a thrown adapter
-     can't take down the sweep. Results land in original order. */
-  const results = await runWithConcurrency(rows, SCRAPE_CONCURRENCY, (r) =>
-    runSourceScrape(r.id),
-  );
+  const rows = await db
+    .select({ id: sources.id, url: sources.url })
+    .from(sources)
+    .where(eq(sources.enabled, true));
+
+  const items = rows.map((r) => ({ id: r.id, host: hostOf(r.url) }));
+  const results = await runHostLimited(items);
+
   // After all sources, sweep cross-posted SEO-spam clusters (e.g. one
   // training listing per city). Hides non-canonical members; idempotent.
   const { sweepCrossPostDuplicates } = await import("./dedup-sweep");
   await sweepCrossPostDuplicates();
+
+  // Prune scrape_runs older than 30 days so the history table stays
+  // small. Best-effort; a failed prune doesn't affect the scrape.
+  try {
+    await db.delete(scrapeRuns).where(
+      sql`${scrapeRuns.startedAt} < now() - interval '30 days'`,
+    );
+  } catch (err) {
+    console.warn("[scrape] run-history prune failed", err);
+  }
+
   return results;
 }

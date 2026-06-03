@@ -195,6 +195,38 @@ export const adminSettings = pgTable("admin_settings", {
 export type AdminSettings = typeof adminSettings.$inferSelect;
 export type NewAdminSettings = typeof adminSettings.$inferInsert;
 
+/* One row per source per scrape attempt. Backs the /admin/health
+   dashboard - per-source duration/error-rate trends that the
+   current-state columns on `sources` can't express (those only hold
+   the latest run). Pruned to ~30 days by the scrape cron so the
+   table stays small. */
+export const scrapeRuns = pgTable(
+  "scrape_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sourceId: uuid("source_id")
+      .references(() => sources.id, { onDelete: "cascade" })
+      .notNull(),
+    /* Denormalized so a deleted source's history is still readable
+       and we don't need a join for the common dashboard query. */
+    adapter: text("adapter").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    durationMs: integer("duration_ms").notNull(),
+    status: text("status").notNull(), // 'ok' | 'error'
+    itemCount: integer("item_count").notNull().default(0),
+    inserted: integer("inserted").notNull().default(0),
+    updated: integer("updated").notNull().default(0),
+    error: text("error"),
+  },
+  (t) => [
+    index("scrape_runs_source_started_idx").on(t.sourceId, t.startedAt),
+    index("scrape_runs_started_idx").on(t.startedAt),
+  ],
+);
+
+export type ScrapeRun = typeof scrapeRuns.$inferSelect;
+export type NewScrapeRun = typeof scrapeRuns.$inferInsert;
+
 export type Group = typeof groups.$inferSelect;
 export type NewGroup = typeof groups.$inferInsert;
 export type Event = typeof events.$inferSelect;
