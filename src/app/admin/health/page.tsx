@@ -22,6 +22,9 @@ function fmtRelative(d: Date | null): string {
 
 const STATUS_STYLE: Record<SourceHealthStatus, { label: string; dot: string; text: string }> = {
   ok: { label: "ok", dot: "bg-sage-deep", text: "text-sage-deep" },
+  /* Quiet = working but returning 0 events. Hollow sage ring instead
+     of a filled dot so it reads as "alive but empty" at a glance. */
+  quiet: { label: "quiet", dot: "ring-1 ring-sage-deep bg-transparent", text: "text-ink-soft" },
   stale: { label: "stale", dot: "bg-sunset-deep", text: "text-sunset-deep" },
   broken: { label: "broken", dot: "bg-sunset-deep", text: "text-sunset-deep" },
   never: { label: "never run", dot: "bg-ink/30", text: "text-ink-soft" },
@@ -64,10 +67,11 @@ export default async function HealthDashboardPage() {
         <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft mb-4">
           Fleet · {summary.total} sources
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {(
             [
               { k: "ok", label: "Healthy", v: summary.ok },
+              { k: "quiet", label: "Quiet", v: summary.quiet },
               { k: "stale", label: "Stale", v: summary.stale },
               { k: "broken", label: "Broken", v: summary.broken },
               { k: "never", label: "Never run", v: summary.never },

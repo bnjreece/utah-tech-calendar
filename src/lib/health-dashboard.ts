@@ -6,7 +6,13 @@ import { db, sources, scrapeRuns, adminSettings, type Source } from "./db";
    fleet-status view. Kept out of the page component so the shapes are
    testable and the page stays presentational. */
 
-export type SourceHealthStatus = "ok" | "stale" | "broken" | "never" | "disabled";
+export type SourceHealthStatus =
+  | "ok"
+  | "quiet"
+  | "stale"
+  | "broken"
+  | "never"
+  | "disabled";
 
 export interface SourceHealth {
   id: string;
@@ -30,6 +36,7 @@ export interface SourceHealth {
 export interface FleetSummary {
   total: number;
   ok: number;
+  quiet: number;
   stale: number;
   broken: number;
   never: number;
@@ -46,12 +53,26 @@ export interface CronHeartbeats {
    hasn't scraped in 12h is stale regardless of whether it errored. */
 const STALE_MS = 12 * 60 * 60 * 1000;
 
-function classify(s: Source): SourceHealthStatus {
+/* A source is "quiet" when it scrapes successfully and fresh but
+   has returned 0 events on every one of its recent runs. Distinct
+   from broken (errored) and stale (cron not reaching it): the
+   adapter works, the group/calendar just has nothing upcoming.
+   Surfaced separately so a long run of zeros reads as "maybe dead,
+   worth a look" rather than hiding under a green "ok". */
+function classify(
+  s: Source,
+  recentRuns: SourceHealth["recentRuns"],
+): SourceHealthStatus {
   if (!s.enabled) return "disabled";
   if (s.lastError) return "broken";
   if (!s.lastScrapedAt) return "never";
   const sinceMs = Date.now() - new Date(s.lastScrapedAt).getTime();
   if (sinceMs > STALE_MS) return "stale";
+  /* Need at least 3 runs of history before calling it quiet, so a
+     brand-new source mid-first-scrape doesn't flash quiet. */
+  if (recentRuns.length >= 3 && recentRuns.every((r) => r.itemCount === 0)) {
+    return "quiet";
+  }
   return "ok";
 }
 
@@ -124,6 +145,7 @@ export async function fetchSourceHealth(): Promise<{
   const summary: FleetSummary = {
     total: sourceRows.length,
     ok: 0,
+    quiet: 0,
     stale: 0,
     broken: 0,
     never: 0,
@@ -131,7 +153,8 @@ export async function fetchSourceHealth(): Promise<{
   };
 
   const healthList: SourceHealth[] = sourceRows.map((s) => {
-    const status = classify(s);
+    const recentRuns = recentBySource.get(s.id) ?? [];
+    const status = classify(s, recentRuns);
     summary[status]++;
     const stats = statsBySource.get(s.id);
     return {
@@ -145,21 +168,22 @@ export async function fetchSourceHealth(): Promise<{
       lastScrapedAt: s.lastScrapedAt ? new Date(s.lastScrapedAt) : null,
       lastStatus: s.lastStatus,
       lastError: s.lastError,
-      recentRuns: recentBySource.get(s.id) ?? [],
+      recentRuns,
       errorRate7d: stats && stats.total > 0 ? stats.errors / stats.total : 0,
       avgDurationMs: stats ? stats.avgMs : null,
       runCount7d: stats?.total ?? 0,
     };
   });
 
-  /* Sort: broken first (need attention), then stale, never, ok,
-     disabled last. Within a status, worst error-rate first. */
+  /* Sort: broken first (need attention), then stale, never, quiet,
+     ok, disabled last. Within a status, worst error-rate first. */
   const order: Record<SourceHealthStatus, number> = {
     broken: 0,
     stale: 1,
     never: 2,
-    ok: 3,
-    disabled: 4,
+    quiet: 3,
+    ok: 4,
+    disabled: 5,
   };
   healthList.sort((a, b) => {
     if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
