@@ -342,7 +342,6 @@ async function runHostLimited(
 ): Promise<ScrapeResult[]> {
   const results: ScrapeResult[] = [];
   const inFlightByHost = new Map<string, number>();
-  let cursor = 0;
   const pending = [...items];
 
   async function worker(): Promise<void> {
@@ -367,7 +366,6 @@ async function runHostLimited(
         continue;
       }
       const [item] = pending.splice(pickedIdx, 1);
-      void cursor;
       inFlightByHost.set(item.host, (inFlightByHost.get(item.host) ?? 0) + 1);
       try {
         /* runSourceScrape catches its own errors + persists them to

@@ -8,7 +8,17 @@ const COMMON_HEADERS: Record<string, string> = {
 };
 
 export async function fetchHtml(url: string): Promise<string> {
-  const res = await fetch(url, { headers: COMMON_HEADERS, redirect: "follow" });
+  /* 20s hard timeout. Node's fetch has no default timeout, so without
+     this a single hung host (Meetup/Luma/Eventbrite/htmlCalendar all
+     route through here) holds a scrape worker until the cron's 300s
+     maxDuration, starving the rest of the sweep. The timeout converts
+     "host is hanging" into a clean per-source error that recordRun +
+     last_error capture, instead of a budget blowout. */
+  const res = await fetch(url, {
+    headers: COMMON_HEADERS,
+    redirect: "follow",
+    signal: AbortSignal.timeout(20_000),
+  });
   if (!res.ok) {
     throw new Error(`fetch ${url} → HTTP ${res.status}`);
   }

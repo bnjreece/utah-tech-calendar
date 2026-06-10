@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { desc, eq, gte, sql } from "drizzle-orm";
 import { db, sources, scrapeRuns, adminSettings, type Source } from "./db";
 
 /* Data layer for /admin/health. Aggregates the per-source state on
@@ -216,7 +216,7 @@ export async function fetchRecentErrors(limit = 20): Promise<
     })
     .from(scrapeRuns)
     .leftJoin(sources, eq(scrapeRuns.sourceId, sources.id))
-    .where(and(eq(scrapeRuns.status, "error")))
+    .where(eq(scrapeRuns.status, "error"))
     .orderBy(desc(scrapeRuns.startedAt))
     .limit(limit);
   return rows.map((r) => ({
