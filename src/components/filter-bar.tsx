@@ -27,6 +27,25 @@ import {
    storage, GDPR-safe). */
 const FILTERS_LSK = "utc:lastFilterQs";
 
+/* URL params owned by the filter state. Anything NOT in this set
+   (density, view) is a presentation param we preserve across filter
+   changes. Anything IN it must be rebuilt fresh from FilterState on
+   every update - copying a stale filter param back from the current
+   URL silently undoes a removal (the per-chip X / online-toggle-off
+   bug Jesse reported). Keep in sync with filtersToSearchParams. */
+const FILTER_PARAM_KEYS = new Set([
+  "q",
+  "regions",
+  "cities",
+  "tags",
+  "sources",
+  "groups",
+  "types",
+  "from",
+  "to",
+  "online",
+]);
+
 interface CountedOption {
   value: string;
   count: number;
@@ -87,9 +106,12 @@ export function FilterBar({ cities, tags, sources }: Props) {
     const merged: FilterState = { ...filters, ...next };
     const sp = filtersToSearchParams(merged);
     /* Preserve non-filter URL params (density, view) so changing a filter
-       doesn't bounce the user back to the default weekly/list view. */
+       doesn't bounce the user back to the default weekly/list view. We
+       must skip filter params here: re-adding one the user just cleared
+       (last chip removed, online toggled off) copies the stale value
+       back from the URL and silently undoes the removal. */
     for (const [k, v] of searchParams.entries()) {
-      if (!sp.has(k)) sp.set(k, v);
+      if (!FILTER_PARAM_KEYS.has(k) && !sp.has(k)) sp.set(k, v);
     }
     startTransition(() => {
       router.push(`${pathname}${sp.toString() ? `?${sp.toString()}` : ""}`);
@@ -273,10 +295,9 @@ export function FilterBar({ cities, tags, sources }: Props) {
             onClick={() => {
               /* Same idea as update(): nuke filter state but preserve
                  density/view so Clear all doesn't change the view mode. */
-              const FILTER_KEYS = new Set(["q", "regions", "cities", "tags", "sources", "groups", "types", "from", "to", "online"]);
               const sp = new URLSearchParams();
               for (const [k, v] of searchParams.entries()) {
-                if (!FILTER_KEYS.has(k)) sp.set(k, v);
+                if (!FILTER_PARAM_KEYS.has(k)) sp.set(k, v);
               }
               router.push(`${pathname}${sp.toString() ? `?${sp.toString()}` : ""}`);
             }}
