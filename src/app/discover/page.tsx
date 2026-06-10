@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { eq, sql } from "drizzle-orm";
+import { db, sources } from "@/lib/db";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
+
+/* Re-render hourly so the live source count stays accurate without a
+   DB hit on every visit. The stat used to be a hardcoded "25+" that
+   drifted badly as sources grew (real count is ~59). */
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Discover Utah Tech",
@@ -17,14 +24,21 @@ export const metadata: Metadata = {
   },
 };
 
-const STATS = [
-  { value: "25+", label: "Sources watched" },
-  { value: "9", label: "Curated verticals" },
-  { value: "4", label: "Delivery channels" },
-  { value: "0", label: "Accounts required" },
-];
-
 const VERTICALS = getFeaturedVerticals();
+
+/* Live enabled-source count. Dynamic (with hourly revalidate) so it
+   stays exact as sources are added, instead of the old stale "25+". */
+async function sourcesWatchedValue(): Promise<string> {
+  try {
+    const [row] = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(sources)
+      .where(eq(sources.enabled, true));
+    return String(row?.c ?? 0);
+  } catch {
+    return "50+";
+  }
+}
 
 const CHANNELS = [
   {
@@ -65,7 +79,13 @@ const NEGATIVES = [
   { word: "Paywall", note: "Free, run as a public service." },
 ];
 
-export default function DiscoverPage() {
+export default async function DiscoverPage() {
+  const STATS = [
+    { value: await sourcesWatchedValue(), label: "Sources watched" },
+    { value: String(VERTICALS.length), label: "Curated verticals" },
+    { value: "4", label: "Delivery channels" },
+    { value: "0", label: "Accounts required" },
+  ];
   return (
     <div className="theme-editorial">
       {/* ============================================================
