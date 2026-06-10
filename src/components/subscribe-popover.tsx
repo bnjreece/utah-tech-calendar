@@ -34,8 +34,13 @@ export function SubscribePopover({
   const icalUrl = `${origin}${icalPath}`;
   const rssUrl = `${origin}${rssPath}`;
   const webcalUrl = icalUrl.replace(/^https?/, "webcal");
+  /* Google Calendar's add-by-URL deep link needs the WEBCAL scheme in
+     cid - an https cid just opens the calendar to today's view without
+     subscribing (verified in-browser: the dialog never appears). The
+     webcal:// scheme signals "this is a feed to subscribe to" and
+     triggers the "Add calendar?" confirmation. */
   const googleUrl = origin
-    ? `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(icalUrl)}`
+    ? `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(webcalUrl)}`
     : "#";
 
   async function copy(url: string, key: string) {
