@@ -13,7 +13,6 @@ async function main() {
 
   const report = broken.map((s) => ({
     id: s.id,
-    name: s.name,
     host: s.host,
     url: s.url,
     lastError: s.lastError,
@@ -27,7 +26,7 @@ async function main() {
     `Fleet: ${summary.total} sources — ${summary.broken} broken, ${summary.stale} stale, ${summary.quiet} quiet, ${summary.ok} ok`,
   );
   for (const b of report) {
-    console.log(`- ${b.name} (${b.host}) [${b.errorRate7d}% errors/7d]: ${b.lastError ?? "(no message)"}`);
+    console.log(`- ${b.host} [${b.errorRate7d}% errors/7d]: ${b.lastError ?? "(no message)"}`);
   }
 
   const out = process.env.GITHUB_OUTPUT;
