@@ -565,3 +565,18 @@ body:has([data-embed-context="true"]) .site-chrome {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
+
+/* Forge Utah ships separate light/dark wordmarks; show the one matching
+   the active theme (.dark applied to <html> by the theme toggle). */
+.theme-logo-light {
+  display: inline-block;
+}
+.theme-logo-dark {
+  display: none;
+}
+.dark .theme-logo-light {
+  display: none;
+}
+.dark .theme-logo-dark {
+  display: inline-block;
+}

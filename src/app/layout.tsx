@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ReflectionShimmerLogo } from "@/components/logos";
+import { ForgeCredit } from "@/components/forge-credit";
 import { SiteNav } from "@/components/site-nav";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
@@ -172,6 +173,9 @@ export default function RootLayout({
                   submit
                 </Link>
               </div>
+            </div>
+            <div className="pt-6 mt-6 border-t border-ink/15 flex justify-center">
+              <ForgeCredit />
             </div>
           </div>
         </footer>

@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { db, sources } from "@/lib/db";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
+import { ForgeCredit } from "@/components/forge-credit";
 
 /* Re-render hourly so the live source count stays accurate without a
    DB hit on every visit. The stat used to be a hardcoded "25+" that
@@ -901,6 +902,10 @@ function Figure1() {
           </text>
         </g>
       </svg>
+
+      <div className="mt-16 pt-8 border-t border-ink/15 flex justify-center">
+        <ForgeCredit />
+      </div>
     </div>
   );
 }
