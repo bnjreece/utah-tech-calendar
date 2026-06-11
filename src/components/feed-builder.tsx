@@ -18,10 +18,17 @@ interface CountedOption {
   count: number;
 }
 
+interface GroupOption {
+  slug: string;
+  name: string;
+  count: number;
+}
+
 interface Props {
   cities: CountedOption[];
   tags: CountedOption[];
   sources: CountedOption[];
+  groups: GroupOption[];
 }
 
 const EMPTY: FilterState = {
@@ -43,7 +50,7 @@ const TYPES: EventType[] = ["conference", "paid", "free", "penciled"];
    the SubscribePopover, which already knows how to deeplink to Apple
    Calendar (webcal://), Google Calendar (?cid=), and how to expose
    raw iCal/RSS URLs. */
-export function FeedBuilder({ cities, tags, sources }: Props) {
+export function FeedBuilder({ cities, tags, sources, groups }: Props) {
   const [filters, setFilters] = useState<FilterState>(EMPTY);
   const [count, setCount] = useState<number | null>(null);
   const [capped, setCapped] = useState(false);
@@ -80,6 +87,7 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
     filters.regions.length +
     filters.cities.length +
     filters.tags.length +
+    filters.groups.length +
     filters.sources.length +
     filters.types.length +
     (filters.showOnline ? 1 : 0);
@@ -113,6 +121,7 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
     label: sourceLabel(s.value),
     count: s.count,
   }));
+  const groupOptions = groups.map((g) => ({ value: g.slug, label: g.name, count: g.count }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -165,6 +174,15 @@ export function FeedBuilder({ cities, tags, sources }: Props) {
           onChange={(v) => setFilters((f) => ({ ...f, tags: v }))}
           searchable
         />
+        {groups.length > 0 && (
+          <MultiSelectPopover
+            label="Groups"
+            options={groupOptions}
+            selected={filters.groups}
+            onChange={(v) => setFilters((f) => ({ ...f, groups: v }))}
+            searchable
+          />
+        )}
         <MultiSelectPopover
           label="Sources"
           options={sourceOptions}
