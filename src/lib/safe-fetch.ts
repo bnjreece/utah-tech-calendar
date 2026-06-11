@@ -87,6 +87,44 @@ async function assertPublicHost(hostname: string): Promise<void> {
   }
 }
 
+/* Cheap, synchronous, no-DNS pre-check for URL entry points (e.g.
+   /api/submit-source). Rejects non-http(s) schemes, obvious internal
+   hostnames, and literal private IPs so a submitter gets an immediate
+   clear error instead of the source silently failing at scrape time.
+   This is defense-in-depth - safeFetchHtml() still does the
+   authoritative DNS-resolving check at fetch time. Returns a reason
+   string when blocked, or null when the URL looks publicly fetchable. */
+export function blockedUrlReason(rawUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return "Invalid URL";
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    return "Only http and https URLs are allowed";
+  }
+  const host = url.hostname.toLowerCase();
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".internal") ||
+    host.endsWith(".local") ||
+    host.endsWith(".lan") ||
+    host.endsWith(".intranet")
+  ) {
+    return "Refusing internal hostname";
+  }
+  /* If the host is a literal IP, apply the private-range checks now. */
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) && isPrivateIPv4(host)) {
+    return "Refusing private/internal IP address";
+  }
+  if (host.includes(":") && isPrivateIPv6(host.replace(/^\[|\]$/g, ""))) {
+    return "Refusing private/internal IP address";
+  }
+  return null;
+}
+
 const COMMON_HEADERS: Record<string, string> = {
   "User-Agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",

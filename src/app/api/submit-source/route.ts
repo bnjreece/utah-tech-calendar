@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { and, eq, sql } from "drizzle-orm";
 import { db, pendingSubmissions } from "@/lib/db";
 import { rateLimit, assertSameOrigin } from "@/lib/rate-limit";
+import { blockedUrlReason } from "@/lib/safe-fetch";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,13 @@ export async function POST(request: NextRequest) {
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     return Response.json({ ok: false, error: "Only http/https URLs" }, { status: 400 });
+  }
+  /* SSRF defense-in-depth: reject internal/private targets at submission
+     so they never reach the review queue (and a submitter gets a clear
+     error). safeFetchHtml still re-checks at scrape time. */
+  const blocked = blockedUrlReason(rawUrl);
+  if (blocked) {
+    return Response.json({ ok: false, error: blocked }, { status: 400 });
   }
 
   const note = typeof body.note === "string" ? body.note.slice(0, 500).trim() : "";

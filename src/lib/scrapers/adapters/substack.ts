@@ -1,4 +1,5 @@
 import type { Adapter, EventItem } from "../types";
+import { safeFetchHtml } from "@/lib/safe-fetch";
 
 /* Substack-as-event-source. Each substack post that announces a monthly
    event (Utah Burger Club pattern) gets parsed into an EventItem:
@@ -167,12 +168,10 @@ export const substackAdapter: Adapter<EventItem> = {
   runtime: "fetch",
   async scrape({ url, maxItems = 12 }) {
     const feedUrl = url.endsWith("/feed") ? url : `${url.replace(/\/$/, "")}/feed`;
-    const res = await fetch(feedUrl, {
-      headers: { Accept: "application/rss+xml, application/xml, text/xml" },
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) throw new Error(`substack feed ${res.status} ${feedUrl}`);
-    const xml = await res.text();
+    /* SSRF-hardened: feedUrl derives from a community-influenced source
+       URL, so resolve+validate the host before fetching. Returns the
+       raw feed text (XML) the same way a direct fetch would. */
+    const xml = await safeFetchHtml(feedUrl);
     const posts = parseRssItems(xml);
 
     const items: EventItem[] = [];

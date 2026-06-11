@@ -1,28 +1,18 @@
 import * as cheerio from "cheerio";
-
-const COMMON_HEADERS: Record<string, string> = {
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
-};
+import { safeFetchHtml } from "@/lib/safe-fetch";
 
 export async function fetchHtml(url: string): Promise<string> {
-  /* 20s hard timeout. Node's fetch has no default timeout, so without
-     this a single hung host (Meetup/Luma/Eventbrite/htmlCalendar all
-     route through here) holds a scrape worker until the cron's 300s
-     maxDuration, starving the rest of the sweep. The timeout converts
-     "host is hanging" into a clean per-source error that recordRun +
-     last_error capture, instead of a budget blowout. */
-  const res = await fetch(url, {
-    headers: COMMON_HEADERS,
-    redirect: "follow",
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!res.ok) {
-    throw new Error(`fetch ${url} → HTTP ${res.status}`);
-  }
-  return res.text();
+  /* Every adapter that fetches a source-row URL (Meetup, Luma,
+     Eventbrite, htmlCalendar, utahGeekEvents) routes through here.
+     Source URLs can originate from community submissions, so this is
+     an SSRF surface: an approved source pointing at 169.254.169.254 /
+     a private host / a public host that 302s internal must NOT be
+     fetched blindly. safeFetchHtml DNS-resolves and rejects private/
+     reserved addresses, follows redirects manually re-validating each
+     hop (defeats DNS rebinding), caps the body at 2 MB, and times out
+     - exactly the protection /api/extract already relies on. Errors
+     here are captured per-source by recordRun + last_error. */
+  return safeFetchHtml(url);
 }
 
 export function extractNextData<T = unknown>(html: string): T | null {
