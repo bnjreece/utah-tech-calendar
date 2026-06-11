@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { db, events, sources, adminSettings, pendingSubmissions } from "@/lib/db";
+import { db, events, sources, adminSettings, pendingSubmissions, groups } from "@/lib/db";
 import type { SubmissionPayload } from "@/lib/submission-payload";
 import { requireAdmin } from "@/lib/admin-auth";
 import { notifySubmitterEvent, notifySubmitterSource } from "@/lib/submitter-followup";
@@ -259,4 +259,50 @@ export async function toggleSourceRequiresReview(
   await requireAdmin();
   await db.update(sources).set({ requiresReview }).where(eq(sources.id, id));
   revalidatePath("/admin/sources");
+}
+
+/* ── Group curation (admin only) ───────────────────────────────────
+   Groups are the community/org behind events. These let an admin keep
+   the user-facing Group filter clean: rename, merge duplicates, or
+   delete an aggregator/junk group (which ungroups its events + sources
+   rather than deleting them). */
+
+function revalidateGroups() {
+  revalidatePath("/admin/groups");
+  revalidatePath("/"); // the Group filter on the home page
+}
+
+export async function renameGroup(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 120);
+  if (!id || !name) return;
+  await db.update(groups).set({ name }).where(eq(groups.id, id));
+  revalidateGroups();
+}
+
+/* Delete a group WITHOUT deleting its events: null the references on
+   events + sources first, then remove the group row. The events stay
+   on the calendar, just ungrouped. */
+export async function deleteGroup(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await db.update(events).set({ groupId: null }).where(eq(events.groupId, id));
+  await db.update(sources).set({ groupId: null }).where(eq(sources.groupId, id));
+  await db.delete(groups).where(eq(groups.id, id));
+  revalidateGroups();
+}
+
+/* Merge `fromId` into `intoId`: reassign all its events + sources to
+   the target group, then delete the now-empty source group. */
+export async function mergeGroups(formData: FormData) {
+  await requireAdmin();
+  const fromId = String(formData.get("fromId") ?? "");
+  const intoId = String(formData.get("intoId") ?? "");
+  if (!fromId || !intoId || fromId === intoId) return;
+  await db.update(events).set({ groupId: intoId }).where(eq(events.groupId, fromId));
+  await db.update(sources).set({ groupId: intoId }).where(eq(sources.groupId, fromId));
+  await db.delete(groups).where(eq(groups.id, fromId));
+  revalidateGroups();
 }
