@@ -42,11 +42,40 @@ export default async function AdminGroupsPage() {
         <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
           Groups · {list.length}
         </h2>
-        <p className="mt-2 text-sm text-ink-soft max-w-[60ch]">
-          The communities behind events — what people filter and subscribe by.
-          Keep this to real organizers. <strong>Delete</strong> ungroups a
-          junk/aggregator group (its events stay on the calendar, just without a
-          group). <strong>Merge</strong> folds duplicates together.
+        <p className="mt-2 text-sm text-ink-soft max-w-[64ch]">
+          A <strong>group</strong> is the community/organizer behind events
+          (UtahJS, Utah Rust, …) — what people filter and subscribe to by name.
+          Each event belongs to one group, set automatically from its source.
+        </p>
+      </div>
+
+      <div className="rounded-xl bg-foreground/[0.04] p-4 text-sm text-ink-soft max-w-[64ch] flex flex-col gap-1.5">
+        <p className="font-medium text-ink">How groups work</p>
+        <p>
+          <strong>This page manages existing groups</strong> — rename, merge
+          duplicates, or delete. <strong>Delete</strong> ungroups a junk
+          group (its events stay on the calendar, just without a group);
+          <strong> Merge</strong> folds two groups into one.
+        </p>
+        <p>
+          <strong>To create a group</strong>, assign one where it lives:
+        </p>
+        <ul className="list-disc pl-5">
+          <li>
+            <a href="/admin/sources" className="underline decoration-1 underline-offset-2 hover:text-ink">Sources</a>
+            {" "}— pick a source&apos;s Group dropdown → <em>+ New group…</em>. The
+            whole community gets grouped (durable; applies on the next scrape).
+          </li>
+          <li>
+            <a href="/admin/recent" className="underline decoration-1 underline-offset-2 hover:text-ink">Recent</a>
+            {" "}— pick an event&apos;s Group dropdown → <em>+ New group…</em>. Best
+            for one-off / manually-submitted events (locked against re-scrape).
+          </li>
+        </ul>
+        <p>
+          Organizers can also request one publicly via{" "}
+          <a href="/submit" className="underline decoration-1 underline-offset-2 hover:text-ink">Submit → Suggest a source</a>
+          {" "}— approving their source here is what adds their group.
         </p>
       </div>
 

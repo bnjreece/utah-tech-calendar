@@ -465,6 +465,11 @@ function SourceByUrl() {
           conference site, an org&apos;s events page. Anything that posts
           recurring Utah tech events.
         </p>
+        <p className="mt-2 text-xs text-ink-soft text-pretty">
+          Running a community? This is how your <strong>group</strong> gets on
+          the calendar — once it&apos;s approved, people can filter and subscribe
+          to just your events by name.
+        </p>
       </div>
 
       <Field
