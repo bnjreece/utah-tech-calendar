@@ -43,6 +43,16 @@ bun run dev                           # http://localhost:3000
 
 Only `DATABASE_URL` is needed to run the UI and scrapers locally. `CRON_SECRET`, `MODERATION_SECRET`, and `RESEND_API_KEY` are only needed for the cron endpoints and email; Clerk vars are only for the `/admin` area.
 
+### Use your own keys — never the project's
+
+Contributors run against **their own** infrastructure, not the production project's:
+
+- **Database**: your own free [Neon](https://neon.tech) project (or any Postgres). Never ask for the production `DATABASE_URL`.
+- **Clerk** (`/admin` only): your own free Clerk dev instance with its own `pk_test`/`sk_test` keys.
+- **Resend** (email only): your own test key, or just leave `RESEND_API_KEY` unset — submit/digest paths no-op without it.
+
+Production secrets live only in the deploy platform's environment and are never shared, never committed, and never required to build or contribute. A pull request never needs them: the maintainers' deploy picks up the real values on merge.
+
 Test a single adapter without waiting on cron:
 
 ```bash
