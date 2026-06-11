@@ -68,6 +68,13 @@ bun scripts/one-shot-scrape.ts <adapter> <url> # try an adapter ad-hoc
 
 Contributions welcome — new sources, adapters, filters, and bug reports. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the open issues. Adding your group's calendar can be as small as one row.
 
+## Maintainers
+
+- [Benjamin Reece](https://github.com/bnjreece) — creator
+- [Clint Berry](https://github.com/clintberry) — co-maintainer (formerly [utahdev.events](https://utahdev.events))
+
+Utah Tech Calendar grew out of merging forces with utahdev.events to give the community one comprehensive, well-filtered place to find in-person tech events.
+
 ## License
 
 [MIT](LICENSE) © Benjamin Reece

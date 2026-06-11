@@ -1,7 +1,17 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
-const ADMIN_EMAILS = new Set<string>(["b@bnjmn.org"]);
+/* Admin allowlist. Sourced from the ADMIN_EMAILS env var (comma-
+   separated) so we don't commit personal emails to this public repo,
+   and so adding a maintainer is a Vercel env change with no code edit.
+   Falls back to the owner's email if the var is unset, so a fresh
+   clone / forgotten env doesn't lock everyone out. */
+const ADMIN_EMAILS = new Set<string>(
+  (process.env.ADMIN_EMAILS ?? "b@bnjmn.org")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 export interface AdminUser {
   id: string;
