@@ -111,6 +111,7 @@ function sourceDefaultTags(config: unknown): string[] {
 async function upsertEvent(
   item: EventItem,
   groupId: string | undefined,
+  sourceId: string,
   defaultStatus: string,
   injectedTags: string[],
 ) {
@@ -163,6 +164,7 @@ async function upsertEvent(
     imageUrl: item.imageUrl,
     tags,
     groupId,
+    sourceId,
     updatedAt: new Date(),
   };
 
@@ -289,7 +291,7 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
       }
 
       const defaultStatus = source.requiresReview ? "pending" : "approved";
-      const outcome = await upsertEvent(item, groupId, defaultStatus, injectedTags);
+      const outcome = await upsertEvent(item, groupId, source.id, defaultStatus, injectedTags);
       if (outcome === "inserted") inserted++;
       else updated++;
     }

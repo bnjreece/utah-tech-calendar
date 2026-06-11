@@ -85,17 +85,19 @@ export default async function SourcesAdminPage({
   const rows = await db.select().from(sources).orderBy(asc(sources.adapter), asc(sources.url));
   const allGroups = await getAllGroups();
 
-  /* Per-source event counts (upcoming). Keyed by adapter source string. */
+  /* Per-source event counts (upcoming), keyed by the source row id. We
+     count by source_id (set by the scraper) rather than the adapter
+     string so each source shows ITS own events, not the whole adapter's. */
   const counts = await db.execute(sql`
-    SELECT source, status, COUNT(*)::int as c
+    SELECT source_id, status, COUNT(*)::int as c
     FROM events
-    WHERE starts_at >= now()
-    GROUP BY source, status
+    WHERE starts_at >= now() AND source_id IS NOT NULL
+    GROUP BY source_id, status
   `);
-  const countRows = (Array.isArray(counts) ? counts : (counts.rows ?? [])) as Array<{ source: string; status: string; c: number }>;
+  const countRows = (Array.isArray(counts) ? counts : (counts.rows ?? [])) as Array<{ source_id: string; status: string; c: number }>;
   const countMap = new Map<string, { approved: number; pending: number; hidden: number }>();
   for (const r of countRows) {
-    const k = r.source;
+    const k = r.source_id;
     const existing = countMap.get(k) ?? { approved: 0, pending: 0, hidden: 0 };
     if (r.status === "approved") existing.approved = r.c;
     if (r.status === "pending") existing.pending = r.c;
@@ -154,7 +156,7 @@ export default async function SourcesAdminPage({
 
       <ul role="list" className="flex flex-col">
         {filtered.map((s) => {
-          const c = countMap.get(s.adapter);
+          const c = countMap.get(s.id);
           const lastScraped = s.lastScrapedAt
             ? new Date(s.lastScrapedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
             : "never";

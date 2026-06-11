@@ -56,6 +56,10 @@ export const events = pgTable(
     imageUrl: text("image_url"),
     tags: text("tags").array(),
     groupId: uuid("group_id").references(() => groups.id),
+    /* The specific source row this event last came from, so admin can
+       count events per source (events.source is only the adapter name,
+       which is shared across many source rows). */
+    sourceId: uuid("source_id").references(() => sources.id, { onDelete: "set null" }),
     /* When true, an admin manually set this event's group; the scraper
        must not overwrite groupId on re-scrape. */
     groupLocked: boolean("group_locked").notNull().default(false),
