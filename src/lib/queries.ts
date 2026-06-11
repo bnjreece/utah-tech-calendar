@@ -50,7 +50,14 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
   }
 
   if (filters.groups.length) {
-    conditions.push(inArray(events.groupId, filters.groups));
+    /* Filter by group SLUG (clean, shareable URLs like ?groups=utah-go)
+       rather than the internal UUID. Resolve slugs to ids via subquery. */
+    conditions.push(
+      inArray(
+        events.groupId,
+        db.select({ id: groups.id }).from(groups).where(inArray(groups.slug, filters.groups)),
+      ),
+    );
   }
 
   if (filters.tags.length) {
@@ -231,6 +238,16 @@ export async function getSourceCounts(): Promise<Array<{ source: string; count: 
   return rows
     .filter((r) => r.source)
     .sort((a, b) => b.count - a.count);
+}
+
+export async function getGroupCounts(): Promise<Array<{ slug: string; name: string; count: number }>> {
+  const rows = await db
+    .select({ slug: groups.slug, name: groups.name, count: sql<number>`count(*)::int` })
+    .from(events)
+    .innerJoin(groups, eq(events.groupId, groups.id))
+    .where(and(eq(events.status, "approved"), gte(events.startsAt, new Date())))
+    .groupBy(groups.slug, groups.name);
+  return rows.filter((r) => r.slug).sort((a, b) => b.count - a.count);
 }
 
 export async function getCityCounts(): Promise<Array<{ city: string; count: number }>> {

@@ -51,13 +51,20 @@ interface CountedOption {
   count: number;
 }
 
+interface GroupOption {
+  slug: string;
+  name: string;
+  count: number;
+}
+
 interface Props {
   cities: CountedOption[];
   tags: CountedOption[];
   sources: CountedOption[];
+  groups: GroupOption[];
 }
 
-export function FilterBar({ cities, tags, sources }: Props) {
+export function FilterBar({ cities, tags, sources, groups }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -142,6 +149,7 @@ export function FilterBar({ cities, tags, sources }: Props) {
     filters.regions.length +
     filters.cities.length +
     filters.tags.length +
+    filters.groups.length +
     filters.sources.length +
     filters.types.length +
     (filters.from ? 1 : 0) +
@@ -170,6 +178,9 @@ export function FilterBar({ cities, tags, sources }: Props) {
   const cityLabel = (c: string) => (c === "Unknown" ? "Location TBD" : c);
   const regionLabel = (r: string) => (r === "Unknown" ? "Location TBD" : r);
   const tagOptions = tags.map((t) => ({ value: t.value, label: t.value, count: t.count }));
+  const groupOptions = groups.map((g) => ({ value: g.slug, label: g.name, count: g.count }));
+  const groupNameBySlug = new Map(groups.map((g) => [g.slug, g.name]));
+  const groupLabel = (slug: string) => groupNameBySlug.get(slug) ?? slug;
 
   return (
     <div className="flex flex-col gap-3">
@@ -224,6 +235,15 @@ export function FilterBar({ cities, tags, sources }: Props) {
               searchable
             />
           )}
+          {groups.length > 0 && (
+            <MultiSelectPopover
+              label="Group"
+              options={groupOptions}
+              selected={filters.groups}
+              onChange={(next) => update({ groups: next })}
+              searchable
+            />
+          )}
           {sources.length > 0 && (
             <MultiSelectPopover
               label="Source"
@@ -266,6 +286,9 @@ export function FilterBar({ cities, tags, sources }: Props) {
           ))}
           {filters.tags.map((t) => (
             <ActiveChip key={`t-${t}`} label={t} onRemove={() => clearOne("tags", t)} />
+          ))}
+          {filters.groups.map((g) => (
+            <ActiveChip key={`g-${g}`} label={groupLabel(g)} onRemove={() => clearOne("groups", g)} />
           ))}
           {filters.sources.map((s) => (
             <ActiveChip

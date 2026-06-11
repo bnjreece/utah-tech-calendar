@@ -5,6 +5,7 @@ import {
   getSourceCounts,
   getCityCounts,
   getTagCounts,
+  getGroupCounts,
 } from "@/lib/queries";
 import { FilterBar } from "@/components/filter-bar";
 import { ViewTabs } from "@/components/view-tabs";
@@ -41,16 +42,18 @@ export default async function HomePage({
           ? "monthly"
           : "weekly";
 
-  const [events, cityCounts, tagCounts, sourceCounts] = await Promise.all([
+  const [events, cityCounts, tagCounts, sourceCounts, groupCounts] = await Promise.all([
     queryEvents(filters),
     getCityCounts(),
     getTagCounts(),
     getSourceCounts(),
+    getGroupCounts(),
   ]);
 
   const cities = cityCounts.map((c) => ({ value: c.city, count: c.count }));
   const tags = tagCounts.map((t) => ({ value: t.tag, count: t.count }));
   const sources = sourceCounts.map((s) => ({ value: s.source, count: s.count }));
+  const groups = groupCounts.map((g) => ({ slug: g.slug, name: g.name, count: g.count }));
 
   const feedQuery = filtersToSearchParams(filters).toString();
 
@@ -60,7 +63,7 @@ export default async function HomePage({
       <WebSiteJsonLd />
       <EditorialLinearBlock
         events={events}
-        filterBarSlot={<FilterBar cities={cities} tags={tags} sources={sources} />}
+        filterBarSlot={<FilterBar cities={cities} tags={tags} sources={sources} groups={groups} />}
         viewSlot={<ViewTabs current={view} />}
         feedQuery={feedQuery}
         density={density}
