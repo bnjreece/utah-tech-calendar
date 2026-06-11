@@ -41,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Scraper Doctor scan artifact (regenerated each run)
+broken-sources.json

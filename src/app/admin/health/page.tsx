@@ -5,6 +5,10 @@ import {
   type SourceHealthStatus,
 } from "@/lib/health-dashboard";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
+import {
+  fetchSelfHealingActivity,
+  SCRAPER_DOCTOR_WORKFLOW_URL,
+} from "@/lib/self-healing";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Health · Admin" };
@@ -55,10 +59,12 @@ function RunDots({ runs }: { runs: SourceHealth["recentRuns"] }) {
 }
 
 export default async function HealthDashboardPage() {
-  const [{ sources, summary, heartbeats }, recentErrors] = await Promise.all([
-    fetchSourceHealth(),
-    fetchRecentErrors(20),
-  ]);
+  const [{ sources, summary, heartbeats }, recentErrors, healing] =
+    await Promise.all([
+      fetchSourceHealth(),
+      fetchRecentErrors(20),
+      fetchSelfHealingActivity(),
+    ]);
 
   return (
     <div className="flex flex-col gap-10">
@@ -97,6 +103,63 @@ export default async function HealthDashboardPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Self-healing · Scraper Doctor */}
+      <section className="border-t border-ink/15 pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+            Self-healing · Scraper Doctor
+          </h2>
+          <a
+            href={SCRAPER_DOCTOR_WORKFLOW_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[10px] uppercase tracking-[0.18em] text-sunset-deep hover:underline"
+          >
+            Run / view ↗
+          </a>
+        </div>
+        <p className="text-sm text-ink-soft mb-3">
+          {summary.broken > 0
+            ? `${summary.broken} source${summary.broken === 1 ? "" : "s"} broken. The doctor runs Mon & Thu and opens a fix PR for review; you can also trigger it now.`
+            : "All scrapers healthy — nothing for the doctor to fix."}
+        </p>
+        {healing.error ? (
+          <p className="font-mono text-[11px] text-ink-soft">
+            Couldn&apos;t load fix PRs ({healing.error}).
+          </p>
+        ) : healing.prs.length === 0 ? (
+          <p className="font-mono text-[11px] text-ink-soft">
+            No automated fix PRs yet.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {healing.prs.map((pr) => (
+              <li key={pr.number} className="flex items-center gap-2 text-sm">
+                <span
+                  className={`font-mono text-[10px] uppercase tracking-[0.14em] px-1.5 py-0.5 rounded ${
+                    pr.state === "open"
+                      ? "text-sunset-deep ring-1 ring-sunset-deep/40"
+                      : pr.state === "merged"
+                        ? "text-sage-deep ring-1 ring-sage-deep/40"
+                        : "text-ink-soft ring-1 ring-ink/20"
+                  }`}
+                >
+                  {pr.state}
+                </span>
+                <a
+                  href={pr.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline truncate"
+                >
+                  #{pr.number} {pr.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* Cron heartbeats */}
