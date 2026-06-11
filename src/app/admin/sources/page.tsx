@@ -8,6 +8,7 @@ import {
 } from "@/lib/admin-actions";
 import { getAllGroups } from "@/lib/queries";
 import { GroupPicker } from "@/components/admin-group-picker";
+import { deriveSourceName } from "@/lib/source-name";
 
 export const dynamic = "force-dynamic";
 
@@ -194,7 +195,15 @@ export default async function SourcesAdminPage({
                   href={s.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 font-display text-base text-ink hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors break-all"
+                  className="mt-1 block font-display text-base text-ink hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors"
+                >
+                  {deriveSourceName(s.url)}
+                </a>
+                <a
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[10px] text-ink-soft/70 hover:text-ink-soft break-all transition-colors"
                 >
                   {s.url}
                 </a>
