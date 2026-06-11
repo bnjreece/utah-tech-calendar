@@ -157,7 +157,7 @@ const VARIANTS: VariantProps[] = [
       "Hyphenated, all-mono — looks like the URL the project ships as. Anti-elegant; trades the editorial register for tool-belt utility. The most committed dev brand.",
     wordmark: (
       <span className="font-mono text-sm tracking-tight leading-none lowercase">
-        utah-tech-events
+        utah-tech-calendar
       </span>
     ),
   },

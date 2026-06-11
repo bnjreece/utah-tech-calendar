@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="utah-tech-events.ics"',
+      "Content-Disposition": 'attachment; filename="utah-tech-calendar.ics"',
       "Cache-Control": "s-maxage=600, stale-while-revalidate=3600",
     },
   });
