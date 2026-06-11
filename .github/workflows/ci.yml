@@ -1,0 +1,31 @@
+name: CI
+
+# Lint + typecheck on every push and PR. Deliberately NO secrets and NO
+# `next build` here: build needs env (DB/Clerk) and we never want CI to
+# hold production secrets that a fork PR could exfiltrate. Vercel's own
+# preview build covers the full build.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Typecheck
+        run: bunx tsc --noEmit
+      # Lint runs but doesn't block yet: the repo carries pre-existing
+      # lint debt (prefer-const, react-hooks warnings). Burn that down,
+      # then drop continue-on-error to make lint a required gate.
+      - name: Lint
+        run: bun run lint
+        continue-on-error: true

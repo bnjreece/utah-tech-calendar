@@ -1,0 +1,22 @@
+name: gitleaks
+
+# Secret scanning on push + PR. The local pre-commit gitleaks hook only
+# protects committers who installed it; this covers fork PRs and anyone
+# without the hook. Free for public repositories.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
