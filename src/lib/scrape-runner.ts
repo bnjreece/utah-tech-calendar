@@ -41,7 +41,7 @@ const PAID_TITLE_RE =
 const PAID_NUMERIC_TRAINING_RE =
   /\b\d+[\s-]*(?:days?|hours?|weeks?|sessions?|weekends?)\s+(?:(?:live|online|virtual|in[- ]person|hybrid|classroom|hands[- ]on|weekend|intensive|certified|confirmed|advanced|basic|beginner)\s+){0,3}(?:training|workshop|bootcamp|course)\b/i;
 
-function detectPaid(item: EventItem): boolean {
+export function detectPaid(item: Pick<EventItem, "title">): boolean {
   return PAID_TITLE_RE.test(item.title) || PAID_NUMERIC_TRAINING_RE.test(item.title);
 }
 
@@ -55,7 +55,7 @@ function detectPaid(item: EventItem): boolean {
 const CRAFT_REJECT_RE =
   /\b(make\s*(?:&|and)\s*take|woodturning|wood\s+turning|woodshop|lathe|sewing machine|cutting board|wood ring|knitting class|crochet class|quilting class|ceramics class|pottery class|jewelry making|soap making|candle making|makerspace tour)\b/i;
 
-function detectCraft(item: EventItem): boolean {
+export function detectCraft(item: Pick<EventItem, "title">): boolean {
   return CRAFT_REJECT_RE.test(item.title);
 }
 
