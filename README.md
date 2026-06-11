@@ -4,6 +4,12 @@ A free, comprehensive calendar of **in-person Utah tech events** — meetups, co
 
 Live at **[utahtechcalendar.com](https://utahtechcalendar.com)**. No login, no tracking, nothing to sign up for.
 
+<p align="center">
+  <a href="https://utahtechcalendar.com">
+    <img src="docs/screenshot-schedule.png" alt="Utah Tech Calendar — the weekly schedule of in-person events" width="720">
+  </a>
+</p>
+
 ## Why this exists
 
 The Utah tech scene is busy, but it lives in a dozen places at once: Meetup, Luma, Eventbrite, Substack, and a scatter of org sites. This project pulls all of it into one filterable page so you can answer "what's the AI thing in Lehi on Thursday" in one read instead of opening five tabs.
@@ -38,6 +44,10 @@ sources table ──> scraper adapters ──> events table ──> filtered UI 
 | `htmlCalendar` | Generic HTML/JSON-LD calendars (BioUtah, Altitude Lab, SAINTCON, …) |
 
 Adding a new source usually means inserting a `sources` row — no code — as long as an existing adapter fits. New *kinds* of source need a new adapter. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+<p align="center">
+  <img src="docs/screenshot-discover.png" alt="The Discover page — verticals and how the index is built" width="420">
+</p>
 
 ## Stack
 
