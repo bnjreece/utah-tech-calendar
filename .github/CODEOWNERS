@@ -1,15 +1,15 @@
 # Default owners for everything in the repo.
 * @bnjreece @clintberry
 
-# Security-sensitive paths require a maintainer review regardless of who
+# Security-sensitive paths require a co-creator review regardless of who
 # else approves. (Enforced once branch protection has "require review
 # from Code Owners" enabled.)
-/src/lib/safe-fetch.ts        @bnjreece
-/src/lib/db/                  @bnjreece
-/src/lib/moderation.ts        @bnjreece
-/src/lib/subscription-token.ts @bnjreece
-/src/lib/admin-auth.ts        @bnjreece
-/src/app/api/cron/            @bnjreece
-/.github/                     @bnjreece
-/next.config.ts               @bnjreece
-/vercel.json                  @bnjreece
+/src/lib/safe-fetch.ts        @bnjreece @clintberry
+/src/lib/db/                  @bnjreece @clintberry
+/src/lib/moderation.ts        @bnjreece @clintberry
+/src/lib/subscription-token.ts @bnjreece @clintberry
+/src/lib/admin-auth.ts        @bnjreece @clintberry
+/src/app/api/cron/            @bnjreece @clintberry
+/.github/                     @bnjreece @clintberry
+/next.config.ts               @bnjreece @clintberry
+/vercel.json                  @bnjreece @clintberry

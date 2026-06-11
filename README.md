@@ -80,11 +80,17 @@ Contributions welcome — new sources, adapters, filters, and bug reports. Start
 
 ## Maintainers
 
-- [Benjamin Reece](https://github.com/bnjreece) — creator
-- [Clint Berry](https://github.com/clintberry) — co-maintainer (formerly [utahdev.events](https://utahdev.events))
+Built and maintained together, as equals:
 
-Utah Tech Calendar grew out of merging forces with utahdev.events to give the community one comprehensive, well-filtered place to find in-person tech events.
+- [Benjamin Reece](https://github.com/bnjreece) — co-creator & maintainer
+- [Clint Berry](https://github.com/clintberry) — co-creator & maintainer ([utahdev.events](https://utahdev.events))
+
+Utah Tech Calendar is the combined successor to utahdev.events, merging forces to give the community one comprehensive, well-filtered place to find in-person tech events.
+
+## Forge Utah
+
+Built in partnership with the [**Forge Utah Foundation**](https://forgeutah.tech) — helping Utah technologists share, learn, and build ([GitHub](https://github.com/forgeutah)). 🙌
 
 ## License
 
-[MIT](LICENSE) © Benjamin Reece
+[MIT](LICENSE) © Benjamin Reece & Clint Berry
