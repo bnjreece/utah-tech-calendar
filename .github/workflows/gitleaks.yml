@@ -12,6 +12,10 @@ permissions:
 
 jobs:
   scan:
+    # Skip Dependabot PR-events: their restricted GITHUB_TOKEN breaks the
+    # action's PR-commits API call, and Dependabot branches are already
+    # scanned by the push event. Human/fork PRs still get scanned.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
