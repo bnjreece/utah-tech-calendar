@@ -50,4 +50,9 @@ jobs:
             - Auth: /admin routes keep requireAdmin; cron routes keep the
               CRON_SECRET check; moderation/subscription links stay HMAC-verified.
 
-            Summarize the change, then list concrete findings by severity.
+            Post your review directly on the pull request using the GitHub
+            comment tools: leave inline comments on the specific lines you are
+            flagging, then post one short summary comment with the change
+            overview and findings by severity. Do not only print to the log.
+            If the diff is trivial and you find nothing, post a brief summary
+            comment saying so.
