@@ -29,3 +29,5 @@ This project scrapes external sites and accepts community submissions, so the hi
 - Never commit secrets. `.env.local` is gitignored and a gitleaks check runs on every PR.
 - Run scrapers/fetches through `safeFetchHtml`, never a bare `fetch` of a user/community URL.
 - Validate and escape any new user input. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+<!-- ci harness verification: safe to delete -->
