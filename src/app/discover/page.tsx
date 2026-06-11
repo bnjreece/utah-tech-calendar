@@ -903,8 +903,8 @@ function Figure1() {
         </g>
       </svg>
 
-      <div className="mt-16 pt-8 border-t border-ink/15 flex justify-center">
-        <ForgeCredit />
+      <div className="mt-24 pt-14 pb-10 border-t border-ink/15 flex justify-center">
+        <ForgeCredit size="lg" />
       </div>
     </div>
   );
