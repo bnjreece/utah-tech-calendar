@@ -44,3 +44,4 @@ next-env.d.ts
 
 # Scraper Doctor scan artifact (regenerated each run)
 broken-sources.json
+drifted-adapters.json
