@@ -1,6 +1,8 @@
 import { eq, desc, and, gte, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
-import { rejectEvent } from "@/lib/admin-actions";
+import { rejectEvent, setEventGroup } from "@/lib/admin-actions";
+import { getAllGroups } from "@/lib/queries";
+import { GroupPicker } from "@/components/admin-group-picker";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { displayTitle } from "@/lib/display";
@@ -79,6 +81,8 @@ export default async function RecentIngestsPage() {
     )
     .orderBy(desc(events.createdAt))
     .limit(200);
+
+  const allGroups = await getAllGroups();
 
   if (rows.length === 0) {
     return (
@@ -165,14 +169,23 @@ export default async function RecentIngestsPage() {
                   )}
                 </div>
               </div>
-              <form action={rejectEvent.bind(null, e.id)} className="self-start">
-                <button
-                  type="submit"
-                  className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
-                >
-                  Hide
-                </button>
-              </form>
+              <div className="flex flex-col items-end gap-2 self-start">
+                <form action={rejectEvent.bind(null, e.id)}>
+                  <button
+                    type="submit"
+                    className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
+                  >
+                    Hide
+                  </button>
+                </form>
+                <GroupPicker
+                  action={setEventGroup}
+                  idField="eventId"
+                  idValue={e.id}
+                  groups={allGroups}
+                  currentId={e.groupId}
+                />
+              </div>
             </li>
           );
         })}

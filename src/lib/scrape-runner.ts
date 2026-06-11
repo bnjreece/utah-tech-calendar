@@ -115,7 +115,7 @@ async function upsertEvent(
   injectedTags: string[],
 ) {
   const existing = await db
-    .select({ id: events.id })
+    .select({ id: events.id, groupLocked: events.groupLocked })
     .from(events)
     .where(sql`${events.source} = ${item.source} AND ${events.externalId} = ${item.externalId}`)
     .limit(1);
@@ -169,8 +169,15 @@ async function upsertEvent(
   if (existing[0]) {
     /* Don't overturn an admin's manual approve/reject on re-scrape, and
        don't overwrite is_conference/is_paid back to false if a heuristic
-       missed but admin flagged. */
-    await db.update(events).set(baseValues).where(eq(events.id, existing[0].id));
+       missed but admin flagged. Likewise, if an admin manually set this
+       event's group (groupLocked), leave groupId untouched. */
+    const setValues = existing[0].groupLocked
+      ? (() => {
+          const { groupId: _ignored, ...rest } = baseValues;
+          return rest;
+        })()
+      : baseValues;
+    await db.update(events).set(setValues).where(eq(events.id, existing[0].id));
     return "updated" as const;
   }
   const isConference = detectConference(item);

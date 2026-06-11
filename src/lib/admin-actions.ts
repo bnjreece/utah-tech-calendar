@@ -7,7 +7,7 @@ import type { SubmissionPayload } from "@/lib/submission-payload";
 import { requireAdmin } from "@/lib/admin-auth";
 import { notifySubmitterEvent, notifySubmitterSource } from "@/lib/submitter-followup";
 import { absoluteUrl } from "@/lib/seo";
-import { eventSlug } from "@/lib/slugs";
+import { eventSlug, toSlug } from "@/lib/slugs";
 
 /* Detect a source-suggestion row (from /api/submit-source) vs an
    event draft (from /api/submit). Source rows carry type:"source"
@@ -304,5 +304,57 @@ export async function mergeGroups(formData: FormData) {
   await db.update(events).set({ groupId: intoId }).where(eq(events.groupId, fromId));
   await db.update(sources).set({ groupId: intoId }).where(eq(sources.groupId, fromId));
   await db.delete(groups).where(eq(groups.id, fromId));
+  revalidateGroups();
+}
+
+/* Resolve a group-picker choice to a target group id (or null = none).
+   "__new__" + newName creates the group (or reuses an existing slug). */
+async function resolveGroupChoice(groupId: string, newName: string): Promise<string | null> {
+  if (groupId === "__new__") {
+    const name = newName.trim().slice(0, 120);
+    if (!name) return null;
+    const slug = toSlug(name);
+    const [existing] = await db.select({ id: groups.id }).from(groups).where(eq(groups.slug, slug)).limit(1);
+    if (existing) return existing.id;
+    const [created] = await db
+      .insert(groups)
+      .values({ name, slug, source: "manual" })
+      .returning({ id: groups.id });
+    return created?.id ?? null;
+  }
+  if (groupId && groupId !== "none" && groupId !== "") return groupId;
+  return null;
+}
+
+/* Assign a SOURCE to a group (durable): the scraper re-applies
+   source.groupId on every run, so this propagates to the source's
+   events on the next scrape and survives. Also the create-a-group path
+   that fixes "new sources have no group". */
+export async function setSourceGroup(formData: FormData) {
+  await requireAdmin();
+  const sourceId = String(formData.get("sourceId") ?? "");
+  if (!sourceId) return;
+  const target = await resolveGroupChoice(
+    String(formData.get("groupId") ?? ""),
+    String(formData.get("newGroupName") ?? ""),
+  );
+  await db.update(sources).set({ groupId: target }).where(eq(sources.id, sourceId));
+  revalidatePath("/admin/sources");
+  revalidateGroups();
+}
+
+/* Assign a single EVENT to a group and LOCK it so re-scrape won't
+   overwrite the choice. Works immediately for manual events (no source)
+   and for one-off overrides of scraped events. */
+export async function setEventGroup(formData: FormData) {
+  await requireAdmin();
+  const eventId = String(formData.get("eventId") ?? "");
+  if (!eventId) return;
+  const target = await resolveGroupChoice(
+    String(formData.get("groupId") ?? ""),
+    String(formData.get("newGroupName") ?? ""),
+  );
+  await db.update(events).set({ groupId: target, groupLocked: true }).where(eq(events.id, eventId));
+  revalidatePath("/admin/recent");
   revalidateGroups();
 }

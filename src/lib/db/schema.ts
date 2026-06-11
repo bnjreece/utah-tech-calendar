@@ -56,6 +56,9 @@ export const events = pgTable(
     imageUrl: text("image_url"),
     tags: text("tags").array(),
     groupId: uuid("group_id").references(() => groups.id),
+    /* When true, an admin manually set this event's group; the scraper
+       must not overwrite groupId on re-scrape. */
+    groupLocked: boolean("group_locked").notNull().default(false),
     status: text("status").notNull().default("approved"),
     /* Surfaces a thicker bar + "Conference" eyebrow in the schedule.
        Flagged manually via admin (or by future heuristic at scrape time). */

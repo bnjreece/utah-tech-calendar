@@ -4,7 +4,10 @@ import { db, sources, events } from "@/lib/db";
 import {
   toggleSourceEnabled,
   toggleSourceRequiresReview,
+  setSourceGroup,
 } from "@/lib/admin-actions";
+import { getAllGroups } from "@/lib/queries";
+import { GroupPicker } from "@/components/admin-group-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +82,7 @@ export default async function SourcesAdminPage({
       : "all";
 
   const rows = await db.select().from(sources).orderBy(asc(sources.adapter), asc(sources.url));
+  const allGroups = await getAllGroups();
 
   /* Per-source event counts (upcoming). Keyed by adapter source string. */
   const counts = await db.execute(sql`
@@ -222,6 +226,13 @@ export default async function SourcesAdminPage({
                     {s.requiresReview ? "requires review" : "auto-approve"}
                   </button>
                 </form>
+                <GroupPicker
+                  action={setSourceGroup}
+                  idField="sourceId"
+                  idValue={s.id}
+                  groups={allGroups}
+                  currentId={s.groupId}
+                />
               </div>
             </li>
           );
