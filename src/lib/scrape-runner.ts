@@ -34,12 +34,12 @@ function detectConference(item: EventItem): boolean {
    commits. Avoids false positives on community events that mention
    "training" casually. */
 const PAID_TITLE_RE =
-  /\b(certification training|training program|exam prep|bootcamp|cissp|capm|pmp|isc[²2]|ceh|comptia|isaca|itil|cpmai|caip|scrum master|prince2|safe agile|tableau certification|six sigma|black belt|green belt|pmi-acp)\b/i;
+  /\b(certification training|training program|exam prep|bootcamp|ccna|ccnp|ccie|cissp|capm|pmp|isc[²2]|ceh|comptia|isaca|itil|cpmai|caip|scrum master|prince2|safe agile|tableau certification|six sigma|black belt|green belt|pmi-acp)\b/i;
 /* Mirror of NUMERIC_TRAINING_RE in lib/auto-tag.ts - kept in sync.
    Allowlist of cert-spam adjectives in the filler slot avoids
    misflagging titles like "30 Day Coding Challenge Workshop". */
 const PAID_NUMERIC_TRAINING_RE =
-  /\b\d+\s*(?:days?|hours?|weeks?|sessions?|weekends?)\s+(?:(?:live|online|virtual|in[- ]person|hybrid|classroom|hands[- ]on|weekend|intensive|certified|confirmed|advanced|basic|beginner)\s+){0,3}(?:training|workshop|bootcamp|course)\b/i;
+  /\b\d+[\s-]*(?:days?|hours?|weeks?|sessions?|weekends?)\s+(?:(?:live|online|virtual|in[- ]person|hybrid|classroom|hands[- ]on|weekend|intensive|certified|confirmed|advanced|basic|beginner)\s+){0,3}(?:training|workshop|bootcamp|course)\b/i;
 
 function detectPaid(item: EventItem): boolean {
   return PAID_TITLE_RE.test(item.title) || PAID_NUMERIC_TRAINING_RE.test(item.title);

@@ -114,7 +114,7 @@ const RULES: TagRule[] = [
    Eventbrite ad-spam volume far outweighs the rare crossover, and the
    manual /admin/review queue gives the admin a path to undo. */
 const CERT_SPAM_KEYWORDS_RE =
-  /\b(certification|certification training|training program|exam prep|bootcamp|cissp|capm|pmp|isc[²2]|ceh|comptia|isaca|itil|cpmai|caip|caissp|scrum master|prince2|safe agile|tableau certification|six sigma|black belt|green belt|pmi-acp)\b/i;
+  /\b(certification|certification training|training program|exam prep|bootcamp|ccna|ccnp|ccie|cissp|capm|pmp|isc[²2]|ceh|comptia|isaca|itil|cpmai|caip|caissp|scrum master|prince2|safe agile|tableau certification|six sigma|black belt|green belt|pmi-acp)\b/i;
 /* The middle slot is an allowlist of cert-spam adjectives (Classroom,
    Hands-On, Live Online, Weekend, etc) rather than `\w+` filler. The
    previous {0,3} \w+ slot false-flagged legit titles like
@@ -124,7 +124,7 @@ const CERT_SPAM_KEYWORDS_RE =
    Training" and "2 Hours Live Online Workshop" inside the net while
    community events with subject-y phrasing slip through. */
 const NUMERIC_TRAINING_RE =
-  /\b\d+\s*(?:days?|hours?|weeks?|sessions?|weekends?)\s+(?:(?:live|online|virtual|in[- ]person|hybrid|classroom|hands[- ]on|weekend|intensive|certified|confirmed|advanced|basic|beginner)\s+){0,3}(?:training|workshop|bootcamp|course)\b/i;
+  /\b\d+[\s-]*(?:days?|hours?|weeks?|sessions?|weekends?)\s+(?:(?:live|online|virtual|in[- ]person|hybrid|classroom|hands[- ]on|weekend|intensive|certified|confirmed|advanced|basic|beginner)\s+){0,3}(?:training|workshop|bootcamp|course)\b/i;
 function isCertSpamTitle(haystack: string): boolean {
   return CERT_SPAM_KEYWORDS_RE.test(haystack) || NUMERIC_TRAINING_RE.test(haystack);
 }

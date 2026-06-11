@@ -14,6 +14,12 @@ export function ForgeCredit({
     ? "text-sm tracking-[0.25em]"
     : "text-[10px] tracking-[0.2em]";
   const logoCls = lg ? "h-10" : "h-6";
+  // The Forge wordmark PNG carries a tall flame above the baseline, so the
+  // image's geometric center sits a few px higher than where "Forge Utah"
+  // actually reads. items-center aligns the label to that geometric center,
+  // which floats it above the words - nudge the label down to the wordmark's
+  // optical center. Scales with logo height (h-10 vs h-6).
+  const nudge = lg ? "translate-y-[3px]" : "translate-y-[2px]";
 
   return (
     <a
@@ -23,7 +29,7 @@ export function ForgeCredit({
       aria-label="In partnership with the Forge Utah Foundation"
       className={`inline-flex items-center ${gap} group ${className}`}
     >
-      <span className={`font-mono ${textCls} uppercase text-ink-soft leading-none`}>
+      <span className={`font-mono ${textCls} ${nudge} uppercase text-ink-soft leading-none`}>
         in partnership with
       </span>
       {/* eslint-disable-next-line @next/next/no-img-element */}
