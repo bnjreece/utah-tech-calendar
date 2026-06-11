@@ -4,6 +4,7 @@ import { db, pendingSubmissions } from "@/lib/db";
 import { submissionPayloadSchema } from "@/lib/submission-payload";
 import { createToken } from "@/lib/moderation";
 import { rateLimit, assertSameOrigin } from "@/lib/rate-limit";
+import { escapeHtml } from "@/lib/escape-html";
 
 export const runtime = "nodejs";
 
@@ -73,12 +74,12 @@ export async function POST(request: NextRequest) {
         subject: `New event submission: ${payload.title}`,
         html: `
 <h2>New event submission</h2>
-<p><strong>${payload.title}</strong></p>
-<p>${payload.description ?? ""}</p>
-<p><strong>When:</strong> ${payload.startsAt}</p>
-<p><strong>Where:</strong> ${payload.venueName ?? ""} ${payload.address ?? ""} ${payload.city ?? ""}</p>
-<p><strong>Link:</strong> <a href="${payload.link}">${payload.link}</a></p>
-<p><strong>Submitter:</strong> ${payload.submitterName ?? "(anonymous)"} ${payload.submitterEmail ? `&lt;${payload.submitterEmail}&gt;` : ""}</p>
+<p><strong>${escapeHtml(payload.title)}</strong></p>
+<p>${escapeHtml(payload.description ?? "")}</p>
+<p><strong>When:</strong> ${escapeHtml(payload.startsAt)}</p>
+<p><strong>Where:</strong> ${escapeHtml(payload.venueName ?? "")} ${escapeHtml(payload.address ?? "")} ${escapeHtml(payload.city ?? "")}</p>
+<p><strong>Link:</strong> <a href="${escapeHtml(payload.link)}">${escapeHtml(payload.link)}</a></p>
+<p><strong>Submitter:</strong> ${escapeHtml(payload.submitterName ?? "(anonymous)")} ${payload.submitterEmail ? `&lt;${escapeHtml(payload.submitterEmail)}&gt;` : ""}</p>
 <hr>
 <p><a href="${approveUrl}" style="background:#0a0a0a;color:white;padding:8px 16px;text-decoration:none;border-radius:6px;">Approve</a> &nbsp;
 <a href="${rejectUrl}" style="background:#f5f5f5;color:#0a0a0a;padding:8px 16px;text-decoration:none;border-radius:6px;">Reject</a></p>

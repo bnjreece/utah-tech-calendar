@@ -3,7 +3,15 @@ import { z } from "zod";
 export const submissionPayloadSchema = z.object({
   title: z.string().min(2).max(200),
   description: z.string().max(5000).optional(),
-  link: z.string().url(),
+  /* Restrict to http(s): z.url() alone accepts javascript:/data: URLs,
+     which would become an XSS sink when the link is rendered in an
+     <a href> on the event page or in emails. */
+  link: z
+    .string()
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), {
+      message: "Link must be an http or https URL",
+    }),
   startsAt: z.string().min(1),
   endsAt: z.string().optional(),
   isOnline: z.boolean(),

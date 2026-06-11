@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, emailSubscriptions } from "@/lib/db";
@@ -6,6 +6,7 @@ import { createSubscriptionToken } from "@/lib/subscription-token";
 import { sendEmail } from "@/lib/email";
 import { buildVerifyEmail } from "@/lib/digest";
 import { absoluteUrl } from "@/lib/seo";
+import { rateLimit } from "@/lib/rate-limit";
 
 const Body = z.object({
   email: z.string().email().max(254),
@@ -35,7 +36,19 @@ function normalizeFeedQuery(raw: string | undefined): string | null {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  /* Per-IP cap. The per-email short-circuit below stops a SINGLE victim
+     from being bombed, but an attacker can still hammer unique addresses
+     (victim+1@, victim+2@, ...) to fire many confirm emails and burn the
+     sending quota. 5 in burst, then ~1 per 20s sustained. */
+  const rl = rateLimit(req, "email-subscribe", { capacity: 5, refillPerSec: 0.05 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   let parsed: z.infer<typeof Body>;
   try {
     const json = await req.json();
