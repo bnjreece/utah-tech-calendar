@@ -12,8 +12,7 @@ export default function SignInPage() {
         Sign in
       </h1>
       <p className="mt-3 text-base sm:text-sm text-ink-soft max-w-[40ch] text-center text-pretty">
-        Restricted to the editor. Sign in with the Google account associated
-        with this project.
+        Restricted to maintainers. Sign in with an approved email address.
       </p>
       <div className="mt-8">
         <SignIn appearance={{ elements: { rootBox: "shadow-none" } }} />
