@@ -1,0 +1,51 @@
+name: Claude PR Review
+
+# Claude reviews PRs as a security-minded maintainer.
+#
+# SECURITY: this is gated to SAME-REPO PRs only (head repo == base repo).
+# Fork PRs do not run here, so the ANTHROPIC_API_KEY is never exposed to
+# untrusted code. We deliberately do NOT use pull_request_target with
+# checked-out fork code - that is the classic secret-exfiltration hole.
+# Fork PRs are still covered by CodeQL + gitleaks + dependency-review,
+# and a maintainer can review a fork by pushing its branch to this repo.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are reviewing a pull request as a security-minded maintainer of
+            Utah Tech Calendar - a public Next.js app that scrapes external sites
+            and accepts community-submitted events and sources. Be concise, cite
+            file:line, and flag real issues only (skip style nitpicks).
+
+            Pay special attention to this project's known risk areas:
+            - SSRF: any new outbound fetch of a source/user/community URL MUST go
+              through safeFetchHtml() in src/lib/safe-fetch.ts. A bare fetch() of
+              such a URL, or a new adapter that doesn't use fetchHtml/safeFetchHtml,
+              is a bug.
+            - SQL injection: queries must use parameterized Drizzle (the sql
+              template tag with bound values). Flag any string-concatenated SQL.
+            - XSS / output encoding: scraped/submitted content must render as text;
+              HTML emails must escape user fields (escapeHtml); links must be
+              restricted to http(s) (no javascript:/data:).
+            - Secrets: nothing secret may be committed; no new env var should be
+              logged or sent to the client.
+            - Auth: /admin routes keep requireAdmin; cron routes keep the
+              CRON_SECRET check; moderation/subscription links stay HMAC-verified.
+
+            Summarize the change, then list concrete findings by severity.
