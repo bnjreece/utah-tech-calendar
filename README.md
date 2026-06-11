@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Utah Tech Calendar
 
-## Getting Started
+A free, comprehensive calendar of **in-person Utah tech events** — meetups, conferences, founder mixers, and developer nights across Salt Lake City, Provo, Lehi, Ogden, and Silicon Slopes.
 
-First, run the development server:
+Live at **[utahtechcalendar.com](https://utahtechcalendar.com)**. No login, no tracking, nothing to sign up for.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Why this exists
+
+The Utah tech scene is busy, but it lives in a dozen places at once: Meetup, Luma, Eventbrite, Substack, and a scatter of org sites. This project pulls all of it into one filterable page so you can answer "what's the AI thing in Lehi on Thursday" in one read instead of opening five tabs.
+
+Three things it aims to do well:
+
+1. **Comprehensive sourcing** — well beyond Meetup. Multiple scraper adapters plus community submissions.
+2. **Comprehensive filters** — by region, city, tech type/tag, source, date, and online vs. in-person.
+3. **Comprehensive subscriptions** — iCal feed, RSS, Google Calendar, and email digests.
+
+## How it works
+
+```
+sources table ──> scraper adapters ──> events table ──> filtered UI + feeds (iCal/RSS/email)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Each row in the `sources` table names an **adapter** and a **URL** (plus optional JSON config).
+- A scheduled cron walks enabled sources, runs the matching adapter, and upserts into `events` on `(source, external_id)`.
+- The front end filters `events` at query time; region is derived from city, not stored, so there's one source of truth.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Adapters
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Adapter | Source |
+|---|---|
+| `meetup` | Meetup group event lists |
+| `luma` | lu.ma calendars |
+| `eventbrite` | Eventbrite search/org pages |
+| `siliconSlopes` | Silicon Slopes (Circle.so) |
+| `substack` | Substack newsletter events |
+| `utahGeekEvents` | Utah Geek Events |
+| `recurrence` | Generated recurring series (e.g. 1 Million Cups) |
+| `htmlCalendar` | Generic HTML/JSON-LD calendars (BioUtah, Altitude Lab, SAINTCON, …) |
 
-## Learn More
+Adding a new source usually means inserting a `sources` row — no code — as long as an existing adapter fits. New *kinds* of source need a new adapter. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-To learn more about Next.js, take a look at the following resources:
+## Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Next.js 16** (App Router) + **React 19**
+- **Tailwind v4** + shadcn (base-maia)
+- **Neon Postgres** + **Drizzle ORM**
+- **Vercel** (hosting + Cron) — `CRON_SECRET` Bearer auth
+- **Resend** for moderation + email digests
+- **Bun** for local dev and scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Local development
 
-## Deploy on Vercel
+```bash
+bun install
+cp .env.local.example .env.local   # fill in the values (see below)
+bun run dev                        # http://localhost:3000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+You need a Postgres database (Neon's free tier is plenty). Required env vars are documented in [`.env.local.example`](.env.local.example); the only one needed to boot the UI against a seeded DB is `DATABASE_URL`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+bun run db:push                                # apply schema to your DB
+bun scripts/seed-sources.ts                    # populate the sources table
+bun scripts/one-shot-scrape.ts <adapter> <url> # try an adapter ad-hoc
+```
+
+## Contributing
+
+Contributions welcome — new sources, adapters, filters, and bug reports. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the open issues. Adding your group's calendar can be as small as one row.
+
+## License
+
+[MIT](LICENSE) © Benjamin Reece

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Submit a single event
+    url: https://utahtechcalendar.com/submit
+    about: Just adding one event? Submit it directly on the site — no GitHub needed.

@@ -26,6 +26,3 @@ op run --env-file=.env.local -- bun scripts/one-shot-scrape.ts <adapter> <url>
 - `src/lib/feeds/{ical,rss}.ts` — feed generators
 - `src/app/api/cron/scrape/route.ts` — Vercel Cron entry, iterates `sources` table
 - `vercel.json` — cron schedule
-
-## Plan
-See `/Users/bnjmn/.claude/plans/glowing-waddling-hummingbird.md` for the full build plan.
