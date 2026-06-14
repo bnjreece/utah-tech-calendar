@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
 import { runAllEnabledSources } from "@/lib/scrape-runner";
+import { classifyUnchecked } from "@/lib/classify";
 import { db, adminSettings } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -46,6 +46,15 @@ export async function GET(request: NextRequest) {
     console.warn("[scrape] heartbeat update failed", err);
   }
   const results = await runAllEnabledSources();
+  /* Phase 1 (shadow): classify a bounded batch of unclassified upcoming
+     events. Decoupled from ingestion so the LLM never slows scraping; the
+     backlog drains a few rows per tick. No-op without ANTHROPIC_API_KEY. */
+  let classify = { scanned: 0, classified: 0 };
+  try {
+    classify = await classifyUnchecked(25);
+  } catch (err) {
+    console.warn("[scrape] classify pass failed", err);
+  }
   return Response.json({
     ok: true,
     count: results.length,
@@ -55,6 +64,7 @@ export async function GET(request: NextRequest) {
       inserted: results.reduce((s, r) => s + r.inserted, 0),
       updated: results.reduce((s, r) => s + r.updated, 0),
     },
+    classify,
     results,
   });
 }

@@ -88,6 +88,14 @@ export const events = pgTable(
        'craft' | 'cert-spam' | 'cross-post' | 'manual' |
        'source-disabled' | 'unknown' (legacy). */
     hiddenReason: text("hidden_reason"),
+    /* LLM funnel (Phase 1, shadow mode): the classifier's verdict for this
+       event, captured once at insert. Shape mirrors EventVerdict in
+       src/lib/classify.ts: {isTechRelevant,isSpam,isOnline,isPaid,category,
+       suggestedTags,confidence,reasoning}. In shadow mode this influences
+       NOTHING - it's logged so we can measure agreement with the heuristics
+       before letting it act. NULL when unclassified (no API key / failure). */
+    llmVerdict: jsonb("llm_verdict"),
+    llmCheckedAt: timestamp("llm_checked_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

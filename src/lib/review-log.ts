@@ -38,6 +38,9 @@ export async function recordEventDecision(
       channel: opts.channel,
       sourceId: before.sourceId ?? null,
       adapter: before.source,
+      /* The classifier's shadow verdict at decision time - this paired with
+         the human decision is the agree/disagree signal Phase 2+ mines. */
+      llmVerdict: before.llmVerdict ?? null,
       snapshot: {
         title: before.title,
         description: before.description,

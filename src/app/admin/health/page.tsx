@@ -9,6 +9,7 @@ import {
   fetchSelfHealingActivity,
   SCRAPER_DOCTOR_WORKFLOW_URL,
 } from "@/lib/self-healing";
+import { getClassifierStats } from "@/lib/classify-stats";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Health · Admin" };
@@ -59,11 +60,12 @@ function RunDots({ runs }: { runs: SourceHealth["recentRuns"] }) {
 }
 
 export default async function HealthDashboardPage() {
-  const [{ sources, summary, heartbeats }, recentErrors, healing] =
+  const [{ sources, summary, heartbeats }, recentErrors, healing, classifier] =
     await Promise.all([
       fetchSourceHealth(),
       fetchRecentErrors(20),
       fetchSelfHealingActivity(),
+      getClassifierStats(),
     ]);
 
   return (
@@ -103,6 +105,82 @@ export default async function HealthDashboardPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* LLM classifier · shadow mode */}
+      <section className="border-t border-ink/15 pt-6">
+        <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft mb-4">
+          Classifier · shadow mode
+        </h2>
+        {classifier.stats.classified === 0 ? (
+          <p className="text-sm text-ink-soft max-w-[70ch]">
+            No events classified yet. Set{" "}
+            <code className="font-mono text-[12px]">ANTHROPIC_API_KEY</code> in the Vercel
+            project, then run <code className="font-mono text-[12px]">bun scripts/classify-backlog.ts</code>{" "}
+            (or wait for the next scrape) to populate verdicts. In shadow mode the model logs a
+            verdict on every event but changes nothing.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              {(
+                [
+                  { label: "Classified", v: String(classifier.stats.classified), warn: false },
+                  { label: "Avg confidence", v: `${Math.round(classifier.stats.avgConfidence * 100)}%`, warn: false },
+                  { label: "Approved · flagged", v: String(classifier.stats.approvedButFlagged), warn: classifier.stats.approvedButFlagged > 0 },
+                  { label: "Hidden · says tech", v: String(classifier.stats.hiddenButTech), warn: classifier.stats.hiddenButTech > 0 },
+                ] as const
+              ).map((s) => (
+                <div key={s.label} className="rounded-2xl ring-1 ring-ink/12 p-4 flex flex-col gap-1">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                    {s.label}
+                  </span>
+                  <span className={`font-display text-3xl tabular-nums ${s.warn ? "text-sunset-deep" : "text-ink"}`}>
+                    {s.v}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {classifier.disagreements.length > 0 && (
+              <div className="rounded-2xl ring-1 ring-ink/12 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft border-b border-ink/10">
+                      <th className="px-4 py-2 font-normal">Event</th>
+                      <th className="px-4 py-2 font-normal">Status</th>
+                      <th className="px-4 py-2 font-normal">Model says</th>
+                      <th className="px-4 py-2 font-normal text-right">Conf</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classifier.disagreements.map((d) => (
+                      <tr key={d.id} className="border-b border-ink/5 last:border-0">
+                        <td className="px-4 py-2">
+                          <a href={`/event/${d.id}`} className="hover:underline">
+                            {d.title}
+                          </a>
+                        </td>
+                        <td className="px-4 py-2 font-mono text-[11px] text-ink-soft">{d.status}</td>
+                        <td className="px-4 py-2 font-mono text-[11px]">
+                          {d.category}
+                          {d.isSpam ? " · spam" : ""}
+                          {!d.isTechRelevant ? " · not-tech" : ""}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {Math.round(d.confidence * 100)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="mt-3 font-mono text-[10px] text-ink-soft">
+              Shadow mode - verdicts are logged only and change nothing. Disagreements are the
+              model&apos;s candidates for review.
+            </p>
+          </>
+        )}
       </section>
 
       {/* Self-healing · Scraper Doctor */}
