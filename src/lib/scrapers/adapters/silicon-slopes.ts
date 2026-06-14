@@ -115,6 +115,12 @@ export const siliconSlopesAdapter: Adapter<EventItem> = {
       const endsAt = esa.ends_at ? new Date(esa.ends_at) : undefined;
       const isOnline = esa.location_type === "virtual";
       const location = isOnline ? {} : parseInPersonLocation(esa.in_person_location);
+      /* Only stamp a venue/city when we actually resolved an in-person
+         location. For location_type "tbd" (and in_person rows whose
+         address failed to parse) leave venue + city undefined so the event
+         buckets as location-unknown instead of a fabricated "Silicon
+         Slopes / Salt Lake City" that misrepresents where it is. */
+      const hasLocation = !isOnline && Boolean(location.address || location.city);
 
       items.push({
         source: "silicon_slopes",
@@ -124,9 +130,9 @@ export const siliconSlopesAdapter: Adapter<EventItem> = {
         startsAt,
         endsAt: endsAt && !Number.isNaN(endsAt.getTime()) ? endsAt : undefined,
         isOnline,
-        venueName: isOnline ? undefined : "Silicon Slopes",
+        venueName: hasLocation ? "Silicon Slopes" : undefined,
         address: location.address,
-        city: location.city ?? (isOnline ? undefined : "Salt Lake City"),
+        city: location.city,
         postalCode: location.postalCode,
       });
       if (items.length >= maxItems) break;

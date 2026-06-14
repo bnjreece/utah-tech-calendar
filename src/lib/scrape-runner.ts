@@ -83,11 +83,21 @@ const ONLINE_STRONG_RE =
    titles. */
 const ONLINE_AMBIGUOUS_RE =
   /\b(virtual|zoom)(?:\W+\w+){0,3}\W+(meetup|session|talk|panel|seminar|networking|happy hour)\b|\b(meetup|session|talk|panel|seminar|networking|happy hour)(?:\W+\w+){0,3}\W+(virtual|zoom)\b/i;
+/* Venue/address-scoped online signal. A venue field is short and high-
+   signal: if it literally names an online platform, the event is online
+   even when the title is neutral ("Monthly AI Roundtable" whose venue is
+   "Online (Zoom)"). Deliberately does NOT include "tbd" / "location
+   unknown" - an undetermined location is not the same as an online event
+   (that conflation was the silicon_slopes bug). */
+const ONLINE_VENUE_RE =
+  /\b(online|virtual|webinar|livestream|live[- ]stream|zoom|google meet|microsoft teams|ms teams)\b/i;
 function detectOnline(item: EventItem): boolean {
   if (item.isOnline) return true;
   const t = item.title;
   if (ONLINE_STRONG_RE.test(t)) return true;
   if (ONLINE_AMBIGUOUS_RE.test(t)) return true;
+  const venue = `${item.venueName ?? ""} ${item.address ?? ""}`.trim();
+  if (venue && ONLINE_VENUE_RE.test(venue)) return true;
   const d = item.description;
   if (d && ONLINE_STRONG_RE.test(d)) return true;
   return false;
@@ -116,7 +126,7 @@ async function upsertEvent(
   injectedTags: string[],
 ) {
   const existing = await db
-    .select({ id: events.id, groupLocked: events.groupLocked })
+    .select({ id: events.id, groupLocked: events.groupLocked, onlineLocked: events.onlineLocked })
     .from(events)
     .where(sql`${events.source} = ${item.source} AND ${events.externalId} = ${item.externalId}`)
     .limit(1);
@@ -172,13 +182,14 @@ async function upsertEvent(
     /* Don't overturn an admin's manual approve/reject on re-scrape, and
        don't overwrite is_conference/is_paid back to false if a heuristic
        missed but admin flagged. Likewise, if an admin manually set this
-       event's group (groupLocked), leave groupId untouched. */
-    const setValues = existing[0].groupLocked
-      ? (() => {
-          const { groupId: _ignored, ...rest } = baseValues;
-          return rest;
-        })()
-      : baseValues;
+       event's group (groupLocked) or corrected its online flag
+       (onlineLocked), leave those columns untouched. */
+    const { groupId: nextGroupId, isOnline: nextIsOnline, ...rest } = baseValues;
+    const setValues = {
+      ...rest,
+      ...(existing[0].groupLocked ? {} : { groupId: nextGroupId }),
+      ...(existing[0].onlineLocked ? {} : { isOnline: nextIsOnline }),
+    };
     await db.update(events).set(setValues).where(eq(events.id, existing[0].id));
     return "updated" as const;
   }

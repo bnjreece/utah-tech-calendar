@@ -63,6 +63,10 @@ export const events = pgTable(
     /* When true, an admin manually set this event's group; the scraper
        must not overwrite groupId on re-scrape. */
     groupLocked: boolean("group_locked").notNull().default(false),
+    /* When true, an admin manually corrected is_online; the scraper must
+       not re-derive/overwrite isOnline on re-scrape (mirrors groupLocked).
+       Used once an admin UI can toggle an event's online flag. */
+    onlineLocked: boolean("online_locked").notNull().default(false),
     status: text("status").notNull().default("approved"),
     /* Surfaces a thicker bar + "Conference" eyebrow in the schedule.
        Flagged manually via admin (or by future heuristic at scrape time). */

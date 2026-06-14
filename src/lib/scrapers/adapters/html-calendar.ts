@@ -193,6 +193,39 @@ function extractMicrodataEvents($: cheerio.CheerioAPI): JsonLdEvent[] {
     const name = get("name");
     const startRaw = get("startDate");
     if (!name || !startRaw) return;
+    /* Microdata variant of attendanceMode + location, so GrowthZone /
+       BioUtah events get a real online flag and venue instead of being
+       forced in-person with no city. location is a nested itemscope with
+       its own name/address itemprops. */
+    const $loc = $root.find('[itemprop="location"]').first();
+    let location: JsonLdLocation | undefined;
+    if ($loc.length) {
+      const locName =
+        $loc.find('[itemprop="name"]').first().attr("content")?.trim() ||
+        $loc.find('[itemprop="name"]').first().text().trim() ||
+        undefined;
+      const $addr = $loc.find('[itemprop="address"]').first();
+      if ($addr.length) {
+        const street = $addr.find('[itemprop="streetAddress"]').first().text().trim();
+        const locality = $addr.find('[itemprop="addressLocality"]').first().text().trim();
+        const postal = $addr.find('[itemprop="postalCode"]').first().text().trim();
+        if (street || locality || postal) {
+          location = {
+            name: locName,
+            address: {
+              streetAddress: street || undefined,
+              addressLocality: locality || undefined,
+              postalCode: postal || undefined,
+            },
+          };
+        } else {
+          const addrText = $addr.text().trim();
+          location = { name: locName, address: addrText || undefined };
+        }
+      } else if (locName) {
+        location = { name: locName };
+      }
+    }
     out.push({
       "@type": "Event",
       name,
@@ -201,6 +234,8 @@ function extractMicrodataEvents($: cheerio.CheerioAPI): JsonLdEvent[] {
       startDate: startRaw,
       endDate: get("endDate"),
       image: get("image"),
+      eventAttendanceMode: get("eventAttendanceMode"),
+      location,
     });
   });
   return out;

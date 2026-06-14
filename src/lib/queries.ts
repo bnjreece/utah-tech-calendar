@@ -209,7 +209,7 @@ export async function getDistinctTags(): Promise<string[]> {
   const rows = await db
     .select({ tags: events.tags })
     .from(events)
-    .where(eq(events.status, "approved"));
+    .where(and(eq(events.status, "approved"), eq(events.isOnline, false)));
   const set = new Set<string>();
   for (const r of rows) {
     for (const t of r.tags ?? []) set.add(t);
@@ -225,7 +225,7 @@ export async function getDistinctSources(): Promise<string[]> {
   const rows = await db
     .selectDistinct({ source: events.source })
     .from(events)
-    .where(eq(events.status, "approved"));
+    .where(and(eq(events.status, "approved"), eq(events.isOnline, false)));
   return rows.map((r) => r.source).filter(Boolean).sort();
 }
 
@@ -233,7 +233,7 @@ export async function getSourceCounts(): Promise<Array<{ source: string; count: 
   const rows = await db
     .select({ source: events.source, count: sql<number>`count(*)::int` })
     .from(events)
-    .where(and(eq(events.status, "approved"), gte(events.startsAt, new Date())))
+    .where(and(eq(events.status, "approved"), eq(events.isOnline, false), gte(events.startsAt, new Date())))
     .groupBy(events.source);
   return rows
     .filter((r) => r.source)
@@ -245,7 +245,7 @@ export async function getGroupCounts(): Promise<Array<{ slug: string; name: stri
     .select({ slug: groups.slug, name: groups.name, count: sql<number>`count(*)::int` })
     .from(events)
     .innerJoin(groups, eq(events.groupId, groups.id))
-    .where(and(eq(events.status, "approved"), gte(events.startsAt, new Date())))
+    .where(and(eq(events.status, "approved"), eq(events.isOnline, false), gte(events.startsAt, new Date())))
     .groupBy(groups.slug, groups.name);
   return rows.filter((r) => r.slug).sort((a, b) => b.count - a.count);
 }
@@ -279,7 +279,7 @@ export async function getTagCounts(): Promise<Array<{ tag: string; count: number
   const rows = await db
     .select({ tags: events.tags })
     .from(events)
-    .where(and(eq(events.status, "approved"), gte(events.startsAt, new Date())));
+    .where(and(eq(events.status, "approved"), eq(events.isOnline, false), gte(events.startsAt, new Date())));
   const counts = new Map<string, number>();
   for (const r of rows) {
     for (const t of r.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);

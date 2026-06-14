@@ -46,7 +46,13 @@ function normalize(node: MeetupEventNode, fallbackGroupUrl?: string): EventItem 
   const startsAt = new Date(node.dateTime);
   if (Number.isNaN(startsAt.getTime())) return null;
   const endsAt = node.endTime ? new Date(node.endTime) : undefined;
-  const isOnline = node.eventType === "ONLINE";
+  /* eventType is PHYSICAL | ONLINE | HYBRID. ONLINE is always online;
+     HYBRID counts as online only when no physical venue is attached - a
+     hybrid with a real venue still has an in-person option worth showing
+     on the schedule. */
+  const isOnline =
+    node.eventType === "ONLINE" ||
+    (node.eventType === "HYBRID" && !node.venue?.name && !node.venue?.address);
   const externalId = node.id ?? node.eventUrl;
   const groupExternalId =
     node.group?.urlname ?? fallbackGroupUrl?.split("/").filter(Boolean).pop();

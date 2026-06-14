@@ -130,13 +130,23 @@ async function enrichDateOnly(item: EventItem, delayMs: number): Promise<EventIt
     const fullStart = new Date(best.startDate);
     if (Number.isNaN(fullStart.getTime())) return item;
     const fullEnd = best.endDate ? new Date(best.endDate) : undefined;
+    /* The search-listing JSON-LD frequently omits eventAttendanceMode and
+       a full address; the detail page carries both. Upgrade them here so a
+       Zoom-only listing isn't stored in-person with an empty venue. */
+    const bestLoc = getLocation(best.location);
+    const bestAddr = getAddress(bestLoc);
+    const bestOnline = best.eventAttendanceMode?.toLowerCase().includes("online") ?? false;
     return {
       ...item,
       startsAt: fullStart,
       endsAt: fullEnd && !Number.isNaN(fullEnd.getTime()) ? fullEnd : item.endsAt,
-      // Also upgrade venue/address/description if they're richer on the detail page
+      // Also upgrade venue/address/online/description if richer on the detail page
       description: item.description ?? (typeof best.description === "string" ? best.description : item.description),
-      venueName: item.venueName ?? getLocation(best.location)?.name,
+      isOnline: item.isOnline || bestOnline,
+      venueName: item.venueName ?? bestLoc?.name,
+      address: item.address ?? bestAddr.address,
+      city: item.city ?? bestAddr.city,
+      postalCode: item.postalCode ?? bestAddr.postalCode,
     };
   } catch {
     return item; // best effort; keep original on failure
