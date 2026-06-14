@@ -2,6 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db, pendingSubmissions, events } from "@/lib/db";
 import { verifyToken } from "@/lib/moderation";
+import { recordSubmissionDecision } from "@/lib/review-log";
 import type { SubmissionPayload } from "@/lib/submission-payload";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +90,17 @@ export default async function ModeratePage({
       reviewedAt: new Date(),
     })
     .where(eq(pendingSubmissions.id, submission.id));
+
+  await recordSubmissionDecision(
+    submission,
+    decoded.action === "approve" ? "approve" : "reject",
+    {
+      subjectType: "submission_event",
+      newStatus: decoded.action === "approve" ? "approved" : "rejected",
+      decidedBy: "magic-link",
+      channel: "magic-link",
+    },
+  );
 
   return (
     <div className="mx-auto max-w-md px-4 py-16 text-center">

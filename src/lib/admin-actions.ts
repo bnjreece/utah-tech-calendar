@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db, events, sources, adminSettings, pendingSubmissions, groups } from "@/lib/db";
 import type { SubmissionPayload } from "@/lib/submission-payload";
 import { requireAdmin } from "@/lib/admin-auth";
+import { recordEventDecision, recordSubmissionDecision } from "@/lib/review-log";
 import { notifySubmitterEvent, notifySubmitterSource } from "@/lib/submitter-followup";
 import { absoluteUrl } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
@@ -79,22 +80,39 @@ export async function saveAdminSettings(input: AdminSettingsInput) {
 }
 
 export async function approveEvent(id: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
   await db
     .update(events)
     .set({ status: "approved", updatedAt: new Date() })
     .where(eq(events.id, id));
+  if (before) {
+    await recordEventDecision(before, "approve", {
+      newStatus: "approved",
+      decidedBy: admin.email,
+      channel: "admin-ui",
+    });
+  }
   revalidatePath("/admin/review");
   revalidatePath("/admin/hidden");
   revalidatePath("/");
 }
 
 export async function rejectEvent(id: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
   await db
     .update(events)
     .set({ status: "hidden", hiddenReason: "manual", updatedAt: new Date() })
     .where(eq(events.id, id));
+  if (before) {
+    await recordEventDecision(before, "reject", {
+      newStatus: "hidden",
+      reason: "manual",
+      decidedBy: admin.email,
+      channel: "admin-ui",
+    });
+  }
   revalidatePath("/admin/review");
   revalidatePath("/admin/hidden");
   revalidatePath("/");
@@ -106,7 +124,7 @@ export async function rejectEvent(id: string) {
    magic-link /moderate flow so admin-UI and email-link paths produce
    identical results. */
 export async function approveSubmission(id: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const [submission] = await db
     .select()
     .from(pendingSubmissions)
@@ -132,6 +150,12 @@ export async function approveSubmission(id: string) {
       .update(pendingSubmissions)
       .set({ status: "approved", reviewedAt: new Date() })
       .where(eq(pendingSubmissions.id, id));
+    await recordSubmissionDecision(submission, "approve", {
+      subjectType: "submission_source",
+      newStatus: "approved",
+      decidedBy: admin.email,
+      channel: "admin-ui",
+    });
     /* Best-effort - any failure here just logs and continues. */
     try {
       await notifySubmitterSource({
@@ -177,6 +201,12 @@ export async function approveSubmission(id: string) {
     .update(pendingSubmissions)
     .set({ status: "approved", reviewedAt: new Date() })
     .where(eq(pendingSubmissions.id, id));
+  await recordSubmissionDecision(submission, "approve", {
+    subjectType: "submission_event",
+    newStatus: "approved",
+    decidedBy: admin.email,
+    channel: "admin-ui",
+  });
   try {
     await notifySubmitterEvent({
       submitterEmail: submission.submitterEmail,
@@ -195,7 +225,7 @@ export async function approveSubmission(id: string) {
 }
 
 export async function rejectSubmission(id: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const [submission] = await db
     .select()
     .from(pendingSubmissions)
@@ -205,6 +235,16 @@ export async function rejectSubmission(id: string) {
     .update(pendingSubmissions)
     .set({ status: "rejected", reviewedAt: new Date() })
     .where(eq(pendingSubmissions.id, id));
+  if (submission) {
+    await recordSubmissionDecision(submission, "reject", {
+      subjectType: isSourcePayload(submission.payload)
+        ? "submission_source"
+        : "submission_event",
+      newStatus: "rejected",
+      decidedBy: admin.email,
+      channel: "admin-ui",
+    });
+  }
   /* Notify submitter of the rejection. Distinguishes event vs
      source by payload type so the body copy fits. */
   if (submission && submission.submitterEmail) {
@@ -235,12 +275,21 @@ export async function rejectSubmission(id: string) {
 export async function restoreEvent(id: string) {
   /* Clear hiddenReason on restore so /admin/hidden chips don't lie
      about future re-hides (e.g. a craft event restored, then later
-     re-rejected by admin should read 'manual' not 'craft'). */
-  await requireAdmin();
+     re-rejected by admin should read 'manual' not 'craft'). The prior
+     hiddenReason is preserved in the ledger snapshot below. */
+  const admin = await requireAdmin();
+  const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
   await db
     .update(events)
     .set({ status: "approved", hiddenReason: null, updatedAt: new Date() })
     .where(eq(events.id, id));
+  if (before) {
+    await recordEventDecision(before, "restore", {
+      newStatus: "approved",
+      decidedBy: admin.email,
+      channel: "admin-ui",
+    });
+  }
   revalidatePath("/admin/review");
   revalidatePath("/admin/hidden");
   revalidatePath("/");

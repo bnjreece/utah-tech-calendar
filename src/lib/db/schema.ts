@@ -206,6 +206,59 @@ export const adminSettings = pgTable("admin_settings", {
 export type AdminSettings = typeof adminSettings.$inferSelect;
 export type NewAdminSettings = typeof adminSettings.$inferInsert;
 
+/* Append-only moderation ledger. Every admin approve/reject/hide/restore
+   on a scraped event or a /submit draft writes one immutable row here,
+   with a frozen `snapshot` of what the decider saw plus the heuristic
+   flags the auto-classifier had set. events.status only ever holds the
+   latest state (lossy); this table is the durable, learnable record of
+   human judgment that the LLM self-healing funnel trains from - notably
+   the cases where a human DISAGREED with the heuristics. Never UPDATEd or
+   DELETEd. See src/lib/review-log.ts for the write path. */
+export const reviewDecisions = pgTable(
+  "review_decisions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /* 'scraped_event' | 'submission_event' | 'submission_source' */
+    subjectType: text("subject_type").notNull(),
+    /* events.id or pending_submissions.id (no FK - the row may be pruned
+       while the decision record must persist). */
+    subjectId: uuid("subject_id").notNull(),
+    /* 'approve' | 'reject' | 'hide' | 'restore' */
+    decision: text("decision").notNull(),
+    /* 'manual' | 'craft' | 'cert-spam' | 'not-tech' | free text | NULL */
+    reason: text("reason"),
+    priorStatus: text("prior_status"),
+    newStatus: text("new_status"),
+    /* admin email (admin-ui path) or 'magic-link' (email path); 'llm'
+       once Phase 3 autonomy writes its own decisions. */
+    decidedBy: text("decided_by"),
+    /* 'admin-ui' | 'magic-link' | 'auto' */
+    channel: text("channel"),
+    /* which source row produced the event (per-source quality rollups). */
+    sourceId: uuid("source_id"),
+    /* denormalized adapter/source key for per-adapter mining (joins to
+       the scraper-drift adapter granularity). */
+    adapter: text("adapter"),
+    /* frozen at decision time: title/description/link/venue/city/tags +
+       the heuristic flags (isConference/isPaid/isOnline/hiddenReason). */
+    snapshot: jsonb("snapshot").notNull(),
+    /* the model's verdict at decision time, if any - populated from Phase
+       1 (shadow) onward so we can measure agreement and mine disagreement. */
+    llmVerdict: jsonb("llm_verdict"),
+    decidedAt: timestamp("decided_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index("review_decisions_subject_idx").on(t.subjectType, t.subjectId),
+    index("review_decisions_adapter_idx").on(t.adapter),
+    index("review_decisions_decided_at_idx").on(t.decidedAt),
+  ],
+);
+
+export type ReviewDecision = typeof reviewDecisions.$inferSelect;
+export type NewReviewDecision = typeof reviewDecisions.$inferInsert;
+
 /* One row per source per scrape attempt. Backs the /admin/health
    dashboard - per-source duration/error-rate trends that the
    current-state columns on `sources` can't express (those only hold
