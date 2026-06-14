@@ -5,10 +5,23 @@ import { db } from "@/lib/db";
    on events.llm_verdict. Pure SQL (no AI import) so the admin page bundle
    stays light. Surfaces model-vs-human agreement: the actionable cases are
    "approved but the model flags it" (a spam/off-topic event we're showing)
-   and "hidden but the model says tech" (a possible over-hide). */
+   and "hidden but the model says tech" (a possible over-hide).
+
+   Robustness: booleans are compared as raw text ((->>'isSpam') = 'true')
+   and the confidence float is cast only behind a numeric-shape regex guard,
+   so a malformed verdict (shape drift, manual SQL edit) yields NULL instead
+   of throwing a NeonDbError that would 500 the whole health dashboard. The
+   page also wraps this call in a fallback as a second line of defense. */
+
+const NUMERIC = "'^[0-9]+([.][0-9]+)?$'";
 
 export type ClassifierStats = {
+  /* upcoming classified events - drives the displayed metrics */
   classified: number;
+  /* all-time classified count - drives the "configured vs not" empty state
+     (so a calendar whose classified events are all past-dated doesn't read
+     as "not set up yet"). */
+  everClassified: number;
   avgConfidence: number;
   approvedButFlagged: number;
   hiddenButTech: number;
@@ -25,6 +38,7 @@ export type ClassifierDisagreement = {
 };
 
 type AggRow = {
+  ever_classified: number;
   classified: number;
   avg_conf: number | null;
   approved_flagged: number;
@@ -51,21 +65,26 @@ export async function getClassifierStats(): Promise<{
 }> {
   const aggRes = await db.execute<AggRow>(sql`
     SELECT
-      count(*)::int AS classified,
-      avg((llm_verdict->>'confidence')::float) AS avg_conf,
+      count(*)::int AS ever_classified,
+      count(*) FILTER (WHERE starts_at >= now())::int AS classified,
+      avg(
+        CASE WHEN starts_at >= now() AND (llm_verdict->>'confidence') ~ ${sql.raw(NUMERIC)}
+          THEN (llm_verdict->>'confidence')::float END
+      ) AS avg_conf,
       count(*) FILTER (
-        WHERE status = 'approved'
-        AND ((llm_verdict->>'isSpam')::boolean OR NOT (llm_verdict->>'isTechRelevant')::boolean)
+        WHERE starts_at >= now() AND status = 'approved'
+        AND ((llm_verdict->>'isSpam') = 'true' OR (llm_verdict->>'isTechRelevant') = 'false')
       )::int AS approved_flagged,
       count(*) FILTER (
-        WHERE status = 'hidden'
-        AND (llm_verdict->>'isTechRelevant')::boolean
-        AND NOT (llm_verdict->>'isSpam')::boolean
+        WHERE starts_at >= now() AND status = 'hidden'
+        AND (llm_verdict->>'isTechRelevant') = 'true'
+        AND (llm_verdict->>'isSpam') = 'false'
       )::int AS hidden_tech
     FROM events
-    WHERE llm_checked_at IS NOT NULL AND starts_at >= now()
+    WHERE llm_checked_at IS NOT NULL
   `);
   const agg = rowsOf<AggRow>(aggRes)[0] ?? {
+    ever_classified: 0,
     classified: 0,
     avg_conf: 0,
     approved_flagged: 0,
@@ -74,23 +93,28 @@ export async function getClassifierStats(): Promise<{
 
   const disRes = await db.execute<DisRow>(sql`
     SELECT id, title, status,
-      (llm_verdict->>'isTechRelevant')::boolean AS is_tech,
-      (llm_verdict->>'isSpam')::boolean AS is_spam,
-      (llm_verdict->>'confidence')::float AS confidence,
+      ((llm_verdict->>'isTechRelevant') = 'true') AS is_tech,
+      ((llm_verdict->>'isSpam') = 'true') AS is_spam,
+      CASE WHEN (llm_verdict->>'confidence') ~ ${sql.raw(NUMERIC)}
+        THEN (llm_verdict->>'confidence')::float ELSE 0 END AS confidence,
       coalesce(llm_verdict->>'category', '') AS category
     FROM events
     WHERE llm_checked_at IS NOT NULL AND starts_at >= now()
       AND (
-        (status = 'approved' AND ((llm_verdict->>'isSpam')::boolean OR NOT (llm_verdict->>'isTechRelevant')::boolean))
-        OR (status = 'hidden' AND (llm_verdict->>'isTechRelevant')::boolean AND NOT (llm_verdict->>'isSpam')::boolean)
+        (status = 'approved' AND ((llm_verdict->>'isSpam') = 'true' OR (llm_verdict->>'isTechRelevant') = 'false'))
+        OR (status = 'hidden' AND (llm_verdict->>'isTechRelevant') = 'true' AND (llm_verdict->>'isSpam') = 'false')
       )
-    ORDER BY (llm_verdict->>'confidence')::float DESC NULLS LAST
+    ORDER BY (
+      CASE WHEN (llm_verdict->>'confidence') ~ ${sql.raw(NUMERIC)}
+        THEN (llm_verdict->>'confidence')::float ELSE 0 END
+    ) DESC
     LIMIT 25
   `);
 
   return {
     stats: {
       classified: agg.classified ?? 0,
+      everClassified: agg.ever_classified ?? 0,
       avgConfidence: Number(agg.avg_conf ?? 0),
       approvedButFlagged: agg.approved_flagged ?? 0,
       hiddenButTech: agg.hidden_tech ?? 0,

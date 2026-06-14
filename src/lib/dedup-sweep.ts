@@ -1,5 +1,6 @@
 import { db, events } from "./db";
 import { sql, inArray } from "drizzle-orm";
+import { recordEventDecision } from "./review-log";
 
 export interface DedupResult {
   clustersFound: number;
@@ -103,10 +104,27 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
   }
 
   if (toHide.size > 0) {
+    const ids = [...toHide];
+    /* Snapshot the rows BEFORE hiding (all are status='approved' here, since
+       every cluster query filters status='approved') so the ledger records
+       an accurate approved -> hidden transition. */
+    const before = await db.select().from(events).where(inArray(events.id, ids));
     await db
       .update(events)
       .set({ status: "hidden", hiddenReason: "cross-post" })
-      .where(inArray(events.id, [...toHide]));
+      .where(inArray(events.id, ids));
+    /* Log each programmatic hide to the moderation ledger (channel 'auto')
+       so the self-healing funnel + per-adapter quality rollups see cross-
+       post hides, not just human decisions. Best-effort - recordEventDecision
+       swallows its own errors and never throws. */
+    for (const row of before) {
+      await recordEventDecision(row, "hide", {
+        newStatus: "hidden",
+        reason: "cross-post",
+        decidedBy: "system",
+        channel: "auto",
+      });
+    }
   }
 
   return {

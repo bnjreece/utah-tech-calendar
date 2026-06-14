@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, events, sources, adminSettings, pendingSubmissions, groups } from "@/lib/db";
 import type { SubmissionPayload } from "@/lib/submission-payload";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -131,6 +131,18 @@ export async function approveSubmission(id: string) {
     .where(eq(pendingSubmissions.id, id))
     .limit(1);
   if (!submission || submission.status !== "pending") return;
+  /* Atomically claim the row so two concurrent approvals can't both
+     insert + log. Gating the UPDATE on status='pending' means only the
+     winner proceeds; the event INSERT below is also backstopped by the
+     events(source, external_id) unique index. */
+  const [claimed] = await db
+    .update(pendingSubmissions)
+    .set({ status: "approved", reviewedAt: new Date() })
+    .where(
+      and(eq(pendingSubmissions.id, id), eq(pendingSubmissions.status, "pending")),
+    )
+    .returning({ id: pendingSubmissions.id });
+  if (!claimed) return;
   /* Source-suggestion rows route to a different approve path - they
      register as a scrape source row, not an event row. */
   if (isSourcePayload(submission.payload)) {
@@ -146,10 +158,6 @@ export async function approveSubmission(id: string) {
       enabled: true,
       requiresReview: true,
     });
-    await db
-      .update(pendingSubmissions)
-      .set({ status: "approved", reviewedAt: new Date() })
-      .where(eq(pendingSubmissions.id, id));
     await recordSubmissionDecision(submission, "approve", {
       subjectType: "submission_source",
       newStatus: "approved",
@@ -197,10 +205,6 @@ export async function approveSubmission(id: string) {
     .from(events)
     .where(eq(events.externalId, submission.id))
     .limit(1);
-  await db
-    .update(pendingSubmissions)
-    .set({ status: "approved", reviewedAt: new Date() })
-    .where(eq(pendingSubmissions.id, id));
   await recordSubmissionDecision(submission, "approve", {
     subjectType: "submission_event",
     newStatus: "approved",
@@ -231,10 +235,14 @@ export async function rejectSubmission(id: string) {
     .from(pendingSubmissions)
     .where(eq(pendingSubmissions.id, id))
     .limit(1);
-  await db
+  const [claimed] = await db
     .update(pendingSubmissions)
     .set({ status: "rejected", reviewedAt: new Date() })
-    .where(eq(pendingSubmissions.id, id));
+    .where(
+      and(eq(pendingSubmissions.id, id), eq(pendingSubmissions.status, "pending")),
+    )
+    .returning({ id: pendingSubmissions.id });
+  if (!claimed) return;
   if (submission) {
     await recordSubmissionDecision(submission, "reject", {
       subjectType: isSourcePayload(submission.payload)

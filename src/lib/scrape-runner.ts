@@ -213,6 +213,13 @@ async function upsertEvent(
       ? "cert-spam"
       : null;
   const isPaid = false;
+  /* Deliberate ledger scope boundary: insert-time heuristic hides (craft /
+     cert-spam) are NOT written to review_decisions. They are born-hidden and
+     never surfaced, so they aren't a "decision that changed a visible
+     event's state" the way an admin hide or the dedup sweep is. The
+     heuristic's original call is still recoverable for the funnel - it is
+     frozen into snapshot.flags.hiddenReason if/when a human later restores
+     the row. The ledger records human decisions + post-hoc auto sweeps. */
   await db.insert(events).values({
     ...baseValues,
     status,

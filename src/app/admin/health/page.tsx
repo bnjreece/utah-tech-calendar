@@ -65,7 +65,21 @@ export default async function HealthDashboardPage() {
       fetchSourceHealth(),
       fetchRecentErrors(20),
       fetchSelfHealingActivity(),
-      getClassifierStats(),
+      /* Defense in depth: classify-stats SQL is already cast-safe, but a
+         failure here must never take down the whole health dashboard. */
+      getClassifierStats().catch((err) => {
+        console.warn("[admin/health] classifier stats failed", err);
+        return {
+          stats: {
+            classified: 0,
+            everClassified: 0,
+            avgConfidence: 0,
+            approvedButFlagged: 0,
+            hiddenButTech: 0,
+          },
+          disagreements: [],
+        };
+      }),
     ]);
 
   return (
@@ -112,7 +126,7 @@ export default async function HealthDashboardPage() {
         <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft mb-4">
           Classifier · shadow mode
         </h2>
-        {classifier.stats.classified === 0 ? (
+        {classifier.stats.everClassified === 0 ? (
           <p className="text-sm text-ink-soft max-w-[70ch]">
             No events classified yet. Set{" "}
             <code className="font-mono text-[12px]">ANTHROPIC_API_KEY</code> in the Vercel

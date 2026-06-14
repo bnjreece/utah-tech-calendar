@@ -162,6 +162,12 @@ export const eventbriteAdapter: Adapter<EventItem> = {
 
     const seen = new Set<string>();
     const items: EventItem[] = [];
+    /* externalIds whose JSON-LD startDate was genuinely date-only
+       (YYYY-MM-DD, no time). Tracked from the raw payload instead of
+       inferred from the parsed instant - a real 6pm America/Denver event
+       maps to 00:00:00Z under MDT and would otherwise be mistaken for
+       date-only, triggering a needless detail-page refetch. */
+    const dateOnlyIds = new Set<string>();
 
     const walk = (v: unknown) => {
       if (!v || items.length >= maxItems) return;
@@ -175,6 +181,9 @@ export const eventbriteAdapter: Adapter<EventItem> = {
         if (normalized && !seen.has(normalized.externalId)) {
           seen.add(normalized.externalId);
           items.push(normalized);
+          if (typeof o.startDate === "string" && DATE_ONLY.test(o.startDate)) {
+            dateOnlyIds.add(normalized.externalId);
+          }
         }
         for (const k of Object.keys(o)) {
           walk((o as Record<string, unknown>)[k]);
@@ -189,14 +198,7 @@ export const eventbriteAdapter: Adapter<EventItem> = {
     const enriched: EventItem[] = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const startIso = item.startsAt.toISOString();
-      const looksDateOnly =
-        startIso.endsWith("T00:00:00.000Z") && startIso.startsWith(
-          (typeof item.startsAt === "object"
-            ? item.startsAt.toISOString().slice(0, 10)
-            : ""),
-        );
-      if (looksDateOnly && item.link) {
+      if (dateOnlyIds.has(item.externalId) && item.link) {
         enriched.push(await enrichDateOnly(item, i === 0 ? 0 : 300));
       } else {
         enriched.push(item);

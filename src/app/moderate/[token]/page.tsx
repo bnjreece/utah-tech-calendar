@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, pendingSubmissions, events } from "@/lib/db";
 import { verifyToken } from "@/lib/moderation";
 import { recordSubmissionDecision } from "@/lib/review-log";
@@ -55,8 +55,39 @@ export default async function ModeratePage({
   }
 
   const payload = submission.payload as SubmissionPayload;
-  let publishedEventId: string | null = null;
 
+  /* Atomically claim the submission before doing any work. The token is a
+     stateless 7-day HMAC (verified, not consumed), so a prefetch / double-
+     click can fire two concurrent requests that both pass the in-memory
+     guard above. Gating on `status = 'pending'` in the UPDATE means only
+     the request that actually flips the row proceeds to insert + log; the
+     loser sees "Already reviewed" instead of double-publishing. */
+  const [claimed] = await db
+    .update(pendingSubmissions)
+    .set({
+      status: decoded.action === "approve" ? "approved" : "rejected",
+      reviewedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(pendingSubmissions.id, submission.id),
+        eq(pendingSubmissions.status, "pending"),
+      ),
+    )
+    .returning({ id: pendingSubmissions.id });
+
+  if (!claimed) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold">Already reviewed</h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          This submission was just handled by another request.
+        </p>
+      </div>
+    );
+  }
+
+  let publishedEventId: string | null = null;
   if (decoded.action === "approve") {
     const startsAt = new Date(payload.startsAt);
     const endsAt = payload.endsAt ? new Date(payload.endsAt) : null;
@@ -82,14 +113,6 @@ export default async function ModeratePage({
       .returning({ id: events.id });
     publishedEventId = inserted.id;
   }
-
-  await db
-    .update(pendingSubmissions)
-    .set({
-      status: decoded.action === "approve" ? "approved" : "rejected",
-      reviewedAt: new Date(),
-    })
-    .where(eq(pendingSubmissions.id, submission.id));
 
   await recordSubmissionDecision(
     submission,
