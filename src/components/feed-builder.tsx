@@ -64,6 +64,7 @@ export function FeedBuilder({ cities, tags, sources, groups }: Props) {
      responsive. */
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: show the loading state immediately when filters change, before the debounced fetch
     setLoading(true);
     const t = setTimeout(async () => {
       try {

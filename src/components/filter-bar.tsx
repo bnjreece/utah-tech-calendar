@@ -97,6 +97,7 @@ export function FilterBar({ cities, tags, sources, groups }: Props) {
     if (activeQs.length > 0) return;
     try {
       const raw = window.localStorage.getItem(FILTERS_LSK);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: SSR-safe, client-only read of localStorage on mount
       if (raw && raw.length > 0) setSavedQs(raw);
     } catch {
       /* same */

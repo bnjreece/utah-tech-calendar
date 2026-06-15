@@ -27,6 +27,7 @@ export function SubscribePopover({
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: SSR-safe, client-only read of window.location.origin
     if (typeof window !== "undefined") setOrigin(window.location.origin);
   }, []);
 

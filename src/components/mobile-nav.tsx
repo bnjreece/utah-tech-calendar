@@ -21,6 +21,7 @@ export function MobileNav({ links }: MobileNavProps) {
   /* Close when route changes. Tracks pathname not search so changing
      a filter on / doesn't slam the sheet shut. */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: close the nav sheet when the route changes
     setOpen(false);
   }, [pathname]);
 
