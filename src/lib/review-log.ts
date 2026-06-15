@@ -10,7 +10,7 @@ import { db, events, pendingSubmissions, reviewDecisions } from "@/lib/db";
 type EventRow = typeof events.$inferSelect;
 type SubmissionRow = typeof pendingSubmissions.$inferSelect;
 
-export type DecisionKind = "approve" | "reject" | "hide" | "restore";
+export type DecisionKind = "approve" | "reject" | "hide" | "restore" | "review";
 export type DecisionChannel = "admin-ui" | "magic-link" | "auto";
 
 /* Record a decision on a scraped event. Pass the row as read BEFORE the

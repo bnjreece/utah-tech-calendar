@@ -4,14 +4,16 @@ import { classifyUnchecked } from "@/lib/classify";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-/* Classify-only endpoint: runs the Phase-1 shadow classifier over a bounded
-   batch of unclassified upcoming events WITHOUT re-scraping any sources.
-   Used to drain the backlog quickly (and to re-score after a prompt change)
-   from the server side, where ANTHROPIC_API_KEY lives at runtime even when
-   it's a sensitive/encrypted env var that can't be pulled locally. The
-   scrape cron already runs classifyUnchecked(25) per tick for steady state;
-   this is the manual, higher-throughput drain. Bearer CRON_SECRET auth,
-   same as the scrape cron. */
+/* Classify-only endpoint: runs the classifier over a bounded batch of
+   UNCLASSIFIED upcoming events (llm_checked_at IS NULL) WITHOUT re-scraping
+   any sources. Drains the backlog from the server side, where
+   ANTHROPIC_API_KEY lives at runtime even when it's a sensitive/encrypted env
+   var that can't be pulled locally. NOTE: this only touches never-classified
+   rows - to RE-score after a prompt change you must first reset llm_checked_at
+   (and llm_verdict) to NULL for the target rows, then this route re-processes
+   them. The scrape cron runs classifyUnchecked(25) per tick for steady state;
+   this is the manual, higher-throughput drain. Bearer CRON_SECRET auth, same
+   as the scrape cron. */
 
 function timingSafeEqualStrings(a: string, b: string): boolean {
   if (a.length !== b.length) return false;

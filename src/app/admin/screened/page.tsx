@@ -26,7 +26,7 @@ export default async function ScreenedEventsPage({
 }) {
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
-  const page = Math.max(1, Number(sp.page) || 1);
+  const rawPage = Math.max(1, Number(sp.page) || 1);
   const now = new Date();
 
   /* Auto-screened = hidden by the LLM gate. Upcoming only (the gate never
@@ -54,6 +54,11 @@ export default async function ScreenedEventsPage({
     .from(events)
     .where(where);
 
+  /* Clamp the page to the real range so a stale bookmark / hand-edited URL
+     (?page=9999) doesn't render a misleading empty state. */
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const page = Math.min(rawPage, totalPages);
+
   const rows = await db
     .select({ event: events, group: groups })
     .from(events)
@@ -63,20 +68,18 @@ export default async function ScreenedEventsPage({
     .limit(PER_PAGE)
     .offset((page - 1) * PER_PAGE);
 
-  /* Category breakdown across ALL screened (not just this page) so the
-     header reads as "what is the gate killing most". */
+  /* Category breakdown across all screened (page-independent) but honoring
+     the active search, so the chips track the visible result set. */
   const catRows = await db
     .select({
       category: sql<string>`coalesce(llm_verdict->>'category', '(none)')`,
       count: sql<number>`count(*)::int`,
     })
     .from(events)
-    .where(and(eq(events.status, "hidden"), eq(events.hiddenReason, "llm-screened"), gte(events.startsAt, now)))
+    .where(where)
     .groupBy(sql`coalesce(llm_verdict->>'category', '(none)')`)
     .orderBy(sql`count(*) desc`)
     .limit(12);
-
-  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const pageHref = (p: number) =>
     `/admin/screened?page=${p}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
 
@@ -148,13 +151,15 @@ export default async function ScreenedEventsPage({
           </button>
         </form>
       </div>
-      <div className="mb-6 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-soft">
-        {catRows.map((c) => (
-          <span key={c.category} className="tabular-nums">
-            {c.count} {c.category}
-          </span>
-        ))}
-      </div>
+      {catRows.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-soft">
+          {catRows.map((c) => (
+            <span key={c.category} className="tabular-nums">
+              {c.count} {c.category}
+            </span>
+          ))}
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="text-sm text-ink-soft">

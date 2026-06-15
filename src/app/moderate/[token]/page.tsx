@@ -109,6 +109,8 @@ export default async function ModeratePage({
         postalCode: payload.postalCode,
         tags: payload.tags,
         status: "approved",
+        /* Human approval via magic link - lock so the LLM gate skips it. */
+        statusLocked: true,
       })
       .returning({ id: events.id });
     publishedEventId = inserted.id;

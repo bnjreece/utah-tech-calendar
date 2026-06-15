@@ -89,6 +89,7 @@ export async function fetchQueueSnapshot(): Promise<QueueSnapshot> {
       AND e.status = 'hidden' AND e.hidden_reason = 'llm-screened'
       AND e.starts_at >= now()
     ORDER BY e.id, rd.decided_at DESC
+    LIMIT 50
   `);
   const screenedRows = (
     Array.isArray(screenedRes) ? screenedRes : (screenedRes.rows ?? [])

@@ -140,7 +140,17 @@ export async function classifyUnchecked(
     .where(eq(adminSettings.id, 1))
     .limit(1);
   const gateEnabled = settings?.enabled ?? false;
-  const threshold = Number(settings?.threshold ?? 0.92);
+  /* NaN-guard the threshold (numeric column round-trips as a string); a bad
+     value falls back to the conservative default rather than NaN, which
+     would make every `conf >= threshold` false and silently never screen. */
+  const tRaw = Number(settings?.threshold);
+  const threshold = Number.isFinite(tRaw) ? tRaw : 0.92;
+
+  /* Circuit breaker: a healthy gate screens a small minority. If one run
+     hard-screens past this many, a prompt/model regression is likely - stop
+     auto-hiding for the rest of the run and route remaining flagged events to
+     human review instead (fail safe + visible, not a silent mass-hide). */
+  const SCREEN_ABORT_AT = 30;
 
   /* Full rows so a screen decision can write an accurate ledger snapshot. */
   const rows = await db
@@ -161,10 +171,20 @@ export async function classifyUnchecked(
       .where(eq(events.id, r.id));
     classified++;
 
-    /* Routing (gated autonomy): only ever act on an auto-approved, unlocked
-       event - never override a human decision or un-hide a regex/admin hide. */
-    if (gateEnabled && r.status === "approved" && !r.statusLocked) {
-      const action = routeVerdict(verdict, threshold, r.title);
+    /* Routing (gated autonomy): only act on an auto-approved, unlocked,
+       SCRAPED event - never override a human decision, un-hide a regex/admin
+       hide, or touch a human-curated manual submission/seed (source='manual'
+       is a human approval even when status_locked wasn't set on insert). */
+    if (
+      gateEnabled &&
+      r.status === "approved" &&
+      !r.statusLocked &&
+      r.source !== "manual"
+    ) {
+      let action = routeVerdict(verdict, threshold, r.title);
+      /* Circuit breaker tripped - downgrade further screens to review. */
+      if (action === "screen" && screened >= SCREEN_ABORT_AT) action = "review";
+
       if (action === "screen") {
         await db
           .update(events)
@@ -182,9 +202,21 @@ export async function classifyUnchecked(
           .update(events)
           .set({ status: "pending" })
           .where(eq(events.id, r.id));
+        /* Log the demotion too, so the ledger has every gate action. */
+        await recordEventDecision({ ...r, llmVerdict: verdict }, "review", {
+          newStatus: "pending",
+          reason: "llm-review",
+          decidedBy: "llm",
+          channel: "auto",
+        });
         toReview++;
       }
     }
+  }
+  if (screened >= SCREEN_ABORT_AT) {
+    console.warn(
+      `[classify] screen circuit breaker hit at ${screened}; remaining flagged events routed to review`,
+    );
   }
   return { scanned: rows.length, classified, screened, toReview };
 }

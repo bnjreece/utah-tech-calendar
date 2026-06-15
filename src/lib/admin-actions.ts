@@ -199,6 +199,8 @@ export async function approveSubmission(id: string) {
     postalCode: payload.postalCode,
     tags: payload.tags,
     status: "approved",
+    /* Human approval - lock it so the LLM gate can't re-screen it. */
+    statusLocked: true,
   });
   const [inserted] = await db
     .select({ id: events.id, title: events.title })
