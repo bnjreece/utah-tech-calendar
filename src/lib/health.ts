@@ -7,7 +7,12 @@ import type { sources, AdminSettings } from "./db";
 
 export type SourceRow = typeof sources.$inferSelect;
 
-export type AlertCategory = "cookie_expiry" | "source_error" | "source_stale" | "cron_down";
+export type AlertCategory =
+  | "cookie_expiry"
+  | "source_error"
+  | "source_stale"
+  | "cron_down"
+  | "gate_anomaly";
 
 /* Sources newer than this are excluded from the "never scraped" alert.
    They legitimately haven't had a cron tick yet; firing on them creates
@@ -28,6 +33,26 @@ export interface SourceAlert {
      us avoid resending the exact same set of alerts the next morning
      when nothing changed. */
   key: string;
+}
+
+/* Gate-anomaly alert: the LLM hard-gate auto-screened an unusually high
+   number of events in the last 24h - usually a prompt/model regression
+   mass-hiding legitimate events. DB-based (the cron passes the count),
+   so it lives outside detectAlerts (which is pure / source-only). */
+export function detectGateAnomaly(opts: {
+  screenedLast24h: number;
+  threshold: number;
+  enabled: boolean;
+}): SourceAlert | null {
+  if (!opts.enabled || opts.screenedLast24h < opts.threshold) return null;
+  return {
+    level: "urgent",
+    title: `LLM gate auto-screened ${opts.screenedLast24h} events in 24h`,
+    body: `That meets or exceeds the anomaly threshold (${opts.threshold}). A prompt or model shift may be mass-hiding legitimate events. Review the screened list and consider the kill-switch on /admin/screened.`,
+    action: "Open /admin/screened",
+    category: "gate_anomaly",
+    key: "gate_anomaly",
+  };
 }
 
 const ZERO_ITEMS = /^ok: 0 items$/i;

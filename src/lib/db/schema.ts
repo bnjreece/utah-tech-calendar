@@ -222,6 +222,11 @@ export const adminSettings = pgTable("admin_settings", {
   /* Confidence bar (0..1) to hard-gate. Conservative default - only the
      slam-dunk junk auto-screens; borderline goes to a human. */
   llmGateThreshold: numeric("llm_gate_threshold").notNull().default("0.92"),
+  /* Alert (via the daily health email) when the gate auto-screens an
+     unusually high number of events in 24h - the "your curator went
+     haywire" signal. Toggle + threshold, admin-controlled. */
+  notifyGateAnomaly: boolean("notify_gate_anomaly").notNull().default(true),
+  gateAnomalyThreshold: integer("gate_anomaly_threshold").notNull().default(40),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

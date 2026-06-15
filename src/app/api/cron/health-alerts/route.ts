@@ -1,7 +1,12 @@
 import { NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
-import { db, adminSettings, sources } from "@/lib/db";
-import { detectAlerts, hashAlerts, type SourceAlert } from "@/lib/health";
+import { and, eq, gte, sql } from "drizzle-orm";
+import { db, adminSettings, sources, reviewDecisions } from "@/lib/db";
+import {
+  detectAlerts,
+  detectGateAnomaly,
+  hashAlerts,
+  type SourceAlert,
+} from "@/lib/health";
 import { sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/seo";
 
@@ -160,6 +165,32 @@ export async function GET(request: NextRequest) {
 
   const sourceRows = await db.select().from(sources);
   const alerts = detectAlerts(sourceRows, { settings });
+
+  /* Gate-anomaly (DB-based, outside the pure source detector): count the
+     distinct events the LLM gate auto-screened in the last 24h. */
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [{ n }] = await db
+      .select({ n: sql<number>`count(distinct ${reviewDecisions.subjectId})::int` })
+      .from(reviewDecisions)
+      .where(
+        and(
+          eq(reviewDecisions.decision, "hide"),
+          eq(reviewDecisions.reason, "llm-screened"),
+          eq(reviewDecisions.channel, "auto"),
+          gte(reviewDecisions.decidedAt, since),
+        ),
+      );
+    const gateAlert = detectGateAnomaly({
+      screenedLast24h: n ?? 0,
+      threshold: settings.gateAnomalyThreshold ?? 40,
+      enabled: settings.notifyGateAnomaly ?? true,
+    });
+    if (gateAlert) alerts.push(gateAlert);
+  } catch (err) {
+    console.warn("[health-alerts] gate anomaly check failed", err);
+  }
+
   if (alerts.length === 0) {
     return Response.json({ ok: true, skipped: "no_alerts" });
   }

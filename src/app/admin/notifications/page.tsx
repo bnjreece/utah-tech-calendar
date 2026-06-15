@@ -13,6 +13,8 @@ async function loadSettings() {
       notifySourceStale: true,
       notifyCookieExpiry: true,
       staleThresholdHours: 24,
+      notifyGateAnomaly: true,
+      gateAnomalyThreshold: 40,
       lastAlertsSentAt: null,
       lastQueueDigestRunAt: null,
       lastScrapeTickAt: null,
@@ -39,6 +41,8 @@ export default async function NotificationsPage() {
       notifySourceStale: formData.get("notifySourceStale") === "on",
       notifyCookieExpiry: formData.get("notifyCookieExpiry") === "on",
       staleThresholdHours: Number(formData.get("staleThresholdHours") ?? 24),
+      notifyGateAnomaly: formData.get("notifyGateAnomaly") === "on",
+      gateAnomalyThreshold: Number(formData.get("gateAnomalyThreshold") ?? 40),
     });
   }
 
@@ -94,6 +98,12 @@ export default async function NotificationsPage() {
             label="Cookie expiry"
             description="Silicon Slopes (and any future session-auth source) warning at 50 days old, urgent at 80, plus the runtime 401/403 detection."
           />
+          <ToggleRow
+            name="notifyGateAnomaly"
+            defaultChecked={s.notifyGateAnomaly}
+            label="Gate anomaly"
+            description="The LLM hard-gate auto-screened an unusually high number of events in 24h - the 'curator went haywire' signal (likely a prompt/model regression). Links to /admin/screened."
+          />
         </fieldset>
 
         <label className="flex flex-col gap-2 border-t border-ink/15 pt-6">
@@ -113,6 +123,26 @@ export default async function NotificationsPage() {
             Default 24h. The scrape cron runs every 3h, so 12-24h is the
             useful range. Higher = fewer false positives during transient
             failures.
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-2 border-t border-ink/15 pt-6">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+            Gate anomaly threshold (events / 24h)
+          </span>
+          <input
+            name="gateAnomalyThreshold"
+            type="number"
+            min={1}
+            max={1000}
+            step={1}
+            defaultValue={s.gateAnomalyThreshold}
+            className="rounded-md border border-ink/20 bg-paper px-3 py-2 text-base focus:border-ink outline-none w-32"
+          />
+          <span className="text-xs text-ink-soft">
+            Default 40. Alert when the hard-gate auto-screens at least this many
+            events in 24h. The per-run circuit breaker caps a single run at 30,
+            so 40+ means multiple aggressive runs - worth a look.
           </span>
         </label>
 

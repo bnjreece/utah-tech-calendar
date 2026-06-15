@@ -44,6 +44,8 @@ export interface AdminSettingsInput {
   notifySourceStale: boolean;
   notifyCookieExpiry: boolean;
   staleThresholdHours: number;
+  notifyGateAnomaly: boolean;
+  gateAnomalyThreshold: number;
 }
 
 export async function saveAdminSettings(input: AdminSettingsInput) {
@@ -53,28 +55,24 @@ export async function saveAdminSettings(input: AdminSettingsInput) {
     throw new Error("Invalid alert email");
   }
   const hours = Math.max(1, Math.min(168, Math.round(input.staleThresholdHours)));
+  const gateThreshold = Math.max(
+    1,
+    Math.min(1000, Math.round(input.gateAnomalyThreshold) || 40),
+  );
+  const values = {
+    alertEmail: email || null,
+    notifySourceErrors: input.notifySourceErrors,
+    notifySourceStale: input.notifySourceStale,
+    notifyCookieExpiry: input.notifyCookieExpiry,
+    staleThresholdHours: hours,
+    notifyGateAnomaly: input.notifyGateAnomaly,
+    gateAnomalyThreshold: gateThreshold,
+    updatedAt: new Date(),
+  };
   await db
     .insert(adminSettings)
-    .values({
-      id: 1,
-      alertEmail: email || null,
-      notifySourceErrors: input.notifySourceErrors,
-      notifySourceStale: input.notifySourceStale,
-      notifyCookieExpiry: input.notifyCookieExpiry,
-      staleThresholdHours: hours,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: adminSettings.id,
-      set: {
-        alertEmail: email || null,
-        notifySourceErrors: input.notifySourceErrors,
-        notifySourceStale: input.notifySourceStale,
-        notifyCookieExpiry: input.notifyCookieExpiry,
-        staleThresholdHours: hours,
-        updatedAt: new Date(),
-      },
-    });
+    .values({ id: 1, ...values })
+    .onConflictDoUpdate({ target: adminSettings.id, set: values });
   revalidatePath("/admin/notifications");
   revalidatePath("/admin");
 }
