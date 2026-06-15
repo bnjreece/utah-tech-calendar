@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ActionTip } from "@/components/tooltips";
 
 interface ShareFilterButtonProps {
   /* Caller passes the path + querystring the user should land on.
@@ -70,15 +71,17 @@ export function ShareFilterButton({ href, label = "Share", className }: ShareFil
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={
-        className ??
-        "ml-1 text-xs text-foreground/55 hover:text-foreground transition-colors"
-      }
-    >
-      {copied ? "Copied" : label}
-    </button>
+    <ActionTip tip="Copies a link that opens this exact filtered view for anyone.">
+      <button
+        type="button"
+        onClick={handleClick}
+        className={
+          className ??
+          "ml-1 text-xs text-foreground/55 hover:text-foreground transition-colors"
+        }
+      >
+        {copied ? "Copied" : label}
+      </button>
+    </ActionTip>
   );
 }

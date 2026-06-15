@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { InfoTip } from "@/components/ui/tooltip";
 
 export function ViewTabs({ current }: { current: "list" | "calendar" }) {
   const router = useRouter();
@@ -40,6 +41,7 @@ export function ViewTabs({ current }: { current: "list" | "calendar" }) {
       >
         by date
       </button>
+      <InfoTip label="Switch between a flat list and events grouped under each day." />
     </span>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { InfoTip, Term } from "@/components/ui/tooltip";
 
 type Mode = "event" | "source";
 
@@ -66,7 +67,8 @@ export function SubmitFlow() {
 
 function ModePicker({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   return (
-    <div role="tablist" className="grid grid-cols-2 gap-2 p-1 rounded-full bg-paper-deep ring-1 ring-ink/10">
+    <div className="flex items-center gap-2">
+    <div role="tablist" className="flex-1 grid grid-cols-2 gap-2 p-1 rounded-full bg-paper-deep ring-1 ring-ink/10">
       {(
         [
           {
@@ -102,6 +104,8 @@ function ModePicker({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void 
           <span className="text-sm font-medium">{opt.label}</span>
         </button>
       ))}
+    </div>
+      <InfoTip label="One event versus a whole calendar we should scrape on a recurring basis." />
     </div>
   );
 }
@@ -310,7 +314,7 @@ function ExtractedPreview({
         </p>
         {adapter && (
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-            via {adapter}
+            <Term tip="The parser we used to read this page; edit any field it got wrong.">via {adapter}</Term>
           </p>
         )}
       </div>

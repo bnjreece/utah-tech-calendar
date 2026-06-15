@@ -1,3 +1,4 @@
+import type * as React from "react";
 import { eq, desc, and, gte, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { rejectEvent, setEventGroup } from "@/lib/admin-actions";
@@ -30,11 +31,15 @@ const FLAG_STYLES: Record<string, FlagStyle> = {
   online: { label: "online", classes: "bg-paper-deep text-ink-soft" },
 };
 
-function FlagChip({ kind }: { kind: keyof typeof FLAG_STYLES }) {
+function FlagChip({
+  kind,
+  ...rest
+}: { kind: keyof typeof FLAG_STYLES } & React.ComponentPropsWithRef<"span">) {
   const s = FLAG_STYLES[kind];
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] ${s.classes}`}
+      {...rest}
     >
       {s.label}
     </span>
@@ -146,15 +151,27 @@ export default async function RecentIngestsPage() {
                     {mtDate(start, { weekday: "short", month: "short", day: "numeric" })}{" "}
                     {mtTime(start)}
                   </span>
-                  {e.isPaid && <FlagChip kind="paid" />}
-                  {e.isConference && <FlagChip kind="conference" />}
+                  {e.isPaid && (
+                    <ActionTip tip="A ticketed event with a real price, not a free community meetup.">
+                      <FlagChip kind="paid" />
+                    </ActionTip>
+                  )}
+                  {e.isConference && (
+                    <ActionTip tip="A multi-session conference, summit, or convention.">
+                      <FlagChip kind="conference" />
+                    </ActionTip>
+                  )}
                   {e.isTentative && (
                     <span className="inline-flex items-center gap-1">
                       <FlagChip kind="tentative" />
                       <InfoTip label="The date is a penciled-in placeholder from prior-year cadence, not yet announced." />
                     </span>
                   )}
-                  {e.isOnline && <FlagChip kind="online" />}
+                  {e.isOnline && (
+                    <ActionTip tip="A virtual or online-only event, hidden from the in-person default view.">
+                      <FlagChip kind="online" />
+                    </ActionTip>
+                  )}
                 </div>
                 <h3 className="mt-1.5 font-display text-lg leading-snug -tracking-[0.005em] text-ink">
                   {title}

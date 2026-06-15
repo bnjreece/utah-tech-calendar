@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { InfoTip, Term } from "@/components/ui/tooltip";
 
 interface Props {
   feedQuery?: string;
@@ -84,7 +85,9 @@ export function SubscribePopover({
             >
               <span>Apple Calendar</span>
               <span className="font-mono text-[10px] uppercase tracking-wide text-ink-soft">
-                webcal
+                <Term tip="This subscribes your calendar so it stays in sync, rather than a one-time download.">
+                  webcal
+                </Term>
               </span>
             </a>
           </li>
@@ -108,7 +111,10 @@ export function SubscribePopover({
               onClick={() => copy(icalUrl, "ical")}
               className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-2.5 sm:py-2 text-base sm:text-sm text-left hover:bg-ink/[0.04] transition-colors"
             >
-              <span>Copy iCal URL</span>
+              <span className="inline-flex items-center gap-1">
+                Copy iCal URL
+                <InfoTip label="Subscribe in a calendar app like Apple Calendar or Google Calendar." />
+              </span>
               <span className="font-mono text-[10px] uppercase tracking-wide text-ink-soft">
                 {copied === "ical" ? "copied" : ".ics"}
               </span>
@@ -120,7 +126,10 @@ export function SubscribePopover({
               onClick={() => copy(rssUrl, "rss")}
               className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-2.5 sm:py-2 text-base sm:text-sm text-left hover:bg-ink/[0.04] transition-colors"
             >
-              <span>Copy RSS URL</span>
+              <span className="inline-flex items-center gap-1">
+                Copy RSS URL
+                <InfoTip label="Subscribe in a feed reader." />
+              </span>
               <span className="font-mono text-[10px] uppercase tracking-wide text-ink-soft">
                 {copied === "rss" ? "copied" : "rss"}
               </span>
@@ -129,7 +138,9 @@ export function SubscribePopover({
         </ul>
         {feedQuery && (
           <p className="mt-2 pt-2 border-t border-ink/10 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-soft">
-            With current filters
+            <Term tip="This subscription delivers only events matching the filters above.">
+              With current filters
+            </Term>
           </p>
         )}
       </PopoverContent>

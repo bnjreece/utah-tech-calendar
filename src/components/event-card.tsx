@@ -5,6 +5,7 @@ import { eventSlug } from "@/lib/slugs";
 import { displayTitle } from "@/lib/display";
 import { mtTime, mtMonth, mtWeekday, mtDayNum } from "@/lib/time";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
+import { ActionTip } from "@/components/tooltips";
 
 export function EventCard({ event }: { event: EventWithGroup }) {
   const start = new Date(event.startsAt);
@@ -43,12 +44,14 @@ export function EventCard({ event }: { event: EventWithGroup }) {
           ) : (
             <div aria-hidden />
           )}
-          <span
-            data-source-chip
-            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${colors.chip}`}
-          >
-            {sourceLabel}
-          </span>
+          <ActionTip tip="Where we found this listing; use the Source filter to narrow by it.">
+            <span
+              data-source-chip
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${colors.chip}`}
+            >
+              {sourceLabel}
+            </span>
+          </ActionTip>
         </div>
 
         <div className="min-w-0 flex-1">
@@ -90,13 +93,17 @@ export function EventCard({ event }: { event: EventWithGroup }) {
             {event.tags && event.tags.length > 0 && (
               <div className="flex flex-wrap gap-1" role="list">
                 {event.tags.slice(0, 4).map((t) => (
-                  <span
+                  <ActionTip
                     key={t}
-                    role="listitem"
-                    className="inline-flex items-center rounded-full bg-paper-deep px-2 py-0.5 text-xs text-ink-soft"
+                    tip="A topic tag; use the Tag filter to find more like this."
                   >
-                    {t}
-                  </span>
+                    <span
+                      role="listitem"
+                      className="inline-flex items-center rounded-full bg-paper-deep px-2 py-0.5 text-xs text-ink-soft"
+                    >
+                      {t}
+                    </span>
+                  </ActionTip>
                 ))}
               </div>
             )}

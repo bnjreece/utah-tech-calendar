@@ -11,7 +11,7 @@ import {
 } from "@/lib/filters";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
 import { SubscribePopover } from "@/components/subscribe-popover";
-import { InfoTip } from "@/components/ui/tooltip";
+import { InfoTip, Term } from "@/components/ui/tooltip";
 import { SITE_URL } from "@/lib/seo";
 
 interface CountedOption {
@@ -274,7 +274,7 @@ export function FeedBuilder({ cities, tags, sources, groups }: Props) {
           </h3>
           <p className="mt-2 text-sm text-ink-soft leading-relaxed flex-1">
             Apple Calendar, Google Calendar, or any reader that speaks iCal.
-            Updates as soon as we scrape.
+            <Term tip="We re-check sources nightly, so your calendar refreshes automatically.">Updates</Term> as soon as we scrape.
           </p>
           <div className="mt-4">
             <SubscribePopover
@@ -330,7 +330,10 @@ export function FeedBuilder({ cities, tags, sources, groups }: Props) {
         </div>
         <div className="border border-ink/15 rounded-2xl p-5 bg-paper flex flex-col">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
-            Embed
+            <span className="inline-flex items-center gap-1">
+              Embed
+              <InfoTip label="Paste this one line of HTML into your site to show this filtered schedule." />
+            </span>
           </p>
           <h3 className="mt-2 font-display text-xl italic tracking-tight">
             Or put it on your site.
@@ -537,7 +540,7 @@ function EmailSignupInline({ feedQuery }: { feedQuery: string }) {
         Check your inbox for the one-click confirm.
         {feedQuery && (
           <span className="block mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-soft">
-            With current filters
+            <Term tip="This subscription delivers only events matching the filters set above.">With current filters</Term>
           </span>
         )}
       </p>

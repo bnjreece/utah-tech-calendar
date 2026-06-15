@@ -356,6 +356,7 @@ export function FilterBar({ cities, tags, sources, groups }: Props) {
           >
             Restore your last view
           </button>
+          <InfoTip label="Reapply the filters you had set the last time you visited." />
           <button
             type="button"
             onClick={() => {

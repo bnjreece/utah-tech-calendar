@@ -5,6 +5,7 @@ import { db, sources } from "@/lib/db";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
 import { ForgeCredit } from "@/components/forge-credit";
+import { InfoTip, Term } from "@/components/ui/tooltip";
 
 /* Re-render hourly so the live source count stays accurate without a
    DB hit on every visit. The stat used to be a hardcoded "25+" that
@@ -134,7 +135,15 @@ export default async function DiscoverPage() {
             {STATS.map((s) => (
               <div key={s.label} className="flex flex-col gap-1">
                 <dt className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-                  {s.label}
+                  <span className="inline-flex items-center gap-1">
+                    {s.label}
+                    {s.label === "Sources watched" && (
+                      <InfoTip label="Calendars and feeds we scan on a recurring schedule for new events." />
+                    )}
+                    {s.label === "Curated verticals" && (
+                      <InfoTip label="A vertical is a tech industry lane such as AI, fintech, or biotech." />
+                    )}
+                  </span>
                 </dt>
                 <dd
                   className="font-display italic tracking-tight text-ink text-4xl sm:text-5xl tabular-nums"
@@ -185,7 +194,7 @@ export default async function DiscoverPage() {
               02 · Refinement
             </p>
             <p className="mt-2 text-pretty leading-relaxed">
-              Cert-spam out, craft out, dupes deduped,
+              <Term tip="Certification-prep courses mass-posted as events, which we filter out.">Cert-spam</Term> out, craft out, dupes deduped,
               webinars flagged, past placeholders sunset.
               The cleanup pass.
             </p>

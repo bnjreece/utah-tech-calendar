@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, usePathname } from "next/navigation";
+import { InfoTip } from "@/components/ui/tooltip";
 
 export type ScheduleDensity = "weekly" | "monthly";
 
@@ -54,6 +55,12 @@ export function DensityToggle({ current }: { current: ScheduleDensity }) {
       >
         monthly
       </Link>
+      <span className="inline-flex items-center ml-2 align-middle">
+        <InfoTip
+          label="This changes how compact the rows are, not the date range shown."
+          side="bottom"
+        />
+      </span>
     </h2>
   );
 }
