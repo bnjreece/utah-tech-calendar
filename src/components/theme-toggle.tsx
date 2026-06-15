@@ -21,10 +21,14 @@ export function ThemeToggle() {
         return null;
       }
     })();
+    /* Intentional: theme is client-only (localStorage / system pref) and
+       must initialize post-mount to avoid a hydration mismatch. */
     if (stored === "dark" || stored === "light") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(stored);
     } else {
       const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(prefersDark ? "dark" : "light");
     }
   }, []);
