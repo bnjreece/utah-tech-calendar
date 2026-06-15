@@ -28,7 +28,6 @@ export function ThemeToggle() {
       setTheme(stored);
     } else {
       const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(prefersDark ? "dark" : "light");
     }
   }, []);
