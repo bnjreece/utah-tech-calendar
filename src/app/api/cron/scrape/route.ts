@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   /* Phase 1 (shadow): classify a bounded batch of unclassified upcoming
      events. Decoupled from ingestion so the LLM never slows scraping; the
      backlog drains a few rows per tick. No-op without ANTHROPIC_API_KEY. */
-  let classify = { scanned: 0, classified: 0 };
+  let classify = { scanned: 0, classified: 0, screened: 0, toReview: 0 };
   try {
     classify = await classifyUnchecked(25);
   } catch (err) {

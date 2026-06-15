@@ -84,7 +84,7 @@ export async function approveEvent(id: string) {
   const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
   await db
     .update(events)
-    .set({ status: "approved", updatedAt: new Date() })
+    .set({ status: "approved", statusLocked: true, updatedAt: new Date() })
     .where(eq(events.id, id));
   if (before) {
     await recordEventDecision(before, "approve", {
@@ -103,7 +103,7 @@ export async function rejectEvent(id: string) {
   const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
   await db
     .update(events)
-    .set({ status: "hidden", hiddenReason: "manual", updatedAt: new Date() })
+    .set({ status: "hidden", hiddenReason: "manual", statusLocked: true, updatedAt: new Date() })
     .where(eq(events.id, id));
   if (before) {
     await recordEventDecision(before, "reject", {
@@ -289,7 +289,7 @@ export async function restoreEvent(id: string) {
   const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
   await db
     .update(events)
-    .set({ status: "approved", hiddenReason: null, updatedAt: new Date() })
+    .set({ status: "approved", hiddenReason: null, statusLocked: true, updatedAt: new Date() })
     .where(eq(events.id, id));
   if (before) {
     await recordEventDecision(before, "restore", {
@@ -301,6 +301,58 @@ export async function restoreEvent(id: string) {
   revalidatePath("/admin/review");
   revalidatePath("/admin/hidden");
   revalidatePath("/");
+}
+
+/* From /admin/screened: the admin disagrees with an auto-screen and wants
+   a human to decide it - move it into the review queue and lock it so the
+   router won't re-screen it. */
+export async function sendEventToReview(id: string) {
+  const admin = await requireAdmin();
+  const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
+  await db
+    .update(events)
+    .set({ status: "pending", statusLocked: true, updatedAt: new Date() })
+    .where(eq(events.id, id));
+  if (before) {
+    await recordEventDecision(before, "restore", {
+      newStatus: "pending",
+      reason: "sent-to-review",
+      decidedBy: admin.email,
+      channel: "admin-ui",
+    });
+  }
+  revalidatePath("/admin/screened");
+  revalidatePath("/admin/review");
+  revalidatePath("/");
+}
+
+/* Master kill-switch + confidence bar for the LLM hard-gate. Form-driven:
+   `enabled` is a checkbox, `threshold` a 0.5-1.0 number. */
+export async function saveLlmGate(formData: FormData) {
+  await requireAdmin();
+  const enabled = formData.get("enabled") === "on";
+  const threshold = Math.max(
+    0.5,
+    Math.min(1, Number(formData.get("threshold")) || 0.92),
+  );
+  await db
+    .insert(adminSettings)
+    .values({
+      id: 1,
+      llmGateEnabled: enabled,
+      llmGateThreshold: String(threshold),
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: adminSettings.id,
+      set: {
+        llmGateEnabled: enabled,
+        llmGateThreshold: String(threshold),
+        updatedAt: new Date(),
+      },
+    });
+  revalidatePath("/admin/screened");
+  revalidatePath("/admin");
 }
 
 export async function toggleSourceEnabled(id: string, enabled: boolean) {

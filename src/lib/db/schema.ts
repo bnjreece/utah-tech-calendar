@@ -67,6 +67,11 @@ export const events = pgTable(
        not re-derive/overwrite isOnline on re-scrape (mirrors groupLocked).
        Used once an admin UI can toggle an event's online flag. */
     onlineLocked: boolean("online_locked").notNull().default(false),
+    /* When true, a human (admin action, magic-link, or manual correction)
+       has decided this event's status, so the LLM router must NOT re-route
+       it (screen / send-to-review). New scraped events are false and thus
+       routable; admin approve/reject/restore sets it true. */
+    statusLocked: boolean("status_locked").notNull().default(false),
     status: text("status").notNull().default("approved"),
     /* Surfaces a thicker bar + "Conference" eyebrow in the schedule.
        Flagged manually via admin (or by future heuristic at scrape time). */
@@ -208,6 +213,15 @@ export const adminSettings = pgTable("admin_settings", {
      skip-if-empty). Lets /admin show "queue digest ran 4h ago" so the
      admin can spot a silent cron outage even during dry weeks. */
   lastQueueDigestRunAt: timestamp("last_queue_digest_run_at", { withTimezone: true }),
+  /* LLM hard-gate (gated autonomy). When enabled, the shadow classifier
+     stops being shadow-only: a flagged event at confidence >= threshold is
+     auto-screened (hidden 'llm-screened'); everything else flagged goes to
+     the admin review queue. Master kill-switch + the confidence bar, both
+     admin-controlled. Default OFF until explicitly enabled. */
+  llmGateEnabled: boolean("llm_gate_enabled").notNull().default(false),
+  /* Confidence bar (0..1) to hard-gate. Conservative default - only the
+     slam-dunk junk auto-screens; borderline goes to a human. */
+  llmGateThreshold: numeric("llm_gate_threshold").notNull().default("0.92"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
