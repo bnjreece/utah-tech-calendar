@@ -75,6 +75,7 @@ export default async function EmbedPage({
           the embedder's system pref is dark. Lives in /public so it
           loads with strategy=beforeInteractive and matches first
           paint inside the iframe. */}
+      {/* eslint-disable-next-line @next/next/no-sync-scripts -- Anti-FOUC theme bootstrap: this script must execute synchronously before first paint to flip <html> to .dark, so it cannot be async/deferred without reintroducing a theme flash inside the iframe. The rule's preferred next/script can't run beforeInteractive here, and async/defer would defeat the script's entire purpose. */}
       {theme === "auto" && <script src="/embed-theme-auto.js" />}
       {/* Promote all <a> links inside the embed to target=_top so
           clicks open in the embedder's parent window, not inside the

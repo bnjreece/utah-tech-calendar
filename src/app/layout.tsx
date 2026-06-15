@@ -84,10 +84,12 @@ export default function RootLayout({
             the document body. Reads the same localStorage key as
             components/theme-toggle.tsx and applies .dark to <html>
             before React hydrates. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- inline theme bootstrap must run before first paint to prevent FOUC; defer/async would reintroduce the flash */}
         <script src="/theme-init.js" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://api.fontshare.com" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font -- App Router root layout is the correct place for the font link; pages/_document.js does not exist here */}
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400..700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"

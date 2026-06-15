@@ -56,6 +56,7 @@ function fmtRelative(d: Date): string {
 }
 
 export default async function RecentIngestsPage() {
+  // eslint-disable-next-line react-hooks/purity -- server component renders once per request; current time defines the recent-ingest window
   const since = new Date(Date.now() - WINDOW_HOURS * 3_600_000);
 
   /* Per-source ingestion volume in the window. Helps spot a source

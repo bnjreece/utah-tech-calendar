@@ -4,7 +4,7 @@
 
 import { ImageResponse } from "next/og";
 import { sql } from "drizzle-orm";
-import { db, events } from "@/lib/db";
+import { db } from "@/lib/db";
 import { getEventById } from "@/lib/queries";
 import { extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 import { mtDate, mtTime } from "@/lib/time";

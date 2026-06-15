@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { sql } from "drizzle-orm";
-import { db, events } from "@/lib/db";
+import { db } from "@/lib/db";
 import { getEventById } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { EventJsonLd } from "@/components/json-ld";

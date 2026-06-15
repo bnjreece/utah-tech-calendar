@@ -1,7 +1,7 @@
 import { eq, asc, gte, and, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { restoreEvent } from "@/lib/admin-actions";
-import { SOURCE_LABELS, sourceLabel as resolveSourceLabel } from "@/lib/filters";
+import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { displayTitle } from "@/lib/display";
 import { mtDate } from "@/lib/time";

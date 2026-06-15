@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { asc, sql } from "drizzle-orm";
-import { db, sources, events } from "@/lib/db";
+import { db, sources } from "@/lib/db";
 import {
   toggleSourceEnabled,
   toggleSourceRequiresReview,
@@ -167,6 +167,7 @@ export default async function SourcesAdminPage({
              (Silicon Slopes). Warn at 50d, urgent at 80d. */
           const rotatedAt = s.authRotatedAt ? new Date(s.authRotatedAt) : null;
           const cookieDays = rotatedAt
+            // eslint-disable-next-line react-hooks/purity -- server component renders once per request; current time measures cookie age at request time
             ? Math.round((Date.now() - rotatedAt.getTime()) / (24 * 60 * 60 * 1000))
             : null;
           const cookieChipClass =

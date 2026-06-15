@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { db, emailSubscriptions } from "@/lib/db";
 import { verifySubscriptionTokenDetailed } from "@/lib/subscription-token";
 
@@ -79,7 +79,7 @@ export default async function VerifyPage({
           href="/"
           className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-base sm:px-5 sm:py-2.5 sm:text-sm font-medium text-paper hover:bg-ink/85"
         >
-          See this week's schedule
+          See this week&apos;s schedule
         </Link>
         <Link
           href="/subscribe"

@@ -15,6 +15,26 @@ function fmtRelative(d: Date): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function Stat({
+  value,
+  label,
+  tip,
+}: {
+  value: number;
+  label: string;
+  tip?: string;
+}) {
+  return (
+    <div className="border-t border-ink/15 first:border-t-0 py-5 flex items-baseline justify-between gap-4">
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft inline-flex items-center gap-1">
+        {label}
+        {tip ? <InfoTip label={tip} /> : null}
+      </span>
+      <span className="font-display text-3xl tabular-nums">{value}</span>
+    </div>
+  );
+}
+
 export default async function AdminOverviewPage() {
   const now = new Date();
   const [pendingCount] = await db
@@ -39,6 +59,7 @@ export default async function AdminOverviewPage() {
     .where(
       and(
         eq(events.status, "approved"),
+        // eslint-disable-next-line react-hooks/purity -- server component renders once per request; current time is the intended ingest-window boundary
         gte(events.createdAt, new Date(Date.now() - 48 * 3_600_000)),
       ),
     );
@@ -47,24 +68,6 @@ export default async function AdminOverviewPage() {
   const reviewedSources = sourceRows.filter((s) => s.requiresReview).length;
   const alerts = detectAlerts(sourceRows);
   const [settings] = await db.select().from(adminSettings).limit(1);
-
-  const Stat = ({
-    value,
-    label,
-    tip,
-  }: {
-    value: number;
-    label: string;
-    tip?: string;
-  }) => (
-    <div className="border-t border-ink/15 first:border-t-0 py-5 flex items-baseline justify-between gap-4">
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft inline-flex items-center gap-1">
-        {label}
-        {tip ? <InfoTip label={tip} /> : null}
-      </span>
-      <span className="font-display text-3xl tabular-nums">{value}</span>
-    </div>
-  );
 
   return (
     <div className="flex flex-col gap-12">

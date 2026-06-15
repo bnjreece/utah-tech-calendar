@@ -131,7 +131,7 @@ export const utahGeekEventsAdapter: Adapter<EventItem> = {
       const parent = heading.parent();
       const fullText = parent.text().replace(/\s+/g, " ").trim();
       const headingText = title.replace(/\s+/g, " ").trim();
-      let bodyText = fullText.startsWith(headingText)
+      const bodyText = fullText.startsWith(headingText)
         ? fullText.slice(headingText.length).trim()
         : fullText;
       /* The page top has a single "Events" h1 inside its own wrapper -
