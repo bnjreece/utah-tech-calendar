@@ -49,10 +49,11 @@ export async function GET(request: NextRequest) {
 
   const snapshot = await fetchQueueSnapshot();
   const total = snapshot.pendingEvents.length + snapshot.pendingSubmissions.length;
-  if (total === 0) {
-    /* Per "can skip if none" - no email when the queue is empty. The
-       daily cadence is itself the recovery mechanism: if a queue grows
-       overnight, tomorrow's 14:00 UTC run picks it up. */
+  const screenedCount = snapshot.screenedToday.length;
+  if (total + screenedCount === 0) {
+    /* Per "can skip if none" - no email when there's nothing to review AND
+       nothing was auto-screened today. The daily cadence is itself the
+       recovery mechanism: tomorrow's run picks up anything that accrued. */
     return Response.json({ ok: true, skipped: "queue_empty" });
   }
 
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
       total,
       pendingEvents: snapshot.pendingEvents.length,
       pendingSubmissions: snapshot.pendingSubmissions.length,
+      screenedToday: screenedCount,
       subject: content.subject,
       text: content.text,
       html: content.html,
@@ -84,6 +86,7 @@ export async function GET(request: NextRequest) {
     ok: result.ok,
     sent: result.ok,
     total,
+    screenedToday: screenedCount,
     subject: content.subject,
   });
 }
