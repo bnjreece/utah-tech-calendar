@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ReflectionShimmerLogo } from "@/components/logos";
 import { ForgeCredit } from "@/components/forge-credit";
 import { SiteNav } from "@/components/site-nav";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
 import "./globals.css";
@@ -98,6 +99,7 @@ export default function RootLayout({
       </head>
       <body className="isolate min-h-dvh flex flex-col bg-background text-foreground antialiased">
         <ClerkProvider>
+          <TooltipProvider>
           <header className="site-chrome sticky top-0 z-30 bg-paper/85 backdrop-blur-xl border-b border-ink/10">
             <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 sm:gap-6">
               <Link
@@ -118,7 +120,7 @@ export default function RootLayout({
             </div>
           </header>
           <main className="flex-1">{children}</main>
-        <footer className="site-chrome mt-12 border-t-2 border-ink">
+          <footer className="site-chrome mt-12 border-t-2 border-ink">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10">
             {/* Vertical index - internal linking to the curated tag
                 landing pages so Google can crawl them from every
@@ -179,6 +181,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+          </TooltipProvider>
         </ClerkProvider>
         <Analytics />
         <SpeedInsights />
