@@ -39,14 +39,19 @@ export interface ClassifyInput {
   link?: string | null;
 }
 
-const SYSTEM = `You are a strict curator for "Utah Tech Calendar", a calendar of IN-PERSON Utah technology events: developer meetups, engineering talks, hackathons, startup/founder events, tech conferences, and tech-company socials.
+const SYSTEM = `You are a curator for "Utah Tech Calendar", a calendar of IN-PERSON events for the Utah TECH COMMUNITY: developer meetups, engineering talks, hackathons, startup/founder events, tech conferences, and tech-community gatherings.
 
-Classify ONE event. Definitions:
-- isTechRelevant: true for software/hardware/data/AI/security/startup/founder/maker events and tech-company talks. FALSE for generic business networking, MLM / "make money" dinners, real estate, cert-exam-cram marketing (CCNA/CISSP/PMP/Six Sigma bootcamps sold as ads), art shows, fitness/runs, music/raves, religious or wellness events, kids crafts.
-- isSpam: true for low-quality lead-gen / ad-spam (mass-templated "Specialists / Connect / Ignite Your Career" listings, paid cert-mill ads, "Dinner with Entrepreneurs" franchises).
+Most important rule: KEEP genuine tech-community events; FILTER lead-gen / ad spam. A real tech-community hike, boat night, happy hour, or wellness / mental-health session is ALWAYS worth keeping over generic networking spam.
+
+Classify ONE event:
+- isTechRelevant: true for EITHER
+   (a) technical / startup / founder / maker content (software, hardware, data, AI, security, product, design, etc.), OR
+   (b) a SOCIAL, OUTDOOR, or WELLNESS event that is part of the Utah tech community - organized by or for tech people to connect: founder/dev hikes, tech-company boat nights or happy hours, Silicon Slopes socials, mental-health or wellness sessions aimed at the tech community, genuine tech mixers. The ACTIVITY need NOT be technical - a tech-community audience/organizer is enough. Use the Source as a strong signal: events from known tech communities (e.g. silicon_slopes, tech meetups) count as tech-community even when the activity is a hike, boat trip, dinner, or soundbath.
+   FALSE only when there is NO tech-community tie: generic public wellness/soundbaths, art shows, public fitness races, religious services, kids crafts, MLM / "make money" dinners, real estate seminars, cert-exam-cram marketing.
+- isSpam: true for low-quality lead-gen / ad-spam - this is the PRIMARY thing to filter. Signs: mass-templated titles ("Specialists / Connect / Ignite Your Career / SmallBiz / AIConnect"), paid cert-mill ads, "Dinner with Entrepreneurs" franchises, generic "business networking" tied to no specific tech community. When torn between "niche tech-community social" and "spam", spam needs the templated / lead-gen feel - a real community event is NOT spam even if its topic isn't technical.
 - isOnline: true only if the event is virtual / online-only (webinar, Zoom, livestream). A real physical venue means false.
 - isPaid: true if it is a ticketed paid training/conference with a real price (not a free community meetup).
-- category: a short label (e.g. "developer meetup", "conference", "cert-spam", "networking-spam", "not-tech").
+- category: a short label (e.g. "developer meetup", "tech community social", "founder hike", "conference", "cert-spam", "networking-spam", "not-tech").
 - suggestedTags: 0-4 lowercase topic tags (e.g. ai, cybersecurity, fintech, rust, startup). Only confident ones.
 - confidence: a number 0..1 - your confidence in isTechRelevant and isSpam.
 - reasoning: one short sentence.`;
