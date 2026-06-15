@@ -9,6 +9,8 @@ import {
 import { getAllGroups } from "@/lib/queries";
 import { GroupPicker } from "@/components/admin-group-picker";
 import { deriveSourceName } from "@/lib/source-name";
+import { InfoTip } from "@/components/ui/tooltip";
+import { StatusTip } from "@/components/tooltips";
 
 export const dynamic = "force-dynamic";
 
@@ -182,10 +184,12 @@ export default async function SourcesAdminPage({
                 <div className="flex items-baseline gap-2 flex-wrap font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 ${STATUS_CHIP[health]}`}>
                     {STATUS_LABEL[health]}
+                    <StatusTip status={health === "working" ? "ok" : health === "empty" ? "quiet" : health} />
                   </span>
                   {cookieDays !== null && (
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 ${cookieChipClass}`}>
                       cookie {cookieDays}d
+                      <InfoTip label="Days since this source's auth cookie was rotated; it turns amber at 50 and red at 80." />
                     </span>
                   )}
                   <span>{s.adapter}</span>
@@ -229,13 +233,14 @@ export default async function SourcesAdminPage({
                     {s.enabled ? "enabled" : "disabled"}
                   </button>
                 </form>
-                <form action={toggleSourceRequiresReview.bind(null, s.id, !s.requiresReview)}>
+                <form action={toggleSourceRequiresReview.bind(null, s.id, !s.requiresReview)} className="inline-flex items-center gap-1">
                   <button
                     type="submit"
                     className={`py-1.5 sm:py-0 ${s.requiresReview ? "text-sunset-deep hover:underline decoration-1 underline-offset-4" : "text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4"}`}
                   >
                     {s.requiresReview ? "requires review" : "auto-approve"}
                   </button>
+                  <InfoTip label="Toggle whether this source's new events queue for review or publish automatically." side="left" />
                 </form>
                 <GroupPicker
                   action={setSourceGroup}

@@ -14,6 +14,8 @@ import {
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
 import { ShareFilterButton } from "@/components/share-filter-button";
+import { InfoTip } from "@/components/ui/tooltip";
+import { StrataLegendTip } from "@/components/tooltips";
 import {
   Popover,
   PopoverContent,
@@ -245,12 +247,15 @@ export function FilterBar({ cities, tags, sources, groups }: Props) {
             />
           )}
           {sources.length > 0 && (
-            <MultiSelectPopover
-              label="Source"
-              options={sourceOptions}
-              selected={filters.sources}
-              onChange={(next) => update({ sources: next })}
-            />
+            <span className="inline-flex items-center gap-1">
+              <MultiSelectPopover
+                label="Source"
+                options={sourceOptions}
+                selected={filters.sources}
+                onChange={(next) => update({ sources: next })}
+              />
+              <StrataLegendTip />
+            </span>
           )}
           <MultiSelectPopover
             label="Type"
@@ -263,10 +268,13 @@ export function FilterBar({ cities, tags, sources, groups }: Props) {
             to={filters.to}
             onChange={(f, t) => update({ from: f, to: t })}
           />
-          <OnlineToggle
-            on={filters.showOnline}
-            onChange={(v) => update({ showOnline: v })}
-          />
+          <span className="inline-flex items-center gap-1">
+            <OnlineToggle
+              on={filters.showOnline}
+              onChange={(v) => update({ showOnline: v })}
+            />
+            <InfoTip label="Online events are hidden by default; turn this on to include them." />
+          </span>
         </div>
       </div>
 

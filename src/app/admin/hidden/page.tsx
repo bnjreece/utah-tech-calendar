@@ -5,6 +5,7 @@ import { SOURCE_LABELS, sourceLabel as resolveSourceLabel } from "@/lib/filters"
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { displayTitle } from "@/lib/display";
 import { mtDate } from "@/lib/time";
+import { ReasonTip } from "@/components/tooltips";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,7 @@ export default async function HiddenEventsPage() {
                   </span>
                   {g && (<><span aria-hidden>·</span><span>{g.name}</span></>)}
                   <ReasonChip reason={e.hiddenReason} />
+                  {e.hiddenReason && <ReasonTip reason={e.hiddenReason} />}
                 </div>
                 <h3 className="mt-1 font-display text-lg leading-snug text-ink-soft">
                   {displayTitle({ title: e.title, link: e.link, group: g ? { name: g.name } : null, source: e.source })}

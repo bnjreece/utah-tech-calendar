@@ -7,6 +7,8 @@ import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { displayTitle } from "@/lib/display";
 import { mtDate, mtTime } from "@/lib/time";
+import { InfoTip } from "@/components/ui/tooltip";
+import { ActionTip, LOCK_NOTE } from "@/components/tooltips";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Recent · Admin" };
@@ -146,7 +148,12 @@ export default async function RecentIngestsPage() {
                   </span>
                   {e.isPaid && <FlagChip kind="paid" />}
                   {e.isConference && <FlagChip kind="conference" />}
-                  {e.isTentative && <FlagChip kind="tentative" />}
+                  {e.isTentative && (
+                    <span className="inline-flex items-center gap-1">
+                      <FlagChip kind="tentative" />
+                      <InfoTip label="The date is a penciled-in placeholder from prior-year cadence, not yet announced." />
+                    </span>
+                  )}
                   {e.isOnline && <FlagChip kind="online" />}
                 </div>
                 <h3 className="mt-1.5 font-display text-lg leading-snug -tracking-[0.005em] text-ink">
@@ -171,12 +178,14 @@ export default async function RecentIngestsPage() {
               </div>
               <div className="flex flex-col items-end gap-2 self-start">
                 <form action={rejectEvent.bind(null, e.id)}>
-                  <button
-                    type="submit"
-                    className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
-                  >
-                    Hide
-                  </button>
+                  <ActionTip tip={LOCK_NOTE}>
+                    <button
+                      type="submit"
+                      className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
+                    >
+                      Hide
+                    </button>
+                  </ActionTip>
                 </form>
                 <GroupPicker
                   action={setEventGroup}

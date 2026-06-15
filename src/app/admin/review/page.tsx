@@ -10,6 +10,7 @@ import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { displayTitle } from "@/lib/display";
 import { mtDate, mtTime } from "@/lib/time";
+import { StrataLegendTip, ActionTip } from "@/components/tooltips";
 
 export const dynamic = "force-dynamic";
 
@@ -74,8 +75,11 @@ export default async function ReviewQueuePage() {
   return (
     <div className="flex flex-col gap-12">
       <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
-        {eventRows.length} scraped · {submissionRows.length} submitted
-        {sourceRows.length > 0 ? ` · ${sourceRows.length} source suggestions` : ""}
+        <span className="inline-flex items-center gap-1">
+          {eventRows.length} scraped · {submissionRows.length} submitted
+          {sourceRows.length > 0 ? ` · ${sourceRows.length} source suggestions` : ""}
+          <StrataLegendTip />
+        </span>
       </p>
 
       {eventRows.length > 0 && (
@@ -138,20 +142,24 @@ export default async function ReviewQueuePage() {
                   </div>
                   <div className="flex flex-col gap-2 self-start">
                     <form action={approveEvent.bind(null, e.id)}>
-                      <button
-                        type="submit"
-                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
-                      >
-                        Approve
-                      </button>
+                      <ActionTip tip="Publishes this event and locks it against the router.">
+                        <button
+                          type="submit"
+                          className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
+                        >
+                          Approve
+                        </button>
+                      </ActionTip>
                     </form>
                     <form action={rejectEvent.bind(null, e.id)}>
-                      <button
-                        type="submit"
-                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
-                      >
-                        Reject
-                      </button>
+                      <ActionTip tip="Hides this event and locks it against the router.">
+                        <button
+                          type="submit"
+                          className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
+                        >
+                          Reject
+                        </button>
+                      </ActionTip>
                     </form>
                   </div>
                 </li>
@@ -220,20 +228,24 @@ export default async function ReviewQueuePage() {
                   </div>
                   <div className="flex flex-col gap-2 self-start">
                     <form action={approveSubmission.bind(null, s.id)}>
-                      <button
-                        type="submit"
-                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
-                      >
-                        Approve
-                      </button>
+                      <ActionTip tip="Publishes this event and locks it against the router.">
+                        <button
+                          type="submit"
+                          className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
+                        >
+                          Approve
+                        </button>
+                      </ActionTip>
                     </form>
                     <form action={rejectSubmission.bind(null, s.id)}>
-                      <button
-                        type="submit"
-                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
-                      >
-                        Reject
-                      </button>
+                      <ActionTip tip="Hides this event and locks it against the router.">
+                        <button
+                          type="submit"
+                          className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
+                        >
+                          Reject
+                        </button>
+                      </ActionTip>
                     </form>
                   </div>
                 </li>
@@ -301,20 +313,24 @@ export default async function ReviewQueuePage() {
                   </div>
                   <div className="flex flex-col gap-2 self-start">
                     <form action={approveSubmission.bind(null, s.id)}>
-                      <button
-                        type="submit"
-                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
-                      >
-                        Register source
-                      </button>
+                      <ActionTip tip="Adds this URL as a scrape source with review required on its first batch.">
+                        <button
+                          type="submit"
+                          className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] rounded-full bg-ink text-paper px-3 py-2 sm:py-1.5 hover:bg-ink/85 transition-colors"
+                        >
+                          Register source
+                        </button>
+                      </ActionTip>
                     </form>
                     <form action={rejectSubmission.bind(null, s.id)}>
-                      <button
-                        type="submit"
-                        className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
-                      >
-                        Reject
-                      </button>
+                      <ActionTip tip="Hides this event and locks it against the router.">
+                        <button
+                          type="submit"
+                          className="font-mono text-[11px] sm:text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sunset-deep hover:underline decoration-1 underline-offset-4 transition-colors py-1"
+                        >
+                          Reject
+                        </button>
+                      </ActionTip>
                     </form>
                   </div>
                 </li>

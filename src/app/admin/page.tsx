@@ -2,6 +2,7 @@ import Link from "next/link";
 import { eq, sql, gte, and } from "drizzle-orm";
 import { db, events, sources, pendingSubmissions, adminSettings } from "@/lib/db";
 import { detectAlerts } from "@/lib/health";
+import { InfoTip } from "@/components/ui/tooltip";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +48,19 @@ export default async function AdminOverviewPage() {
   const alerts = detectAlerts(sourceRows);
   const [settings] = await db.select().from(adminSettings).limit(1);
 
-  const Stat = ({ value, label }: { value: number; label: string }) => (
+  const Stat = ({
+    value,
+    label,
+    tip,
+  }: {
+    value: number;
+    label: string;
+    tip?: string;
+  }) => (
     <div className="border-t border-ink/15 first:border-t-0 py-5 flex items-baseline justify-between gap-4">
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft inline-flex items-center gap-1">
         {label}
+        {tip ? <InfoTip label={tip} /> : null}
       </span>
       <span className="font-display text-3xl tabular-nums">{value}</span>
     </div>
@@ -99,24 +109,43 @@ export default async function AdminOverviewPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
         <section>
           <h2 className="font-display text-xl italic mb-2">Events</h2>
-          <Stat value={pendingCount.c} label="Pending · scraped" />
-          <Stat value={pendingSubsCount.c} label="Pending · submitted" />
+          <Stat
+            value={pendingCount.c}
+            label="Pending · scraped"
+            tip="Scraped events waiting in the review queue."
+          />
+          <Stat
+            value={pendingSubsCount.c}
+            label="Pending · submitted"
+            tip="Manually submitted events waiting for moderation."
+          />
           <Stat value={approvedUpcomingCount.c} label="Approved · upcoming" />
-          <Stat value={ingestedRecent.c} label="Ingested · last 48h" />
+          <Stat
+            value={ingestedRecent.c}
+            label="Ingested · last 48h"
+            tip="Events approved and published in the last 48 hours."
+          />
           <Stat value={hiddenCount.c} label="Hidden" />
         </section>
         <section>
           <h2 className="font-display text-xl italic mb-2">Sources</h2>
           <Stat value={sourceRows.length} label="Total sources" />
           <Stat value={enabledSources} label="Enabled" />
-          <Stat value={reviewedSources} label="Require review" />
+          <Stat
+            value={reviewedSources}
+            label="Require review"
+            tip="Sources whose scraped events are held for manual review before publishing."
+          />
         </section>
       </div>
 
       {/* Cron heartbeats: surface so a silent outage shows up in the
           editorial overview, not just in the source-health alert email. */}
       <section className="border-t border-ink/15 pt-6">
-        <h2 className="font-display text-xl italic mb-4">Cron heartbeats</h2>
+        <h2 className="font-display text-xl italic mb-4 inline-flex items-center gap-1">
+          Cron heartbeats
+          <InfoTip label="The last time each scheduled job ran; a stale value means that cron silently stopped firing." />
+        </h2>
         <dl className="grid grid-cols-[1fr_auto] gap-y-2 gap-x-6 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
           <dt>Scrape (every 3h)</dt>
           <dd className="tabular-nums">

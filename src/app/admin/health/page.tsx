@@ -10,6 +10,8 @@ import {
   SCRAPER_DOCTOR_WORKFLOW_URL,
 } from "@/lib/self-healing";
 import { getClassifierStats } from "@/lib/classify-stats";
+import { InfoTip } from "@/components/ui/tooltip";
+import { StatusTip } from "@/components/tooltips";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Health · Admin" };
@@ -104,8 +106,11 @@ export default async function HealthDashboardPage() {
               key={stat.k}
               className="rounded-2xl ring-1 ring-ink/12 p-4 flex flex-col gap-1"
             >
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+              <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
                 {stat.label}
+                {stat.k === "quiet" && <StatusTip status="quiet" />}
+                {stat.k === "stale" && <StatusTip status="stale" />}
+                {stat.k === "broken" && <StatusTip status="broken" />}
               </span>
               <span
                 className={`font-display text-3xl tabular-nums ${
@@ -124,7 +129,10 @@ export default async function HealthDashboardPage() {
       {/* LLM classifier · shadow mode */}
       <section className="border-t border-ink/15 pt-6">
         <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft mb-4">
-          Classifier · shadow mode
+          <span className="inline-flex items-center gap-1">
+            Classifier · shadow mode
+            <InfoTip label="The model logs a verdict on every event but changes nothing while in shadow mode." />
+          </span>
         </h2>
         {classifier.stats.everClassified === 0 ? (
           <p className="text-sm text-ink-soft max-w-[70ch]">
@@ -146,8 +154,14 @@ export default async function HealthDashboardPage() {
                 ] as const
               ).map((s) => (
                 <div key={s.label} className="rounded-2xl ring-1 ring-ink/12 p-4 flex flex-col gap-1">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                  <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft">
                     {s.label}
+                    {s.label === "Approved · flagged" && (
+                      <InfoTip label="Events that are live but the model thinks should be hidden, worth a second look." />
+                    )}
+                    {s.label === "Hidden · says tech" && (
+                      <InfoTip label="Events you hid that the model judges are genuinely tech-relevant." />
+                    )}
                   </span>
                   <span className={`font-display text-3xl tabular-nums ${s.warn ? "text-sunset-deep" : "text-ink"}`}>
                     {s.v}
@@ -201,7 +215,10 @@ export default async function HealthDashboardPage() {
       <section className="border-t border-ink/15 pt-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-            Self-healing · Scraper Doctor
+            <span className="inline-flex items-center gap-1">
+              Self-healing · Scraper Doctor
+              <InfoTip label="An automated agent that runs Monday and Thursday, diagnoses broken scrapers, and opens a fix PR for review." />
+            </span>
           </h2>
           <a
             href={SCRAPER_DOCTOR_WORKFLOW_URL}
@@ -305,7 +322,10 @@ export default async function HealthDashboardPage() {
                     {s.host}
                   </a>
                   <div className="mt-2 flex items-center gap-4 flex-wrap">
-                    <RunDots runs={s.recentRuns} />
+                    <span className="inline-flex items-center gap-1">
+                      <RunDots runs={s.recentRuns} />
+                      <InfoTip label="Each dot is one recent run, oldest left to newest right; green ran clean, terracotta errored." />
+                    </span>
                     {s.runCount7d > 0 && (
                       <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-soft tabular-nums">
                         {Math.round(s.errorRate7d * 100)}% err · {s.avgDurationMs}ms avg · {s.runCount7d} runs / 7d

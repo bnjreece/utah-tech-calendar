@@ -1,5 +1,6 @@
 import { db, adminSettings } from "@/lib/db";
 import { saveAdminSettings } from "@/lib/admin-actions";
+import { InfoTip } from "@/components/ui/tooltip";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Notifications · Admin" };
@@ -101,14 +102,20 @@ export default async function NotificationsPage() {
           <ToggleRow
             name="notifyGateAnomaly"
             defaultChecked={s.notifyGateAnomaly}
-            label="Gate anomaly"
+            label={
+              <span className="inline-flex items-center gap-1">
+                Gate anomaly
+                <InfoTip label="Alerts when the gate auto-screens an unusually high number of events in 24 hours." />
+              </span>
+            }
             description="The LLM hard-gate auto-screened an unusually high number of events in 24h - the 'curator went haywire' signal (likely a prompt/model regression). Links to /admin/screened."
           />
         </fieldset>
 
         <label className="flex flex-col gap-2 border-t border-ink/15 pt-6">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+          <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
             Stale threshold (hours)
+            <InfoTip label="Hours of silence before a source is flagged; higher means fewer false alarms." />
           </span>
           <input
             name="staleThresholdHours"
@@ -127,8 +134,9 @@ export default async function NotificationsPage() {
         </label>
 
         <label className="flex flex-col gap-2 border-t border-ink/15 pt-6">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+          <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
             Gate anomaly threshold (events / 24h)
+            <InfoTip label="Events auto-screened in 24 hours before alerting; a single run is already capped at 30." />
           </span>
           <input
             name="gateAnomalyThreshold"
@@ -186,7 +194,7 @@ function ToggleRow({
 }: {
   name: string;
   defaultChecked: boolean;
-  label: string;
+  label: React.ReactNode;
   description: string;
 }) {
   return (

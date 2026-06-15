@@ -2,6 +2,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { renameGroup, mergeGroups, deleteGroup } from "@/lib/admin-actions";
+import { InfoTip } from "@/components/ui/tooltip";
+import { ActionTip } from "@/components/tooltips";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Groups · Admin" };
@@ -114,13 +116,16 @@ export default async function AdminGroupsPage() {
                     ))}
                 </select>
                 <button type="submit" className={btnClass}>Merge</button>
+                <InfoTip label="Folds this group's events into another group, then deletes this one." />
               </form>
 
               <form action={deleteGroup}>
                 <input type="hidden" name="id" value={g.id} />
-                <button type="submit" className="rounded-md px-2 py-1 text-xs font-medium text-sunset-deep hover:bg-sunset/10 transition-colors">
-                  Delete
-                </button>
+                <ActionTip tip="Removes the group label but keeps its events on the calendar.">
+                  <button type="submit" className="rounded-md px-2 py-1 text-xs font-medium text-sunset-deep hover:bg-sunset/10 transition-colors">
+                    Delete
+                  </button>
+                </ActionTip>
               </form>
             </div>
           </li>

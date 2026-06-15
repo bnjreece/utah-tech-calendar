@@ -11,6 +11,7 @@ import {
 } from "@/lib/filters";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
 import { SubscribePopover } from "@/components/subscribe-popover";
+import { InfoTip } from "@/components/ui/tooltip";
 import { SITE_URL } from "@/lib/seo";
 
 interface CountedOption {
@@ -240,6 +241,9 @@ export function FeedBuilder({ cities, tags, sources, groups }: Props) {
               <>
                 {count}
                 {capped && "+"} event{count === 1 ? "" : "s"} match
+                {capped && (
+                  <InfoTip label="We stopped counting past the cap, so the real total is higher." className="ml-1" />
+                )}
               </>
             )}
           </p>

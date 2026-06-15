@@ -5,6 +5,8 @@ import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { displayTitle } from "@/lib/display";
 import { mtDate } from "@/lib/time";
+import { InfoTip } from "@/components/ui/tooltip";
+import { ActionTip } from "@/components/tooltips";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Screened · Admin" };
@@ -88,7 +90,10 @@ export default async function ScreenedEventsPage({
       {/* Gate config */}
       <section className="rounded-2xl ring-1 ring-ink/12 p-4 mb-8">
         <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft mb-3">
-          Hard-gate
+          <span className="inline-flex items-center gap-1">
+            Hard-gate
+            <InfoTip label="The rule that lets the model auto-hide flagged events instead of only logging a verdict." />
+          </span>
         </h2>
         <form action={saveLlmGate} className="flex flex-wrap items-end gap-5">
           <label className="flex items-center gap-2 text-sm">
@@ -98,15 +103,19 @@ export default async function ScreenedEventsPage({
               defaultChecked={gateEnabled}
               className="size-4 accent-sunset-deep"
             />
-            <span>
+            <span className="inline-flex items-center gap-1">
               Auto-screen enabled{" "}
               <span className={gateEnabled ? "text-sage-deep" : "text-ink-soft"}>
                 ({gateEnabled ? "on" : "off / shadow"})
               </span>
+              <InfoTip label="On lets the gate hide flagged events; off keeps it in shadow mode where verdicts are logged but nothing is hidden." />
             </span>
           </label>
           <label className="flex flex-col gap-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-soft">
-            Confidence bar
+            <span className="inline-flex items-center gap-1">
+              Confidence bar
+              <InfoTip label="The minimum model confidence to auto-hide; below this, flagged events go to review instead." />
+            </span>
             <input
               type="number"
               name="threshold"
@@ -200,14 +209,18 @@ export default async function ScreenedEventsPage({
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <form action={restoreEvent.bind(null, e.id)}>
-                    <button type="submit" className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sage-deep hover:underline decoration-1 underline-offset-4 transition-colors">
-                      Restore
-                    </button>
+                    <ActionTip tip="Publishes this event now and locks it against the router.">
+                      <button type="submit" className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-sage-deep hover:underline decoration-1 underline-offset-4 transition-colors">
+                        Restore
+                      </button>
+                    </ActionTip>
                   </form>
                   <form action={sendEventToReview.bind(null, e.id)}>
-                    <button type="submit" className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
-                      Send to review
-                    </button>
+                    <ActionTip tip="Moves this event to the human review queue instead of leaving it screened.">
+                      <button type="submit" className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
+                        Send to review
+                      </button>
+                    </ActionTip>
                   </form>
                 </div>
               </li>
