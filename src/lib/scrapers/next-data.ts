@@ -1,7 +1,10 @@
 import * as cheerio from "cheerio";
 import { safeFetchHtml } from "@/lib/safe-fetch";
 
-export async function fetchHtml(url: string): Promise<string> {
+export async function fetchHtml(
+  url: string,
+  opts?: { timeoutMs?: number },
+): Promise<string> {
   /* Every adapter that fetches a source-row URL (Meetup, Luma,
      Eventbrite, htmlCalendar, utahGeekEvents) routes through here.
      Source URLs can originate from community submissions, so this is
@@ -12,7 +15,7 @@ export async function fetchHtml(url: string): Promise<string> {
      hop (defeats DNS rebinding), caps the body at 2 MB, and times out
      - exactly the protection /api/extract already relies on. Errors
      here are captured per-source by recordRun + last_error. */
-  return safeFetchHtml(url);
+  return safeFetchHtml(url, opts);
 }
 
 export function extractNextData<T = unknown>(html: string): T | null {

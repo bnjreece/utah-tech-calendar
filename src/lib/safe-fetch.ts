@@ -137,7 +137,14 @@ const COMMON_HEADERS: Record<string, string> = {
    exhaust function memory. */
 const MAX_BODY_BYTES = 2 * 1024 * 1024; /* 2 MB */
 
-export async function safeFetchHtml(rawUrl: string): Promise<string> {
+export async function safeFetchHtml(
+  rawUrl: string,
+  opts: { timeoutMs?: number } = {},
+): Promise<string> {
+  /* Default 15s. Heavy sources (e.g. Eventbrite's popular search pages, which
+     run ~16-20s) pass a longer budget; the per-hop redirect re-validation and
+     size cap still apply at every value. */
+  const timeoutMs = opts.timeoutMs ?? 15000;
   let current = rawUrl;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     let url: URL;
@@ -154,9 +161,9 @@ export async function safeFetchHtml(rawUrl: string): Promise<string> {
     const res = await fetch(current, {
       headers: COMMON_HEADERS,
       redirect: "manual",
-      /* Vercel functions cap at 30s anyway; explicit timeout for
-         hostile slow-loris attempts. */
-      signal: AbortSignal.timeout(15000),
+      /* Explicit timeout - bounds hostile slow-loris attempts and slow
+         sources. Caller-tunable (see timeoutMs above). */
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (res.status >= 300 && res.status < 400) {

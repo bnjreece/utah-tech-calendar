@@ -153,11 +153,30 @@ async function enrichDateOnly(item: EventItem, delayMs: number): Promise<EventIt
   }
 }
 
+/* Eventbrite's popular search pages (ai / startup / tech) are heavy (~800KB)
+   and routinely take 16-20s, occasionally throttled slower - past the default
+   15s fetch cap, which dropped those whole categories for a run with "operation
+   aborted due to timeout". Give the search-page fetch a longer budget plus one
+   retry so a single slow response doesn't lose the category until the next
+   3-hourly run. Safe: the scrape function has a 300s budget and runs sources in
+   parallel. Per-event detail fetches keep the default timeout and already fail
+   soft via enrichDateOnly's try/catch. */
+const SEARCH_TIMEOUT_MS = 30_000;
+
+async function fetchSearchHtml(url: string): Promise<string> {
+  try {
+    return await fetchHtml(url, { timeoutMs: SEARCH_TIMEOUT_MS });
+  } catch {
+    await new Promise((r) => setTimeout(r, 1000));
+    return fetchHtml(url, { timeoutMs: SEARCH_TIMEOUT_MS });
+  }
+}
+
 export const eventbriteAdapter: Adapter<EventItem> = {
   name: "eventbrite",
   runtime: "fetch",
   async scrape({ url, maxItems = 30 }) {
-    const html = await fetchHtml(url);
+    const html = await fetchSearchHtml(url);
     const blocks = extractJsonLd(html);
 
     const seen = new Set<string>();
