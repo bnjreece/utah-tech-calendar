@@ -36,29 +36,49 @@ export type RoutingAction = "keep" | "screen" | "review";
 /* Map a verdict + confidence threshold to a routing action (gated autonomy).
    Conservative: only a CONFIDENT, clearly-junk event is hard-gated; anything
    borderline - or whose category looks like a real event type that might be a
-   tech-adjacent vertical - goes to a human instead of being auto-screened. */
+   tech-adjacent vertical - goes to a human instead of being auto-screened.
+   The ONLY thing we auto-hide is confident lead-gen / cert-mill ad spam;
+   recognized tech-community verticals and crypto are always handed to a human. */
 export function routeVerdict(
   v: EventVerdict,
   threshold: number,
   title = "",
 ): RoutingAction {
-  if (v.isTechRelevant && !v.isSpam) return "keep";
   const conf = Number(v.confidence) || 0;
-  /* Confident spam -> screen (spam is the primary thing to filter). */
-  if (v.isSpam && conf >= threshold) return "screen";
-  /* Confident not-tech -> screen, UNLESS it's a real event type OR a
-     recognized vertical we'd rather a human confirm. Check the model's
-     category AND the title - the model sometimes mislabels a biotech social
-     or a life-sciences seminar as plain "not-tech", so the title is the
-     safety net (e.g. a "BioUtah Member BBQ" must never hard-gate). */
   const cat = (v.category || "").toLowerCase();
+  const hay = `${cat} ${title}`.toLowerCase();
+
+  /* Crypto / web3 is allow-but-confirm (admin policy): NEVER auto-hide it and
+     NEVER auto-publish it. Every crypto event - the mtndao builder scene, and
+     even satirical ones like "ShillFest" - goes to the admin review queue so a
+     human decides each. Intercepts before the keep/screen branches so a
+     spam-looking title can't hard-gate it. */
+  const isCrypto =
+    /(crypto|web3|blockchain|solana|ethereum|bitcoin|\bdefi\b|\bnft\b|mtndao|onchain)/.test(hay);
+  if (isCrypto) return "review";
+
+  if (v.isTechRelevant && !v.isSpam) return "keep";
+
+  /* Recognized tech-community verticals the model frequently mislabels as
+     "not-tech" or even "spam" - a BioUtah member BBQ, a life-sciences seminar,
+     a kids / youth CODING camp, a robotics club. These are NEVER hard-gated; a
+     flagged one is handed to a human instead of auto-hidden. Checked against
+     the model's category AND the title as a safety net (e.g. "Kids Code Camp"
+     or a "BioUtah Member BBQ" must never auto-hide). */
+  const protectedVertical =
+    /(biotech|\bbio\b|bioutah|life ?science|clinical|pharma|medtech|health ?tech|genomic|medical device|aerospace|kids? ?cod|youth ?cod|code ?camp|coderdojo|hour of code|girls who code|first ?lego|robotics|\bstem\b)/.test(hay);
+  if (protectedVertical) return "review";
+
+  /* Confident spam -> screen (lead-gen / cert-mill ad spam is the primary -
+     and now only - thing we auto-hide). */
+  if (v.isSpam && conf >= threshold) return "screen";
+
+  /* Confident not-tech -> screen, UNLESS the category reads like a real event
+     type a human should confirm (conference / meetup / hackathon / social...). */
   const protectedCat =
     /(conference|summit|convention|expo|meetup|hackathon|hike|social|mixer|festival)/.test(cat);
-  const hay = `${cat} ${title}`.toLowerCase();
-  const protectedVertical =
-    /(biotech|\bbio\b|bioutah|life ?science|clinical|pharma|medtech|health ?tech|genomic|medical device|aerospace)/.test(hay);
-  if (!v.isTechRelevant && conf >= threshold && !protectedCat && !protectedVertical)
-    return "screen";
+  if (!v.isTechRelevant && conf >= threshold && !protectedCat) return "screen";
+
   /* Everything else flagged -> admin review queue. */
   return "review";
 }
@@ -78,9 +98,9 @@ Most important rule: KEEP genuine tech-community events; FILTER lead-gen / ad sp
 
 Classify ONE event:
 - isTechRelevant: true for EITHER
-   (a) technical / startup / founder / maker content (software, hardware, data, AI, security, product, design), OR a recognized tech VERTICAL - biotech, life sciences, medtech, healthtech, clinical / pharma research, genomics, aerospace & defense, fintech, edtech. A BioUtah / life-sciences / medtech org event (talk, seminar, summit, OR a community social like a member BBQ) is tech-community, NOT "not-tech". OR
+   (a) technical / startup / founder / maker content (software, hardware, data, AI, security, product, design), OR a recognized tech VERTICAL - biotech, life sciences, medtech, healthtech, clinical / pharma research, genomics, aerospace & defense, fintech, edtech, web3 / crypto / blockchain (e.g. the mtndao builder scene and Utah crypto community). A BioUtah / life-sciences / medtech org event (talk, seminar, summit, OR a community social like a member BBQ) is tech-community, NOT "not-tech". Youth / kids CODING & STEM education - code camps, Scratch / Python / robotics classes for kids, kids hackathons - is also tech-community (it teaches the craft the community is built on), NOT "not-tech". OR
    (b) a SOCIAL, OUTDOOR, or WELLNESS event that is part of the Utah tech community - organized by or for tech people to connect: founder/dev hikes, tech-company boat nights or happy hours, Silicon Slopes socials, mental-health or wellness sessions aimed at the tech community, genuine tech mixers. The ACTIVITY need NOT be technical - a tech-community audience/organizer is enough. Use the Source as a strong signal: events from known tech communities (e.g. silicon_slopes, tech meetups) count as tech-community even when the activity is a hike, boat trip, dinner, or soundbath.
-   FALSE only when there is NO tech-community tie: generic public wellness/soundbaths, art shows, public fitness races, religious services, kids crafts, MLM / "make money" dinners, real estate seminars, cert-exam-cram marketing.
+   FALSE only when there is NO tech-community tie: generic public wellness/soundbaths, art shows, public fitness races, religious services, kids crafts (but a kids / youth CODING, robotics, or STEM class IS tech-community), MLM / "make money" dinners, real estate seminars, cert-exam-cram marketing.
 - isSpam: true for low-quality lead-gen / ad-spam - this is the PRIMARY thing to filter. Signs: mass-templated titles ("Specialists / Connect / Ignite Your Career / SmallBiz / AIConnect / Elevating Your Potential"), "Dinner with Entrepreneurs" franchises, generic "business networking" tied to no specific tech community, AND commercial paid training / certification / exam-prep COURSES sold as ads (CISSP, CCNA, CEH, PMP, Six Sigma, "N-Day Training/Workshop", "Certification Training", "Bootcamp in <city>"). A commercial training/cert ad is SPAM even when its topic is technical (cybersecurity, data, AI) - it is a paid ad, NOT a community event. When torn between "niche tech-community social" and "spam", spam needs the templated / lead-gen / paid-course feel - a real, free, locally-organized community event is NOT spam even if its topic isn't technical.
 - isOnline: true only if the event is virtual / online-only (webinar, Zoom, livestream). A real physical venue means false.
 - isPaid: true if it is a ticketed paid training/conference with a real price (not a free community meetup).
