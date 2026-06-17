@@ -1,5 +1,24 @@
 import type { Adapter, EventItem } from "../types";
 import { fetchHtml, extractNextData } from "../next-data";
+import { mapPool, flattenTiptap, clampDescription } from "../enrich";
+import { safeFetchHtml } from "@/lib/safe-fetch";
+
+/* A Luma calendar page only carries lightweight event nodes (title, time,
+   cover) - no body. Luma's public event endpoint returns the full event,
+   whose `description_mirror` is the body as a tiptap document. We flatten
+   it to text. Host is fixed (api.lu.ma) and we route through safeFetchHtml
+   for the same SSRF/size/timeout guards every other scrape fetch uses. */
+async function fetchLumaDescription(apiId: string): Promise<string | undefined> {
+  try {
+    const raw = await safeFetchHtml(
+      `https://api.lu.ma/event/get?event_api_id=${encodeURIComponent(apiId)}`,
+    );
+    const data = JSON.parse(raw) as { description_mirror?: unknown };
+    return clampDescription(flattenTiptap(data.description_mirror));
+  } catch {
+    return undefined;
+  }
+}
 
 interface LumaEventNode {
   api_id?: string;
@@ -121,6 +140,16 @@ export const lumaAdapter: Adapter<EventItem> = {
       items.push(item);
       if (items.length >= maxItems) break;
     }
+
+    /* Enrich each event with its body. The list nodes never carry one, so
+       this is what gives Luma events a real description (fails soft - an
+       event keeps its list data if its detail fetch errors). */
+    await mapPool(items, 5, async (item) => {
+      if (item.description) return;
+      const desc = await fetchLumaDescription(item.externalId);
+      if (desc) item.description = desc;
+    });
+
     return items;
   },
 };

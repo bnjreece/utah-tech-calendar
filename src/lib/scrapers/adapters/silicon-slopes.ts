@@ -1,4 +1,6 @@
 import type { Adapter, EventItem } from "../types";
+import { fetchHtml } from "../next-data";
+import { mapPool, extractMetaDescription, clampDescription } from "../enrich";
 
 /* Silicon Slopes runs on Circle.so. They expose an internal JSON API at
    /internal_api/events/community_events that returns the same upcoming
@@ -137,6 +139,22 @@ export const siliconSlopesAdapter: Adapter<EventItem> = {
       });
       if (items.length >= maxItems) break;
     }
+
+    /* The community_events list API returns no body. Each event's PUBLIC
+       page (no session cookie needed) renders the body summary into its
+       og:description, so enrich from there - this is what gives Silicon
+       Slopes events a description for the classifier and detail pages.
+       Fails soft per-event: a failed fetch leaves the list data intact. */
+    await mapPool(items, 6, async (item) => {
+      if (item.description || !item.link) return;
+      try {
+        const html = await fetchHtml(item.link);
+        const desc = clampDescription(extractMetaDescription(html));
+        if (desc) item.description = desc;
+      } catch {
+        /* keep the event without a description */
+      }
+    });
 
     return items;
   },
