@@ -61,7 +61,11 @@ export function categorizeRegion(event: RegionInput): UtahRegion {
   const haystack = [event.city, event.venueName, event.address]
     .filter(Boolean)
     .join(" ")
-    .toLowerCase();
+    .toLowerCase()
+    /* Strip periods so abbreviated city names match: Eventbrite formats
+       St. George as "St. George", but the lists use "st george". Without
+       this, every St. George event fell through to "Unknown". */
+    .replace(/\./g, "");
   if (!haystack) return "Unknown";
   if (SALT_LAKE_COUNTY.some((c) => haystack.includes(c))) return "Salt Lake County";
   if (UTAH_COUNTY.some((c) => haystack.includes(c))) return "Utah County";

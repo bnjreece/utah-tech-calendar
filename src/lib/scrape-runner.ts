@@ -118,6 +118,18 @@ function sourceDefaultTags(config: unknown): string[] {
   return v.filter((t): t is string => typeof t === "string" && t.length > 0);
 }
 
+/* A source's jsonb config may set fallbackCity for adapters that don't carry
+   a city per event (e.g. a Meetup group whose events omit the locality). Only
+   applied to a focused, single-locality source - it fills item.city ONLY when
+   the adapter left it blank, so it never overrides a real scraped city. This
+   is what lets a St. George-only group's events bucket into Southern Utah
+   instead of "Unknown". */
+function sourceFallbackCity(config: unknown): string | undefined {
+  if (!config || typeof config !== "object") return undefined;
+  const v = (config as Record<string, unknown>).fallbackCity;
+  return typeof v === "string" && v.trim() ? v.trim() : undefined;
+}
+
 async function upsertEvent(
   item: EventItem,
   groupId: string | undefined,
@@ -288,6 +300,7 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
 
   let groupId: string | undefined = source.groupId ?? undefined;
   const injectedTags = sourceDefaultTags(source.config);
+  const fallbackCity = sourceFallbackCity(source.config);
 
   try {
     const items = await adapter.scrape({
@@ -299,6 +312,7 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
     let updated = 0;
 
     for (const item of items) {
+      if (fallbackCity && !item.city) item.city = fallbackCity;
       if (!groupId && item.groupExternalId && item.groupName) {
         const [g] = await db
           .select({ id: groups.id })
