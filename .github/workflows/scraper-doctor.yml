@@ -97,7 +97,7 @@ jobs:
 
       - name: Open a PR with the proposed fixes
         if: steps.scan.outputs.needs_fix == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: scraper-doctor/auto-fix
           base: main
