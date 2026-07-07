@@ -1,4 +1,4 @@
-import { eq, asc } from "drizzle-orm";
+import { and, eq, asc, gte } from "drizzle-orm";
 import { db, events, groups, pendingSubmissions } from "@/lib/db";
 import {
   approveEvent,
@@ -36,11 +36,16 @@ function isSourceSuggestion(p: SubmissionPayload): boolean {
 }
 
 export default async function ReviewQueuePage() {
+  /* Only UPCOMING pending events are reviewable - once the start date
+     passes, the decision is moot and the row is pure queue clutter (a
+     daily-recurring spam listing once piled 14 past copies here). Past
+     pending rows stay in the DB untouched; the periodic cleanup marks
+     them expired. */
   const eventRows = await db
     .select({ event: events, group: groups })
     .from(events)
     .leftJoin(groups, eq(events.groupId, groups.id))
-    .where(eq(events.status, "pending"))
+    .where(and(eq(events.status, "pending"), gte(events.startsAt, new Date())))
     .orderBy(asc(events.startsAt));
 
   const allPending = await db
