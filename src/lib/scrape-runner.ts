@@ -1,7 +1,8 @@
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, desc } from "drizzle-orm";
 import { db, events, sources, groups, scrapeRuns } from "./db";
 import { eventAdapters, type EventItem } from "./scrapers";
 import { inferTagsFromTitle, isCertSpam, CERT_SPAM_STRIPPED_TAGS } from "./auto-tag";
+import { recordEventDecision } from "./review-log";
 
 export interface ScrapeResult {
   sourceId: string;
@@ -218,27 +219,87 @@ async function upsertEvent(
      hide the row WITHOUT setting is_paid - the row is junk, not a
      "paid event". Real paid conferences still get is_paid=true via
      the manual seed in research-dump commits. */
-  const status = isCraft || isCertSpamHit ? "hidden" : defaultStatus;
-  const hiddenReason = isCraft
+  let status = isCraft || isCertSpamHit ? "hidden" : defaultStatus;
+  let hiddenReason = isCraft
     ? "craft"
     : isCertSpamHit
       ? "cert-spam"
       : null;
   const isPaid = false;
+
+  /* Series memory. Recurring listings (a daily spam "PITCH LUNCH", a weekly
+     webinar, a monthly mixer) come back as brand-new rows because every
+     instance carries its own externalId - so a decided series re-entered the
+     review queue, the daily digest, and the classifier on every new instance.
+     Inherit the outcome of the latest DECIDED sibling: same source + same
+     normalized title, where the sibling was human-decided (statusLocked),
+     gate-screened (llm-screened), or itself series-inherited. Human approvals
+     propagate as approved+locked (skips the review queue and the gate); hides
+     propagate as hidden reason='series' (UNLOCKED, so restoring an instance
+     from /admin/hidden is one click). Never decides anything novel: the
+     normalized title must match exactly, so "Cookout (July)" does not chain
+     to "Cookout (August)". Series inheritance outranks the craft/cert
+     heuristics (a human call on the series is stronger evidence), and IS
+     ledgered (unlike heuristic hides, which stay out of review_decisions per
+     the boundary note below) so /admin/recent shows why the row skipped the
+     queue. */
+  const seriesKey = item.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  let seriesAction: "approve" | "hide" | null = null;
+  let statusLocked = false;
+  if (seriesKey) {
+    const [sibling] = await db
+      .select({
+        status: events.status,
+        hiddenReason: events.hiddenReason,
+        statusLocked: events.statusLocked,
+      })
+      .from(events)
+      .where(
+        sql`${events.source} = ${item.source}
+          AND btrim(lower(regexp_replace(${events.title}, '[^a-zA-Z0-9]+', ' ', 'g'))) = ${seriesKey}
+          AND (${events.statusLocked} = true OR ${events.hiddenReason} IN ('llm-screened', 'series'))`,
+      )
+      .orderBy(desc(events.updatedAt))
+      .limit(1);
+    if (sibling?.status === "hidden") {
+      status = "hidden";
+      hiddenReason = "series";
+      seriesAction = "hide";
+    } else if (sibling?.status === "approved" && sibling.statusLocked) {
+      status = "approved";
+      hiddenReason = null;
+      statusLocked = true;
+      seriesAction = "approve";
+    }
+  }
+
   /* Deliberate ledger scope boundary: insert-time heuristic hides (craft /
      cert-spam) are NOT written to review_decisions. They are born-hidden and
      never surfaced, so they aren't a "decision that changed a visible
      event's state" the way an admin hide or the dedup sweep is. The
      heuristic's original call is still recoverable for the funnel - it is
      frozen into snapshot.flags.hiddenReason if/when a human later restores
-     the row. The ledger records human decisions + post-hoc auto sweeps. */
-  await db.insert(events).values({
-    ...baseValues,
-    status,
-    hiddenReason,
-    isConference,
-    isPaid,
-  });
+     the row. The ledger records human decisions + post-hoc auto sweeps -
+     and series inheritance (above), which stands in for a human decision. */
+  const [insertedRow] = await db
+    .insert(events)
+    .values({
+      ...baseValues,
+      status,
+      hiddenReason,
+      statusLocked,
+      isConference,
+      isPaid,
+    })
+    .returning();
+  if (seriesAction && insertedRow) {
+    await recordEventDecision(insertedRow, seriesAction, {
+      newStatus: status,
+      reason: `series: inherited prior decision on an earlier instance of "${item.title}"`,
+      decidedBy: "series-rule",
+      channel: "auto",
+    });
+  }
   return "inserted" as const;
 }
 
