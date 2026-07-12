@@ -303,6 +303,22 @@ async function upsertEvent(
   return "inserted" as const;
 }
 
+/* Expire pending rows whose start date has passed - the review decision is
+   moot once the event happened, and stale rows cluttered the review queue
+   and the daily digest ("full of duplicates" when a recurring listing's
+   instances lingered past their dates). Bookkeeping, not a decision, so it
+   is deliberately NOT written to review_decisions; hidden_reason='expired'
+   keeps it distinguishable from human hides on /admin/hidden. Called from
+   the scrape cron each tick. */
+export async function expirePendingEvents(): Promise<number> {
+  const expired = await db
+    .update(events)
+    .set({ status: "hidden", hiddenReason: "expired", updatedAt: new Date() })
+    .where(sql`${events.status} = 'pending' AND ${events.startsAt} < now()`)
+    .returning({ id: events.id });
+  return expired.length;
+}
+
 /* Record one scrape attempt into scrape_runs. Best-effort - a failed
    history insert shouldn't change the scrape outcome the caller sees. */
 async function recordRun(

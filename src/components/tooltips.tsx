@@ -33,6 +33,8 @@ export const REASON_TIP: Record<string, string> = {
   "llm-screened": "Auto-hidden by the model because it was flagged with high confidence.",
   manual: "Hidden by an admin.",
   "source-disabled": "Hidden because its source was turned off.",
+  series: "Auto-hidden: an earlier instance of this recurring event was rejected or screened.",
+  expired: "Start date passed while awaiting review; expired automatically.",
 };
 
 /* The router-lock sentence, reused wherever a human action locks an event. */

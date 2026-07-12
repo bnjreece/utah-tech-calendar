@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { runAllEnabledSources } from "@/lib/scrape-runner";
+import { runAllEnabledSources, expirePendingEvents } from "@/lib/scrape-runner";
 import { classifyUnchecked } from "@/lib/classify";
 import { db, adminSettings } from "@/lib/db";
 
@@ -55,9 +55,18 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.warn("[scrape] classify pass failed", err);
   }
+  /* Queue hygiene: a pending row whose date passed is unreviewable clutter
+     in /admin/review and the daily digest. Best-effort. */
+  let expired = 0;
+  try {
+    expired = await expirePendingEvents();
+  } catch (err) {
+    console.warn("[scrape] expire pass failed", err);
+  }
   return Response.json({
     ok: true,
     count: results.length,
+    expired,
     summary: {
       ok: results.filter((r) => r.status === "ok").length,
       error: results.filter((r) => r.status === "error").length,

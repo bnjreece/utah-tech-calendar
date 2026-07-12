@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { db, events, groups, pendingSubmissions, type Event } from "./db";
 import { SITE_URL } from "./seo";
 import { sourceLabel as resolveSourceLabel } from "./filters";
@@ -67,11 +67,16 @@ type ScreenedDbRow = {
 };
 
 export async function fetchQueueSnapshot(): Promise<QueueSnapshot> {
+  /* Upcoming only - a pending row whose start date has passed is
+     unreviewable, and stale rows made the digest read as "full of
+     duplicates" (recurring instances lingering past their date). The
+     scrape cron also expires those rows; this filter is belt-and-braces
+     so the email stays clean even if a cron tick is missed. */
   const eventRows = await db
     .select({ event: events, group: groups })
     .from(events)
     .leftJoin(groups, eq(events.groupId, groups.id))
-    .where(eq(events.status, "pending"))
+    .where(and(eq(events.status, "pending"), gte(events.startsAt, new Date())))
     .orderBy(asc(events.startsAt));
 
   /* Distinct events auto-screened in the digest window (still screened,
