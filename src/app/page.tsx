@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { unstable_cache } from "next/cache";
 import { parseFilters, filtersToSearchParams } from "@/lib/filters";
 import {
   queryEvents,
@@ -13,6 +14,32 @@ import { EditorialLinearBlock } from "@/components/variant-blocks";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/json-ld";
 
 export const dynamic = "force-dynamic";
+
+/* The page itself stays dynamic (the density cookie + filter params), but the
+   database work is cached: keyed by the parsed filters, so the default
+   no-filter view - which is nearly all bot and first-visit traffic - serves
+   from cache instead of waking the database on every request. 15 minutes is
+   fresh enough against a 3-hour scrape cadence. */
+const getCachedEvents = unstable_cache(
+  async (filters: ReturnType<typeof parseFilters>) => queryEvents(filters),
+  ["home-events"],
+  { revalidate: 900 },
+);
+
+/* The four count queries are filter-independent, so they cache under one
+   constant key - a crawler hitting unique filter URLs misses only the events
+   query, not all five. */
+const getCachedCounts = unstable_cache(
+  async () =>
+    Promise.all([
+      getCityCounts(),
+      getTagCounts(),
+      getSourceCounts(),
+      getGroupCounts(),
+    ]),
+  ["home-counts"],
+  { revalidate: 900 },
+);
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -42,13 +69,8 @@ export default async function HomePage({
           ? "monthly"
           : "weekly";
 
-  const [events, cityCounts, tagCounts, sourceCounts, groupCounts] = await Promise.all([
-    queryEvents(filters),
-    getCityCounts(),
-    getTagCounts(),
-    getSourceCounts(),
-    getGroupCounts(),
-  ]);
+  const [events, [cityCounts, tagCounts, sourceCounts, groupCounts]] =
+    await Promise.all([getCachedEvents(filters), getCachedCounts()]);
 
   const cities = cityCounts.map((c) => ({ value: c.city, count: c.count }));
   const tags = tagCounts.map((t) => ({ value: t.tag, count: t.count }));

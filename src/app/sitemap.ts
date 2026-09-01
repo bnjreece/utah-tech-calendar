@@ -8,9 +8,10 @@ import { getAllCanonicalTags } from "@/lib/tag-taxonomy";
 
 /* Dynamic sitemap. Pulls every approved upcoming event so Google can
    crawl each detail page (using the canonical slug URL); also includes
-   the main editorial routes and city landing pages. Regenerates on each
-   request via force-dynamic so a newly-scraped event lands in the
-   sitemap on the next crawl. */
+   the main editorial routes and city landing pages. Stays force-dynamic
+   (ISR would demand a database connection at build time); the hourly
+   caching lives in vercel.json's Vercel-CDN-Cache-Control header for /sitemap.xml,
+   so crawler requests hit the CDN, not the database. */
 
 export const dynamic = "force-dynamic";
 

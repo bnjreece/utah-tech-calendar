@@ -11,7 +11,9 @@ import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { eventSlug } from "@/lib/slugs";
 import { parsePeriod } from "@/lib/period";
 
-export const dynamic = "force-dynamic";
+/* ISR: bots crawl every event URL from the sitemap; an hourly cache stops
+   each crawl from waking the database. Fresh enough for a 3-hour scrape cadence. */
+export const revalidate = 3600;
 
 async function fetchPeriodEvents(from: Date, to: Date): Promise<EventWithGroup[]> {
   const rows = await db

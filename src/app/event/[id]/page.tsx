@@ -13,7 +13,9 @@ import { AddToCalendar } from "@/components/add-to-calendar";
 import { mtDate, mtTime } from "@/lib/time";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 
-export const dynamic = "force-dynamic";
+/* ISR: bots crawl every event URL from the sitemap; an hourly cache stops
+   each crawl from waking the database. Fresh enough for a 3-hour scrape cadence. */
+export const revalidate = 3600;
 
 /* The route is /event/[id] but `id` is now polymorphic:
    - a slug-prefix string like "utahjs-meetup-june-abcd1234"
