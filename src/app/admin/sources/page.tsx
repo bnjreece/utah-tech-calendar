@@ -163,9 +163,11 @@ export default async function SourcesAdminPage({
             ? new Date(s.lastScrapedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
             : "never";
           const health = classifySource(s);
-          /* Cookie age - only meaningful for sources that have it set
-             (Silicon Slopes). Warn at 50d, urgent at 80d. */
-          const rotatedAt = s.authRotatedAt ? new Date(s.authRotatedAt) : null;
+          /* Silicon Slopes now uses a public feed, so its historical
+             rotation timestamp no longer represents source health. */
+          const rotatedAt = s.adapter !== "siliconSlopes" && s.authRotatedAt
+            ? new Date(s.authRotatedAt)
+            : null;
           const cookieDays = rotatedAt
             // eslint-disable-next-line react-hooks/purity -- server component renders once per request; current time measures cookie age at request time
             ? Math.round((Date.now() - rotatedAt.getTime()) / (24 * 60 * 60 * 1000))

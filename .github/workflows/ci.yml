@@ -21,6 +21,8 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - name: Regression tests
+        run: bun run test
       - name: Typecheck
         run: bunx tsc --noEmit
       # Lint runs but doesn't block yet: the repo carries pre-existing

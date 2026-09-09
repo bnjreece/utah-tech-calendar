@@ -153,22 +153,29 @@ async function enrichDateOnly(item: EventItem, delayMs: number): Promise<EventIt
   }
 }
 
-/* Eventbrite's popular search pages (ai / startup / tech) are heavy (~800KB)
-   and routinely take 16-20s, occasionally throttled slower - past the default
-   15s fetch cap, which dropped those whole categories for a run with "operation
-   aborted due to timeout". Give the search-page fetch a longer budget plus one
-   retry so a single slow response doesn't lose the category until the next
-   3-hourly run. Safe: the scrape function has a 300s budget and runs sources in
-   parallel. Per-event detail fetches keep the default timeout and already fail
-   soft via enrichDateOnly's try/catch. */
+/* Search pages are heavy and can return short bursts of 500/502 errors.
+   Allow three attempts with increasing pauses instead of giving up after
+   two near-adjacent failures. Share the previous 61s search budget across
+   attempts so a slow source cannot consume another full timeout and starve
+   later sources in the 300s cron. Shared URL/redirect validation and the
+   body cap still apply; detail enrichment remains best effort. */
 const SEARCH_TIMEOUT_MS = 30_000;
+const SEARCH_BUDGET_MS = 61_000;
+const SEARCH_RETRY_DELAYS_MS = [2_000, 5_000];
 
 async function fetchSearchHtml(url: string): Promise<string> {
-  try {
-    return await fetchHtml(url, { timeoutMs: SEARCH_TIMEOUT_MS });
-  } catch {
-    await new Promise((r) => setTimeout(r, 1000));
-    return fetchHtml(url, { timeoutMs: SEARCH_TIMEOUT_MS });
+  const deadline = performance.now() + SEARCH_BUDGET_MS;
+  for (let attempt = 0; ; attempt++) {
+    const remainingMs = Math.ceil(deadline - performance.now());
+    if (remainingMs <= 0) throw new Error("Eventbrite search retry budget exhausted");
+    try {
+      return await fetchHtml(url, { timeoutMs: Math.min(SEARCH_TIMEOUT_MS, remainingMs) });
+    } catch (error) {
+      if (attempt >= SEARCH_RETRY_DELAYS_MS.length) throw error;
+      const delayMs = SEARCH_RETRY_DELAYS_MS[attempt];
+      if (performance.now() + delayMs >= deadline) throw error;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
   }
 }
 

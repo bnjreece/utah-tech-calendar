@@ -2,15 +2,9 @@ import type { Adapter, EventItem } from "../types";
 import { fetchHtml } from "../next-data";
 import { mapPool, extractMetaDescription, clampDescription } from "../enrich";
 
-/* Silicon Slopes runs on Circle.so. They expose an internal JSON API at
-   /internal_api/events/community_events that returns the same upcoming
-   events the SPA renders, no JS execution required. We send the user's
-   session cookie as a regular HTTP cookie header.
-
-   This replaces an earlier puppeteer-core + sparticuz/chromium adapter
-   that was tripping Cloudflare's bot fingerprinting from Vercel Lambda
-   IPs. Plain fetch has no fingerprint attack surface, runs ~50x faster,
-   needs ~128MB instead of 1GB, and ships no Chromium binary. */
+/* Silicon Slopes publishes its Circle.so event list without authentication.
+   Anonymous and authenticated requests return the same upcoming records.
+   Keep this public feed independent of a user's expiring browser session. */
 
 const ENDPOINT =
   "https://www.siliconslopes.com/internal_api/events/community_events";
@@ -72,36 +66,25 @@ export const siliconSlopesAdapter: Adapter<EventItem> = {
   name: "siliconSlopes",
   runtime: "fetch",
   async scrape({ maxItems = 50 }) {
-    const rawCookie = process.env.SILICON_SLOPES_SESSION_COOKIE;
-    if (!rawCookie) {
-      throw new Error(
-        "SILICON_SLOPES_SESSION_COOKIE missing - rotate via 1Password",
-      );
-    }
-    /* Strip CR/LF in case a paste from 1Password picks up trailing
-       whitespace - protects against header-injection if the env value
-       is ever corrupted upstream. */
-    const cookie = rawCookie.replace(/[\r\n]/g, "");
     const perPage = Math.min(Math.max(maxItems, 10), 50);
     const res = await fetch(`${ENDPOINT}?page=1&per_page=${perPage}`, {
       headers: {
         Accept: "application/json",
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-        Cookie: `user_session_identifier=${cookie}`,
       },
       signal: AbortSignal.timeout(30_000),
     });
 
-    if (res.status === 401 || res.status === 403) {
-      throw new Error(`Circle API ${res.status} - session cookie likely expired`);
-    }
     if (!res.ok) {
       throw new Error(`Circle API ${res.status} ${res.statusText}`);
     }
 
     const data = (await res.json()) as CircleResponse;
-    const records = data.records ?? [];
+    if (!data || !Array.isArray(data.records)) {
+      throw new Error("Circle API response missing events records array");
+    }
+    const records = data.records;
 
     const items: EventItem[] = [];
     const seen = new Set<string>();

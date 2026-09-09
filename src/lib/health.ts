@@ -56,7 +56,6 @@ export function detectGateAnomaly(opts: {
 }
 
 const ZERO_ITEMS = /^ok: 0 items$/i;
-const SS_COOKIE_EXPIRED_RE = /session cookie likely expired/i;
 
 export interface DetectAlertsOptions {
   /* When null/undefined we use defaults that match the previous /admin
@@ -113,37 +112,25 @@ export function detectAlerts(
   const staleEnabled: SourceRow[] = [];
 
   for (const s of enabled) {
-    /* Silicon Slopes cookie expired. */
-    const ssZero =
+    /* The Silicon Slopes feed is public. An empty result is worth checking,
+       but is not evidence that a user's browser session expired. */
+    if (
       s.adapter === "siliconSlopes" &&
-      ZERO_ITEMS.test((s.lastStatus ?? "").trim());
-    const ssAuthErr =
-      s.adapter === "siliconSlopes" &&
-      SS_COOKIE_EXPIRED_RE.test(s.lastError ?? "");
-    if ((ssZero || ssAuthErr) && wantCookie) {
-      const lastScrapedLabel = s.lastScrapedAt
-        ? new Date(s.lastScrapedAt).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            timeZone: "America/Denver",
-          })
-        : "never";
+      !s.lastError &&
+      ZERO_ITEMS.test((s.lastStatus ?? "").trim()) &&
+      wantErrors
+    ) {
       alerts.push({
-        level: "urgent",
-        title: "Silicon Slopes cookie expired",
-        body: `Last scrape: ${lastScrapedLabel}. ${ssAuthErr ? "Circle API rejected the session cookie." : "Scraper returned 0 events - likely cookie expiry."}`,
-        action:
-          "Sign in at siliconslopes.com, then ask Claude to rotate the cookie.",
-        category: "cookie_expiry",
-        key: `cookie_expiry:${s.id}`,
+        level: "warn",
+        title: "Silicon Slopes returned no events",
+        body: "The public event feed returned 0 events. Check the source calendar and API response for missing listings.",
+        category: "source_error",
+        key: `empty:${s.id}`,
       });
-      continue;
     }
 
     /* Preemptive cookie-age alert for sources that track rotation. */
-    if (s.authRotatedAt && wantCookie) {
+    if (s.adapter !== "siliconSlopes" && s.authRotatedAt && wantCookie) {
       const days = Math.round(
         (now - new Date(s.authRotatedAt).getTime()) / (24 * 60 * 60 * 1000),
       );
