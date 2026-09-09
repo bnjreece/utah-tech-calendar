@@ -2,7 +2,10 @@
   "functions": {
     "src/app/api/cron/scrape/route.ts": {
       "memory": 512,
-      "maxDuration": 300
+      "maxDuration": 300,
+      "regions": [
+        "sfo1"
+      ]
     },
     "src/app/api/cron/digest/route.ts": {
       "memory": 512,

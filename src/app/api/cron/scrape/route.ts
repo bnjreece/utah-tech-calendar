@@ -3,6 +3,8 @@ import { runAllEnabledSources, expirePendingEvents } from "@/lib/scrape-runner";
 import { classifyUnchecked } from "@/lib/classify";
 import { db, adminSettings } from "@/lib/db";
 
+/* This cron runs in sfo1 via vercel.json. Eventbrite's IAD CloudFront
+   path returned repeated 502s while the same searches succeeded in SFO. */
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
