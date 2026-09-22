@@ -178,8 +178,19 @@ export default function RootLayout({
                 </Link>
               </div>
             </div>
-            <div className="pt-6 mt-6 border-t border-ink/15 flex justify-center">
+            <div className="pt-6 mt-6 border-t border-ink/15 flex flex-col items-center gap-3">
               <ForgeCredit />
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+                Built by{" "}
+                <a
+                  href="https://benjaminreece.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
+                >
+                  Benjamin Reece
+                </a>
+              </p>
             </div>
           </div>
         </footer>
