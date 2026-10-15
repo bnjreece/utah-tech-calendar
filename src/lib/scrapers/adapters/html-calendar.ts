@@ -304,7 +304,10 @@ export const htmlCalendarAdapter: Adapter<EventItem> = {
   runtime: "fetch",
   async scrape({ url, maxItems, sourceConfig }) {
     const config = (sourceConfig as HtmlCalendarConfig | undefined) ?? {};
-    const html = await fetchHtml(url);
+    /* 30s rather than the 15s default: small self-hosted conference /
+       org sites (e.g. SAINTCON) intermittently take longer than 15s to
+       respond and were aborting on timeout. Still SSRF-guarded. */
+    const html = await fetchHtml(url, { timeoutMs: 30_000 });
     const $ = cheerio.load(html);
     /* Collect every JSON-LD block on the page. Many sites split their
        structured data across multiple blocks (one for the organization,
