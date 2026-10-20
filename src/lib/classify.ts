@@ -221,10 +221,8 @@ export async function classifyUnchecked(
           channel: "auto",
         });
         toReview++;
-        /* The demoted row is now pending with its verdict stored, so the
-           autopilot decides it here or never. Skipped once the breaker has
-           tripped: then it stays for a human, as on main. */
-        if (screened < SCREEN_ABORT_AT) await autopilot({ ...r, status: "pending" }, verdict);
+        /* A demoted row came from a trusted source and the gate chose a
+           human for it on purpose, so the autopilot leaves it alone. */
       }
     } else if (gateEnabled && r.status === "pending" && !r.statusLocked && r.source !== "manual") {
       await autopilot(r, verdict);

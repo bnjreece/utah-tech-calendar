@@ -261,11 +261,16 @@ async function upsertEvent(
       })
       .from(events)
       .where(
-        sql`(${events.sourceId} = ${sourceId} OR ${events.source} = ${item.source})
+        /* Same source first. The cross-source fallback is Eventbrite only:
+           its keyword searches return the same listings under different
+           source rows, while two Meetup or Luma groups can share a generic
+           title ("Monthly Meetup") and must not inherit each other's hides. */
+        sql`(${events.sourceId} = ${sourceId}
+            OR (${item.source} = 'eventbrite' AND ${events.source} = 'eventbrite'))
           AND btrim(lower(regexp_replace(${events.title}, '[^a-zA-Z0-9]+', ' ', 'g'))) = ${seriesKey}
           AND ${events.statusLocked} = true`,
       )
-      .orderBy(desc(events.updatedAt))
+      .orderBy(sql`(${events.sourceId} IS NOT DISTINCT FROM ${sourceId}::uuid) DESC`, desc(events.updatedAt))
       .limit(1);
     if (sibling?.status === "hidden") {
       status = "hidden";
