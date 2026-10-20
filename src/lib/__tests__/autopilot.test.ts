@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   decidePending,
   normalizeEventTitle,
+  submissionPastDated,
   type AutopilotCtx,
   type AutopilotRow,
 } from "@/lib/autopilot";
@@ -174,5 +175,15 @@ describe("normalizeEventTitle", () => {
     expect(normalizeEventTitle("Summit 2026 (VIP)")).toBe("summit 2026");
     expect(normalizeEventTitle("Summit 2026 - Early Bird General Admission")).toBe("summit 2026");
     expect(normalizeEventTitle("Expo Vendor Pass")).toBe("expo");
+  });
+});
+
+describe("submissionPastDated", () => {
+  test("naive form times get a 12h grace", () => {
+    expect(submissionPastDated({ startsAt: "2026-09-15T17:00" }, NOW)).toBe(true);
+    expect(submissionPastDated({ startsAt: "2026-10-20T18:00" }, NOW)).toBe(false);
+    expect(submissionPastDated({ startsAt: "2026-11-17T17:00" }, NOW)).toBe(false);
+    expect(submissionPastDated({ startsAt: "not a date" }, NOW)).toBe(false);
+    expect(submissionPastDated({}, NOW)).toBe(false);
   });
 });

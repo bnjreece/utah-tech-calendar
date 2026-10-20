@@ -152,3 +152,12 @@ export function decidePending(
   if (ctx.publishedThisRun >= MAX_PUBLISH_PER_RUN) return hold("publish-cap");
   return { action: "publish", reason: "autopilot:publish" };
 }
+
+/* /submit drafts. Payload startsAt comes from the form as a naive local time
+   ("2026-11-17T17:00"), which JS parses as UTC, up to 7h early. The grace
+   keeps an evening event from expiring before it starts. */
+const SUBMISSION_EXPIRE_GRACE_MS = 12 * 60 * 60 * 1000;
+export function submissionPastDated(payload: { startsAt?: string }, now: Date): boolean {
+  const t = payload.startsAt ? new Date(payload.startsAt).getTime() : NaN;
+  return Number.isFinite(t) && t + SUBMISSION_EXPIRE_GRACE_MS < now.getTime();
+}

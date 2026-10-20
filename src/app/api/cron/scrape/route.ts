@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { runAllEnabledSources, expirePendingEvents } from "@/lib/scrape-runner";
 import { classifyUnchecked } from "@/lib/classify";
+import { closeStaleSubmissions } from "@/lib/submission-autoclose";
 import { db, adminSettings } from "@/lib/db";
 
 /* This cron runs in sfo1 via vercel.json. Eventbrite's IAD CloudFront
@@ -65,10 +66,19 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.warn("[scrape] expire pass failed", err);
   }
+  /* Submission hygiene: silently close past-dated and already-listed
+     /submit drafts. Never emails, never approves. Best-effort. */
+  let submissions = { expired: 0, duplicate: 0 };
+  try {
+    submissions = await closeStaleSubmissions();
+  } catch (err) {
+    console.warn("[scrape] submission close pass failed", err);
+  }
   return Response.json({
     ok: true,
     count: results.length,
     expired,
+    submissions,
     summary: {
       ok: results.filter((r) => r.status === "ok").length,
       error: results.filter((r) => r.status === "error").length,
