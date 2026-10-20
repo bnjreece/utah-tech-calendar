@@ -231,9 +231,11 @@ async function upsertEvent(
      webinar, a monthly mixer) come back as brand-new rows because every
      instance carries its own externalId - so a decided series re-entered the
      review queue, the daily digest, and the classifier on every new instance.
-     Inherit the outcome of the latest DECIDED sibling: same source + same
-     normalized title, where the sibling was human-decided (statusLocked),
-     gate-screened (llm-screened), or itself series-inherited. Human approvals
+     Inherit the outcome of the latest HUMAN-decided sibling: same source row
+     (source_id, not the adapter name, which many sources share) + same
+     normalized title, where the sibling is statusLocked. Automatic outcomes
+     (llm-screened, series, autopilot) are never inherited, so one wrong
+     auto-hide cannot spread to every later instance. Human approvals
      propagate as approved+locked (skips the review queue and the gate); hides
      propagate as hidden reason='series' (UNLOCKED, so restoring an instance
      from /admin/hidden is one click). Never decides anything novel: the
@@ -255,9 +257,9 @@ async function upsertEvent(
       })
       .from(events)
       .where(
-        sql`${events.source} = ${item.source}
+        sql`${events.sourceId} = ${sourceId}
           AND btrim(lower(regexp_replace(${events.title}, '[^a-zA-Z0-9]+', ' ', 'g'))) = ${seriesKey}
-          AND (${events.statusLocked} = true OR ${events.hiddenReason} IN ('llm-screened', 'series'))`,
+          AND ${events.statusLocked} = true`,
       )
       .orderBy(desc(events.updatedAt))
       .limit(1);
@@ -306,17 +308,34 @@ async function upsertEvent(
 /* Expire pending rows whose start date has passed - the review decision is
    moot once the event happened, and stale rows cluttered the review queue
    and the daily digest ("full of duplicates" when a recurring listing's
-   instances lingered past their dates). Bookkeeping, not a decision, so it
-   is deliberately NOT written to review_decisions; hidden_reason='expired'
-   keeps it distinguishable from human hides on /admin/hidden. Called from
-   the scrape cron each tick. */
+   instances lingered past their dates). hidden_reason='expired' keeps it
+   distinguishable from human hides on /admin/hidden. Each expiry is also
+   ledgered (decision 'expire', decided_by 'expiry') in the same statement,
+   with the verdict, so the queue digest can count good events that expired
+   unreviewed. Called from the scrape cron each tick. */
 export async function expirePendingEvents(): Promise<number> {
-  const expired = await db
-    .update(events)
-    .set({ status: "hidden", hiddenReason: "expired", updatedAt: new Date() })
-    .where(sql`${events.status} = 'pending' AND ${events.startsAt} < now()`)
-    .returning({ id: events.id });
-  return expired.length;
+  const res = await db.execute(sql`
+    WITH upd AS (
+      UPDATE events SET status = 'hidden', hidden_reason = 'expired', updated_at = now()
+      WHERE status = 'pending' AND starts_at < now()
+      RETURNING *
+    )
+    INSERT INTO review_decisions
+      (subject_type, subject_id, decision, reason, prior_status, new_status,
+       decided_by, channel, source_id, adapter, llm_verdict, snapshot)
+    SELECT 'scraped_event', id, 'expire', 'expired', 'pending', 'hidden',
+      'expiry', 'auto', source_id, source, llm_verdict,
+      jsonb_build_object(
+        'title', title, 'description', description, 'link', link,
+        'source', source, 'venueName', venue_name, 'address', address,
+        'city', city, 'isOnline', is_online, 'tags', to_jsonb(tags),
+        'flags', jsonb_build_object(
+          'isConference', is_conference, 'isPaid', is_paid,
+          'hiddenReason', NULL))
+    FROM upd
+    RETURNING subject_id
+  `);
+  return (Array.isArray(res) ? res : (res.rows ?? [])).length;
 }
 
 /* Record one scrape attempt into scrape_runs. Best-effort - a failed
