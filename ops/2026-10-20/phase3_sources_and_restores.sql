@@ -96,11 +96,12 @@ BEGIN
     SELECT * FROM events
     WHERE id IN ('72507569-de96-4d18-b9a1-43de23544eb0', 'ace8fd58-557b-41b8-8bc0-75d7be911030')
       AND status = 'hidden' AND status_locked = false AND starts_at > now()
+    FOR UPDATE
   ), upd AS (
     UPDATE events e
     SET status = 'approved', hidden_reason = NULL, status_locked = true, updated_at = now()
     FROM before b
-    WHERE e.id = b.id
+    WHERE e.id = b.id AND e.status = 'hidden' AND e.status_locked = false
     RETURNING e.id
   ), led AS (
     INSERT INTO review_decisions
