@@ -54,6 +54,15 @@ export interface QueueSnapshot {
      and that are still screened - so the daily email surfaces what the
      scorer auto-killed, with a path to restore. */
   screenedToday: ScreenedEventRow[];
+  /* Queue autopilot activity (decided_by='autopilot' ledger rows) in the
+     same ~26h window: what it published, how many it hid, and the hides it
+     was least sure of (85 to 89% confidence) for a spot check. */
+  autoPublished: ScreenedEventRow[];
+  autoHiddenCount: number;
+  autoHiddenNearMisses: ScreenedEventRow[];
+  /* Expired pending rows in the last 7 days whose verdict said tech: good
+     events nobody got to. Target 0. */
+  goodLost7d: number;
 }
 
 type ScreenedDbRow = {
@@ -96,20 +105,35 @@ export async function fetchQueueSnapshot(): Promise<QueueSnapshot> {
     ORDER BY e.id, rd.decided_at DESC
     LIMIT 50
   `);
-  const screenedRows = (
-    Array.isArray(screenedRes) ? screenedRes : (screenedRes.rows ?? [])
-  ) as ScreenedDbRow[];
-  const screenedToday: ScreenedEventRow[] = screenedRows
-    .map((r) => ({
-      id: r.id,
-      title: r.title,
-      link: r.link,
-      source: r.source,
-      startsAt: r.starts_at instanceof Date ? r.starts_at : new Date(r.starts_at),
-      category: r.category,
-      confidence: r.confidence != null ? Number(r.confidence) : null,
-    }))
-    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  const screenedToday = toScreenedRows(screenedRes);
+
+  /* Autopilot ledger rows in the digest window, with each event's current
+     state. One query; split by decision below. */
+  const autoRes = await db.execute<ScreenedDbRow & { decision: string }>(sql`
+    SELECT DISTINCT ON (e.id, rd.decision)
+      rd.decision, e.id, e.title, e.link, e.source, e.starts_at,
+      rd.llm_verdict->>'category' AS category,
+      rd.llm_verdict->>'confidence' AS confidence
+    FROM review_decisions rd
+    JOIN events e ON e.id = rd.subject_id
+    WHERE rd.decided_by = 'autopilot' AND rd.subject_type = 'scraped_event'
+      AND rd.decided_at >= now() - interval '26 hours'
+    ORDER BY e.id, rd.decision, rd.decided_at DESC
+  `);
+  const autoRows = rowsOf<ScreenedDbRow & { decision: string }>(autoRes);
+  const autoPublished = toScreenedRows(autoRows.filter((r) => r.decision === "approve"));
+  const autoHidden = toScreenedRows(autoRows.filter((r) => r.decision === "hide"));
+  const autoHiddenNearMisses = autoHidden.filter(
+    (r) => r.confidence != null && r.confidence >= 0.85 && r.confidence < 0.9,
+  );
+
+  const lostRes = await db.execute<{ n: number }>(sql`
+    SELECT count(DISTINCT subject_id)::int AS n FROM review_decisions
+    WHERE decision = 'expire' AND decided_by = 'expiry'
+      AND decided_at >= now() - interval '7 days'
+      AND llm_verdict->>'isTechRelevant' = 'true'
+  `);
+  const goodLost7d = Number(rowsOf<{ n: number }>(lostRes)[0]?.n ?? 0);
 
   const subRows = await db
     .select()
@@ -135,7 +159,54 @@ export async function fetchQueueSnapshot(): Promise<QueueSnapshot> {
     };
   });
 
-  return { pendingEvents, pendingSubmissions: pendingSubs, screenedToday };
+  return {
+    pendingEvents,
+    pendingSubmissions: pendingSubs,
+    screenedToday,
+    autoPublished,
+    autoHiddenCount: autoHidden.length,
+    autoHiddenNearMisses,
+    goodLost7d,
+  };
+}
+
+function rowsOf<T>(res: unknown): T[] {
+  return (Array.isArray(res) ? res : ((res as { rows?: T[] }).rows ?? [])) as T[];
+}
+
+function toScreenedRows(res: unknown): ScreenedEventRow[] {
+  return rowsOf<ScreenedDbRow>(res)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      link: r.link,
+      source: r.source,
+      startsAt: r.starts_at instanceof Date ? r.starts_at : new Date(r.starts_at),
+      category: r.category,
+      confidence: r.confidence != null ? Number(r.confidence) : null,
+    }))
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+}
+
+/* Pending rows this close to their start date expire unreviewed soon. */
+const STARTING_SOON_MS = 72 * 60 * 60 * 1000;
+export function startingSoon(snapshot: QueueSnapshot, now = new Date()): PendingEventRow[] {
+  return snapshot.pendingEvents.filter(
+    (r) => r.event.startsAt.getTime() - now.getTime() < STARTING_SOON_MS,
+  );
+}
+
+/* Anything the admin should hear about today. The cron skips the email
+   when this is false. */
+export function digestHasNews(snapshot: QueueSnapshot): boolean {
+  return (
+    snapshot.pendingEvents.length +
+      snapshot.pendingSubmissions.length +
+      snapshot.screenedToday.length +
+      snapshot.autoPublished.length +
+      snapshot.autoHiddenCount >
+    0
+  );
 }
 
 /* Cottonwood Heights time formatter - matches digest.ts so the user
@@ -169,6 +240,9 @@ export function buildQueueDigestEmail(
   const subCount = snapshot.pendingSubmissions.length;
   const screenedCount = snapshot.screenedToday.length;
   const total = eventCount + subCount;
+  const publishedCount = snapshot.autoPublished.length;
+  const autoHiddenCount = snapshot.autoHiddenCount;
+  const soon = startingSoon(snapshot);
 
   /* One number per pile, joined. The cron route guards against an
      all-empty digest before calling this, but guard here too so a direct
@@ -181,6 +255,8 @@ export function buildQueueDigestEmail(
     else if (subCount > 0)
       parts.push(`${subCount} submission${subCount === 1 ? "" : "s"} in review`);
     if (screenedCount > 0) parts.push(`${screenedCount} auto-screened`);
+    if (publishedCount > 0) parts.push(`${publishedCount} published automatically`);
+    if (autoHiddenCount > 0) parts.push(`${autoHiddenCount} hidden automatically`);
     return parts.length === 0 ? "Review queue is empty" : parts.join(" · ");
   })();
 
@@ -195,6 +271,28 @@ export function buildQueueDigestEmail(
     `${eventCount} scraped · ${subCount} submitted`,
     "",
   ];
+  const pushScreened = (row: ScreenedEventRow) => {
+    const conf = row.confidence != null ? ` ${Math.round(row.confidence * 100)}%` : "";
+    const tag = [row.category, conf.trim()].filter(Boolean).join(" · ");
+    textLines.push(`  ${fmtWhen(row.startsAt)} - ${row.title}${tag ? ` [${tag}]` : ""}`);
+    textLines.push(`    via ${resolveSourceLabel(row.source)}`);
+    if (row.link) textLines.push(`    ${row.link}`);
+    textLines.push("");
+  };
+  if (publishedCount > 0) {
+    textLines.push("PUBLISHED AUTOMATICALLY (last 24h)");
+    snapshot.autoPublished.forEach(pushScreened);
+    textLines.push(`Check or unpublish: ${adminUrl}`);
+    textLines.push("");
+  }
+  if (soon.length > 0) {
+    textLines.push("STARTING WITHIN 72 HOURS AND STILL WAITING");
+    for (const row of soon) {
+      textLines.push(`  ${fmtWhen(row.event.startsAt)} - ${row.event.title}`);
+      if (row.event.link) textLines.push(`    ${row.event.link}`);
+      textLines.push("");
+    }
+  }
   if (eventCount > 0) {
     textLines.push("SCRAPED EVENTS");
     for (const row of snapshot.pendingEvents) {
@@ -231,6 +329,18 @@ export function buildQueueDigestEmail(
     textLines.push(`Review / restore screened: ${screenedUrl}`);
     textLines.push("");
   }
+  if (autoHiddenCount > 0) {
+    textLines.push(`HIDDEN AUTOMATICALLY (last 24h): ${autoHiddenCount}`);
+    if (snapshot.autoHiddenNearMisses.length > 0) {
+      textLines.push("Near misses (85 to 89% sure):");
+      snapshot.autoHiddenNearMisses.forEach(pushScreened);
+    }
+    textLines.push(`Restore any of them: ${SITE_URL}/admin/hidden`);
+    textLines.push("");
+  }
+  textLines.push(`GOOD EVENTS LOST (last 7 days): ${snapshot.goodLost7d}`);
+  textLines.push("Tech events that expired before anyone reviewed them. Target 0.");
+  textLines.push("");
   textLines.push(`Open review queue: ${reviewUrl}`);
   textLines.push(`Admin dashboard: ${adminUrl}`);
 
@@ -319,6 +429,34 @@ export function buildQueueDigestEmail(
         snapshot.screenedToday.map(renderScreenedRow).join("")
       : "";
 
+  const noteRow = (inner: string): string => `<tr>
+    <td style="padding:10px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.5;color:${INK_SOFT};">${inner}</td>
+  </tr>`;
+  const hiddenUrl = `${SITE_URL}/admin/hidden`;
+  const publishedSection =
+    publishedCount > 0
+      ? sectionHeader("Published automatically · 24h", publishedCount, DUSK_DEEP) +
+        snapshot.autoPublished.map(renderScreenedRow).join("") +
+        noteRow(`<a href="${adminUrl}" style="color:${INK};text-decoration:underline;">Check or unpublish in admin</a>`)
+      : "";
+  const soonSection =
+    soon.length > 0
+      ? sectionHeader("Starting within 72 hours and still waiting", soon.length, SUNSET_DEEP) +
+        soon.map(renderEventRow).join("")
+      : "";
+  const autoHiddenSection =
+    autoHiddenCount > 0
+      ? sectionHeader("Hidden automatically · 24h", autoHiddenCount, INK_SOFT) +
+        (snapshot.autoHiddenNearMisses.length > 0
+          ? noteRow("Near misses, 85 to 89% sure:") +
+            snapshot.autoHiddenNearMisses.map(renderScreenedRow).join("")
+          : "") +
+        noteRow(`<a href="${hiddenUrl}" style="color:${INK};text-decoration:underline;">Restore from hidden</a>`)
+      : "";
+  const lostSection =
+    sectionHeader("Good events lost · 7 days", snapshot.goodLost7d, snapshot.goodLost7d > 0 ? SUNSET_DEEP : INK_SOFT) +
+    noteRow("Tech events that expired before anyone reviewed them. Target 0.");
+
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -346,9 +484,13 @@ export function buildQueueDigestEmail(
             <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${INK_SOFT};">${eventCount} scraped · ${subCount} submitted${screenedCount > 0 ? ` · ${screenedCount} screened` : ""}</span>
           </td>
         </tr>
+        ${publishedSection}
+        ${soonSection}
         ${eventSection}
         ${subSection}
         ${screenedSection}
+        ${autoHiddenSection}
+        ${lostSection}
         <tr>
           <td style="padding-top:40px;border-top:2px solid ${INK};">
             <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.5;color:${INK_SOFT};margin:16px 0 0;">

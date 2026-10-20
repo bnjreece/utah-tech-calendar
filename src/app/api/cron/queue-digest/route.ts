@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db, adminSettings } from "@/lib/db";
-import { fetchQueueSnapshot, buildQueueDigestEmail } from "@/lib/queue-digest";
+import { fetchQueueSnapshot, buildQueueDigestEmail, digestHasNews } from "@/lib/queue-digest";
 import { sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -50,10 +50,11 @@ export async function GET(request: NextRequest) {
   const snapshot = await fetchQueueSnapshot();
   const total = snapshot.pendingEvents.length + snapshot.pendingSubmissions.length;
   const screenedCount = snapshot.screenedToday.length;
-  if (total + screenedCount === 0) {
+  if (!digestHasNews(snapshot)) {
     /* Per "can skip if none" - no email when there's nothing to review AND
-       nothing was auto-screened today. The daily cadence is itself the
-       recovery mechanism: tomorrow's run picks up anything that accrued. */
+       nothing was auto-screened, auto-published or auto-hidden today. The
+       daily cadence is itself the recovery mechanism: tomorrow's run picks
+       up anything that accrued. */
     return Response.json({ ok: true, skipped: "queue_empty" });
   }
 
@@ -69,6 +70,9 @@ export async function GET(request: NextRequest) {
       pendingEvents: snapshot.pendingEvents.length,
       pendingSubmissions: snapshot.pendingSubmissions.length,
       screenedToday: screenedCount,
+      autoPublished: snapshot.autoPublished.length,
+      autoHidden: snapshot.autoHiddenCount,
+      goodLost7d: snapshot.goodLost7d,
       subject: content.subject,
       text: content.text,
       html: content.html,
