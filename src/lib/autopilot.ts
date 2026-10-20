@@ -34,6 +34,8 @@ export interface AutopilotRow {
   venueName: string | null;
   city: string | null;
   isOnline: boolean;
+  /* Includes the source's defaultTags ("blockchain" on the crypto sources). */
+  tags?: string[] | null;
   source: string;
   status: string;
   statusLocked: boolean;
@@ -96,6 +98,10 @@ const NOT_COMMUNITY_RE =
   /\b(employer|recruiter|recruiting|sponsor|sponsorship|exhibitor|vendor|hiring[\s-]*partner)[\s-]*(ticket|tickets|pass|passes|admission|booth|table)\b/i;
 const CLOSED_EVENT_RE =
   /\b(members?[\s-]*only|orientation|invite[\s-]*only|invitation only|advisory board|participants?[\s-]*only|board meeting)\b/i;
+/* Events aimed at children (the Moonpreneur free-trial "Robotics/STEM Class
+   for Kids" listings) go to a human; they are never hidden by this. */
+const KIDS_AUDIENCE_RE =
+  /\b(for kids|kids ages|for children|for teens|teens|for parents)\b|\bages?\s*\d+\s*(-|–|to)\s*\d+/i;
 const VAGUE_VENUE_RE = /^\s*$|\b(tbd|tba|to be announced|online|virtual)\b/i;
 
 export function decidePending(
@@ -119,7 +125,10 @@ export function decidePending(
   if (struct)
     return { action: "hide", reason: `autopilot:struct:${struct}`, hiddenReason: "spam" };
 
-  /* 2. Duplicate hide. */
+  /* 2. Duplicate hide. Runs before the crypto hold (spec order, accepted on
+     purpose): a crypto cross-post is hidden only because an approved or
+     earlier pending twin of it exists, so nothing reaches the public
+     calendar without a human, and the hide is restorable on /admin/hidden. */
   if (ctx.duplicate)
     return { action: "hide", reason: "autopilot:dup", hiddenReason: "cross-post" };
 
@@ -127,7 +136,12 @@ export function decidePending(
   const conf = Number(v.confidence) || 0;
   const hay = `${(v.category || "").toLowerCase()} ${row.title}`.toLowerCase();
   const saysNo = !v.isTechRelevant || v.isSpam;
-  if (CRYPTO_RE.test(hay)) return hold("crypto");
+  /* Crypto is checked on the model's tags and the row's tags too: listings
+     from the crypto sources ("Primitive", "The Capital Room") often do not
+     say crypto in the title or category. */
+  const cryptoHay =
+    `${hay} ${(v.suggestedTags ?? []).join(" ")} ${(row.tags ?? []).join(" ")}`.toLowerCase();
+  if (CRYPTO_RE.test(cryptoHay)) return hold("crypto");
   if (saysNo && (PROTECTED_VERTICAL_RE.test(hay) || PROTECTED_EXTRA_RE.test(hay)))
     return hold("protected");
   if (saysNo && conf < 0.95 && row.city && RURAL_CITY_RE.test(row.city)) return hold("rural");
@@ -144,6 +158,7 @@ export function decidePending(
   if (v.isOnline || row.isOnline) return hold("online");
   if (NOT_COMMUNITY_RE.test(row.title) || CLOSED_EVENT_RE.test(row.title))
     return hold("not-community");
+  if (KIDS_AUDIENCE_RE.test(row.title)) return hold("kids-audience");
   const venue = (row.venueName ?? "").trim();
   if ((row.description ?? "").trim().length < 40 && !venue) return hold("thin");
   if (row.source === "eventbrite" && VAGUE_VENUE_RE.test(venue)) return hold("venue");

@@ -1,10 +1,10 @@
 import { generateObject } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
-import { and, eq, gte, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, isNull } from "drizzle-orm";
 import { db, events, adminSettings } from "@/lib/db";
 import { recordEventDecision } from "@/lib/review-log";
 import { VerdictSchema, routeVerdict, type EventVerdict } from "@/lib/verdict";
-import { decidePending } from "@/lib/autopilot";
+import { decidePending, MAX_PUBLISH_PER_RUN } from "@/lib/autopilot";
 import { applyPendingDecision, loadSourceUrls, pendingFacts } from "@/lib/autopilot-db";
 
 /* Phase 1 (shadow) LLM classifier. A cheap Haiku pass that scores a
@@ -109,7 +109,13 @@ export async function classifyUnchecked(
   /* Circuit breaker: a healthy gate screens a small minority. If one run
      hard-screens past this many, a prompt/model regression is likely - stop
      auto-hiding for the rest of the run and route remaining flagged events to
-     human review instead (fail safe + visible, not a silent mass-hide). */
+     human review instead (fail safe + visible, not a silent mass-hide).
+     Note: the scrape cron classifies 25 rows a tick, so this only trips on a
+     larger manual /api/cron/classify run. It is deliberately not lowered for
+     the autopilot: re-scoring the pending backlog is expected to hide about
+     70% of it, so any bar low enough to catch a model regression inside one
+     cron tick would also trip on a healthy backlog. A bad run is caught by the
+     digest's gate-anomaly check and is restorable from /admin/hidden. */
   const SCREEN_ABORT_AT = 30;
 
   /* Full rows so a screen decision can write an accurate ledger snapshot. */
@@ -117,18 +123,53 @@ export async function classifyUnchecked(
     .select()
     .from(events)
     .where(and(isNull(events.llmCheckedAt), gte(events.startsAt, new Date())))
+    /* Newest first: a fresh scrape (often already public on an auto-approve
+       source) is scored before an older backlog. Inflow is ~20 rows a day, so
+       the backlog still drains at 25 a tick. */
+    .orderBy(desc(events.createdAt))
     .limit(limit);
 
   /* Autopilot publishing ships off; AUTOPILOT_PUBLISH=on enables it. */
   const publishEnabled = process.env.AUTOPILOT_PUBLISH === "on";
-  const sourceUrls =
-    gateEnabled && rows.some((r) => r.status === "pending") ? await loadSourceUrls() : null;
+  const sourceUrls = gateEnabled && rows.length > 0 ? await loadSourceUrls() : null;
 
   let classified = 0;
   let screened = 0;
   let toReview = 0;
   let published = 0;
+  /* Queue autopilot: decide a pending row right after it is scored, while
+     `r` is exactly what the model saw (see lib/autopilot.ts for the rules).
+     A failure leaves the row pending, which fails closed (it expires hidden).
+     Autopilot hides count toward the same circuit breaker as gate screens. */
+  const autopilot = async (r: (typeof rows)[number], verdict: EventVerdict) => {
+    try {
+      const facts = await pendingFacts(r);
+      const decision = decidePending(r, verdict, {
+        now: new Date(),
+        sourceUrl: (r.sourceId && sourceUrls?.get(r.sourceId)) || null,
+        ...facts,
+        publishEnabled,
+        publishedThisRun: published,
+      });
+      if (await applyPendingDecision(r, verdict, decision)) {
+        if (decision.action === "hide") screened++;
+        else published++;
+      }
+    } catch (err) {
+      console.warn("[classify] autopilot routing failed", r.id, err);
+    }
+  };
   for (const r of rows) {
+    /* Once the publish cap or the breaker is reached, leave pending rows
+       unchecked so the next run decides them. Classifying them now would
+       store a verdict and turn the hold into a permanent one (the autopilot
+       only acts on a row right after it is scored). */
+    if (
+      gateEnabled &&
+      r.status === "pending" &&
+      (published >= MAX_PUBLISH_PER_RUN || screened >= SCREEN_ABORT_AT)
+    )
+      continue;
     const verdict = await classifyEvent(r);
     if (!verdict) continue;
     await db
@@ -176,29 +217,13 @@ export async function classifyUnchecked(
           channel: "auto",
         });
         toReview++;
+        /* The demoted row is now pending with its verdict stored, so the
+           autopilot decides it here or never. Skipped once the breaker has
+           tripped: then it stays for a human, as on main. */
+        if (screened < SCREEN_ABORT_AT) await autopilot({ ...r, status: "pending" }, verdict);
       }
     } else if (gateEnabled && r.status === "pending" && !r.statusLocked && r.source !== "manual") {
-      /* Queue autopilot: decide the pending row now, while `r` is exactly
-         what the model saw (see lib/autopilot.ts for the rules). A failure
-         leaves the row pending, which fails closed (it expires hidden). */
-      try {
-        const facts = await pendingFacts(r);
-        const decision = decidePending(r, verdict, {
-          now: new Date(),
-          sourceUrl: (r.sourceId && sourceUrls?.get(r.sourceId)) || null,
-          ...facts,
-          publishEnabled,
-          publishedThisRun: published,
-        });
-        /* Same circuit breaker as the approved-row gate. */
-        if (decision.action === "hide" && screened >= SCREEN_ABORT_AT) continue;
-        if (await applyPendingDecision(r, verdict, decision)) {
-          if (decision.action === "hide") screened++;
-          else published++;
-        }
-      } catch (err) {
-        console.warn("[classify] autopilot routing failed", r.id, err);
-      }
+      await autopilot(r, verdict);
     }
   }
   if (screened >= SCREEN_ABORT_AT) {

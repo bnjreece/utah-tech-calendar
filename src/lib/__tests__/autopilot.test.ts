@@ -25,6 +25,8 @@ interface Case {
   city?: string;
   desc?: number;
   isOnline?: boolean;
+  tags?: string[];
+  suggestedTags?: string[];
   ctx?: Partial<AutopilotCtx>;
 }
 
@@ -35,6 +37,7 @@ function run(c: Case, base: Partial<AutopilotCtx> = {}) {
     venueName: c.venue ?? null,
     city: c.city ?? null,
     isOnline: c.isOnline ?? false,
+    tags: c.tags ?? null,
     source: c.source,
     status: "pending",
     statusLocked: false,
@@ -47,7 +50,7 @@ function run(c: Case, base: Partial<AutopilotCtx> = {}) {
     isOnline: online ?? false,
     isPaid: false,
     category,
-    suggestedTags: [],
+    suggestedTags: c.suggestedTags ?? [],
     confidence: conf,
     reasoning: "",
   };
@@ -111,6 +114,14 @@ const OTHERS: Array<[Case, Expect]> = [
   /* Crypto always stays human. */
   [{ title: "UVU 2026 Bitcoin Conference: Saturday October 31st", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.95, "conference"], venue: "Fulton Library", city: "Orem" }, ["hold", "hold:crypto"]],
   [{ title: "SLC XPR Community Activation", source: "luma", url: "https://lu.ma/utahcrypto", v: [true, false, 0.85, "web3 community meetup"], venue: "Publik Coffee Roasters", city: "Salt Lake City", desc: 578 }, ["hold", "hold:crypto"]],
+  /* Crypto-source listings whose titles do not say crypto: caught by tags. */
+  [{ title: "Primitive", source: "luma", url: "https://lu.ma/utahcrypto", v: [true, false, 0.95, "conference"], venue: "Utah, USA", desc: 710, tags: ["fintech", "blockchain"], suggestedTags: ["crypto", "blockchain", "web3", "solana"] }, ["hold", "hold:crypto"]],
+  [{ title: "The Capital Room", source: "luma", url: "https://www.meetup.com/utahcrypto/", v: [true, false, 0.92, "tech community networking"], desc: 613, tags: ["product-management", "meetup", "fintech", "blockchain"], suggestedTags: ["fintech", "blockchain", "web3"] }, ["hold", "hold:crypto"]],
+  [{ title: "The Capital Room", source: "luma", url: "https://www.meetup.com/utahcrypto/", v: [true, false, 0.92, "tech community networking"], desc: 613, tags: ["blockchain"] }, ["hold", "hold:crypto"]],
+  /* Kids-audience listings (Moonpreneur free trials) go to a human. */
+  [{ title: "Free In-person Robotics Class in Orem, UT  for Kids Ages 7-14 Yrs", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.92, "youth STEM/robotics education"], venue: "TownePlace Suites by Marriott 873 N 1200 W, Orem, UT 84057, United States", city: "Orem", desc: 102 }, ["hold", "hold:kids-audience"]],
+  [{ title: "Free In-person STEM Activities for Kids in  Sandy, UT (7-14 Yrs)", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.92, "kids STEM education"], venue: "Best Western Plus Cotton Tree Inn", city: "Sandy", desc: 95 }, ["hold", "hold:kids-audience"]],
+  [{ title: "Free In-person STEM Activities for Kids in  Sandy, UT (7-14 Yrs)", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [false, false, 0.95, "not-tech"], venue: "Best Western Plus Cotton Tree Inn", city: "Sandy", desc: 95 }, ["hold", "hold:protected"]],
   /* Protected verticals with a no/spam verdict stay human. */
   [{ title: "The Biological Evaluation Puzzle: Building a Complete ISO 10993 Strategy Webinar Series: Part 7", source: "html", url: "https://bioutah.growthzoneapp.com/communityeventscalendar", v: [true, true, 0.85, "cert-spam", true], city: "Salt Lake City", desc: 251, isOnline: true }, ["hold", "hold:protected"]],
   [{ title: "Satellite Constellations Office Hours", source: "eventbrite", url: EB("ut--salt-lake-city/tech--events"), v: [false, false, 0.95, "not-tech"], venue: "Some Hall", city: "Salt Lake City" }, ["hold", "hold:protected"]],

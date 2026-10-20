@@ -4,6 +4,10 @@
 -- Without this the backlog never drains: the autopilot only acts on a row
 -- right after it is classified, and every pending row already has a verdict.
 -- PRODUCTION WRITE. Needs independent review before anyone runs it.
+-- The classifier takes newest rows first; inflow is about 20 rows a day, so
+-- the backlog still drains in about 5 ticks. A run never classifies pending
+-- rows past its publish cap or circuit breaker, so a large manual
+-- /api/cron/classify run cannot strand good events as permanent holds.
 -- Run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f bootstrap_reclassify_pending.sql
 --
 -- ORDER: run only after the autopilot is deployed, with AUTOPILOT_PUBLISH
@@ -20,8 +24,11 @@ SELECT count(*) AS expected
 FROM events
 WHERE status = 'pending' AND status_locked = false AND starts_at > now();
 
+-- Only llm_checked_at is reset. The old llm_verdict stays until the new one
+-- overwrites it, so /admin/review and the digest still show a verdict while
+-- the backlog drains, and a row that expires first is ledgered with it.
 UPDATE events
-SET llm_checked_at = NULL, llm_verdict = NULL
+SET llm_checked_at = NULL
 WHERE status = 'pending' AND status_locked = false AND starts_at > now();
 
 -- Count check: expect UPDATE <expected> above. If so COMMIT, otherwise ROLLBACK.

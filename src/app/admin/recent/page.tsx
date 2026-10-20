@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { eq, desc, and, gte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, or, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { rejectEvent, setEventGroup } from "@/lib/admin-actions";
 import { getAllGroups } from "@/lib/queries";
@@ -84,7 +84,14 @@ export default async function RecentIngestsPage() {
     .where(
       and(
         eq(events.status, "approved"),
-        gte(events.createdAt, since),
+        /* Also rows the queue autopilot published in the window, however old
+           the row is: this is where the digest sends you to unpublish one. */
+        or(
+          gte(events.createdAt, since),
+          sql`${events.id} IN (SELECT subject_id FROM review_decisions
+            WHERE subject_type = 'scraped_event' AND decided_by = 'autopilot'
+              AND decision = 'approve' AND created_at >= ${since.toISOString()}::timestamptz)`,
+        ),
       ),
     )
     .orderBy(desc(events.createdAt))
@@ -120,7 +127,8 @@ export default async function RecentIngestsPage() {
       </div>
       <p className="text-sm text-ink-soft max-w-[60ch] text-pretty mb-6">
         Newest first. Useful for spotting bad source output before it ages
-        into the public calendar. Click Hide on a row to flip it to
+        into the public calendar. Includes events the queue autopilot
+        published in the window. Click Hide on a row to flip it to
         status=hidden with reason=manual.
       </p>
       <ul role="list" className="flex flex-col">

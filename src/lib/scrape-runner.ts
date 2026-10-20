@@ -231,9 +231,12 @@ async function upsertEvent(
      webinar, a monthly mixer) come back as brand-new rows because every
      instance carries its own externalId - so a decided series re-entered the
      review queue, the daily digest, and the classifier on every new instance.
-     Inherit the outcome of the latest HUMAN-decided sibling: same source row
-     (source_id, not the adapter name, which many sources share) + same
-     normalized title, where the sibling is statusLocked. Automatic outcomes
+     Inherit the outcome of the latest HUMAN-decided sibling: same normalized
+     title, where the sibling is statusLocked. A human approval only chains
+     within the same source row (source_id); a human hide also chains across
+     sources of the same adapter, because Eventbrite's keyword searches each
+     have their own source row and the same spam listing (the daily "PITCH
+     LUNCH") turns up under several of them. Automatic outcomes
      (llm-screened, series, autopilot) are never inherited, so one wrong
      auto-hide cannot spread to every later instance. Human approvals
      propagate as approved+locked (skips the review queue and the gate); hides
@@ -254,10 +257,11 @@ async function upsertEvent(
         status: events.status,
         hiddenReason: events.hiddenReason,
         statusLocked: events.statusLocked,
+        sameSource: sql<boolean>`${events.sourceId} IS NOT DISTINCT FROM ${sourceId}::uuid`,
       })
       .from(events)
       .where(
-        sql`${events.sourceId} = ${sourceId}
+        sql`(${events.sourceId} = ${sourceId} OR ${events.source} = ${item.source})
           AND btrim(lower(regexp_replace(${events.title}, '[^a-zA-Z0-9]+', ' ', 'g'))) = ${seriesKey}
           AND ${events.statusLocked} = true`,
       )
@@ -267,7 +271,7 @@ async function upsertEvent(
       status = "hidden";
       hiddenReason = "series";
       seriesAction = "hide";
-    } else if (sibling?.status === "approved" && sibling.statusLocked) {
+    } else if (sibling?.status === "approved" && sibling.statusLocked && sibling.sameSource) {
       status = "approved";
       hiddenReason = null;
       statusLocked = true;

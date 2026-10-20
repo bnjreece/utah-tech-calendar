@@ -1,6 +1,5 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, adminSettings, pendingSubmissions } from "@/lib/db";
-import { recordSubmissionDecision } from "@/lib/review-log";
 import { normalizeEventTitle, submissionPastDated } from "@/lib/autopilot";
 
 /* Close /submit drafts that need no human: past-dated ones become 'expired',
@@ -14,9 +13,12 @@ type Payload = { type?: string; title?: string; link?: string; startsAt?: string
 
 type SubmissionCloseReason = "expired" | "duplicate";
 
-/* Read-only: is this draft already an approved or pending event? Matches the
-   link, or the normalized title on the same Denver date. Hidden events do not
-   count, so a draft is never closed against something nobody can see. */
+/* Read-only: is this draft already on the public calendar? Only APPROVED
+   events count: a pending scraped twin may still be held, screened or
+   expire, and closing the human copy against it would lose the event. The
+   match is the link or the normalized title, and either way the same Denver
+   date (many recurring series reuse one link for every date). With no
+   parseable date, only a link match on an upcoming event counts. */
 export async function submissionDuplicate(payload: Payload): Promise<boolean> {
   const link = payload.link?.trim().replace(/\/+$/, "").toLowerCase() || null;
   /* The naive form value's date part is already the Denver date. */
@@ -24,10 +26,11 @@ export async function submissionDuplicate(payload: Payload): Promise<boolean> {
   const res = await db.execute(sql`
     SELECT title, (link IS NOT NULL AND rtrim(lower(link), '/') = ${link}) AS link_match
     FROM events
-    WHERE status IN ('approved', 'pending')
-      AND ((link IS NOT NULL AND rtrim(lower(link), '/') = ${link})
-        OR (${day}::date IS NOT NULL
-          AND (starts_at AT TIME ZONE 'America/Denver')::date = ${day}::date))
+    WHERE status = 'approved'
+      AND CASE WHEN ${day}::date IS NULL
+        THEN starts_at >= now() AND link IS NOT NULL AND rtrim(lower(link), '/') = ${link}
+        ELSE (starts_at AT TIME ZONE 'America/Denver')::date = ${day}::date
+      END
   `);
   const rows = (Array.isArray(res) ? res : (res.rows ?? [])) as Array<{
     title: string;
@@ -60,18 +63,29 @@ export async function closeStaleSubmissions(): Promise<{ expired: number; duplic
         ? "duplicate"
         : null;
     if (!status) continue;
-    const [claimed] = await db
-      .update(pendingSubmissions)
-      .set({ status, reviewedAt: now })
-      .where(and(eq(pendingSubmissions.id, row.id), eq(pendingSubmissions.status, "pending")))
-      .returning({ id: pendingSubmissions.id });
-    if (!claimed) continue;
-    await recordSubmissionDecision(row, status === "expired" ? "expire" : "duplicate", {
-      subjectType: "submission_event",
-      newStatus: status,
-      decidedBy: "autopilot",
-      channel: "auto",
-    });
+    /* Status change and ledger row in one statement: both or neither. */
+    const decision = status === "expired" ? "expire" : "duplicate";
+    const snapshot = {
+      payload: row.payload,
+      submitterEmail: row.submitterEmail,
+      submitterName: row.submitterName,
+    };
+    const res = await db.execute(sql`
+      WITH upd AS (
+        UPDATE pending_submissions SET status = ${status}, reviewed_at = now()
+        WHERE id = ${row.id} AND status = 'pending'
+          AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
+        RETURNING id
+      )
+      INSERT INTO review_decisions
+        (subject_type, subject_id, decision, reason, prior_status, new_status,
+         decided_by, channel, source_id, adapter, snapshot)
+      SELECT 'submission_event', upd.id, ${decision}, NULL, 'pending', ${status},
+        'autopilot', 'auto', NULL, NULL, ${JSON.stringify(snapshot)}::jsonb
+      FROM upd
+      RETURNING subject_id
+    `);
+    if ((Array.isArray(res) ? res : (res.rows ?? [])).length === 0) continue;
     out[status]++;
   }
   return out;

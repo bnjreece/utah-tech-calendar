@@ -19,6 +19,8 @@ export async function loadSourceUrls(): Promise<Map<string, string>> {
   return new Map(rows.map((s) => [s.id, s.url]));
 }
 
+const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
+
 /* Rule 2 and the rule 5 series check, both read-only. Dates compare in SQL
    in America/Denver, never against a JS timestamp. */
 export async function pendingFacts(
@@ -35,7 +37,9 @@ export async function pendingFacts(
     `),
   );
   const key = normalizeEventTitle(r.title);
-  const duplicate = key !== "" && sameDay.some((o) => normalizeEventTitle(o.title) === key);
+  /* Placeholder titles ("TBD") from different groups are not cross-posts. */
+  const duplicate =
+    key !== "" && !PLACEHOLDER_TITLE_RE.test(key) && sameDay.some((o) => normalizeEventTitle(o.title) === key);
 
   const [series] = rowsOf<{ n: number }>(
     await db.execute(sql`

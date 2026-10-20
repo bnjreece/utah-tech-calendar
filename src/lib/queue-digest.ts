@@ -263,6 +263,8 @@ export function buildQueueDigestEmail(
   const reviewUrl = `${SITE_URL}/admin/review`;
   const screenedUrl = `${SITE_URL}/admin/screened`;
   const adminUrl = `${SITE_URL}/admin`;
+  /* /admin/recent lists autopilot publishes with a Hide action. */
+  const recentUrl = `${SITE_URL}/admin/recent`;
 
   const textLines: string[] = [
     "Utah Tech Calendar",
@@ -282,7 +284,7 @@ export function buildQueueDigestEmail(
   if (publishedCount > 0) {
     textLines.push("PUBLISHED AUTOMATICALLY (last 24h)");
     snapshot.autoPublished.forEach(pushScreened);
-    textLines.push(`Check or unpublish: ${adminUrl}`);
+    textLines.push(`Check or unpublish: ${recentUrl}`);
     textLines.push("");
   }
   if (soon.length > 0) {
@@ -437,7 +439,7 @@ export function buildQueueDigestEmail(
     publishedCount > 0
       ? sectionHeader("Published automatically · 24h", publishedCount, DUSK_DEEP) +
         snapshot.autoPublished.map(renderScreenedRow).join("") +
-        noteRow(`<a href="${adminUrl}" style="color:${INK};text-decoration:underline;">Check or unpublish in admin</a>`)
+        noteRow(`<a href="${recentUrl}" style="color:${INK};text-decoration:underline;">Check or unpublish in admin</a>`)
       : "";
   const soonSection =
     soon.length > 0
