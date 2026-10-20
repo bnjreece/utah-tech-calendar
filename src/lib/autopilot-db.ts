@@ -33,7 +33,11 @@ export async function pendingFacts(
         AND (o.starts_at AT TIME ZONE 'America/Denver')::date
           = (me.starts_at AT TIME ZONE 'America/Denver')::date
         AND (o.status = 'approved'
-          OR (o.status = 'pending' AND (o.created_at, o.id) < (me.created_at, me.id)))
+          /* An unreviewed pending row only counts as the original when it
+             is the same listing (same link). Otherwise a junk twin could
+             hide the good copy and then be hidden itself. */
+          OR (o.status = 'pending' AND (o.created_at, o.id) < (me.created_at, me.id)
+            AND o.link IS NOT NULL AND rtrim(lower(o.link), '/') = rtrim(lower(me.link), '/')))
     `),
   );
   const key = normalizeEventTitle(r.title);

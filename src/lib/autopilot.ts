@@ -176,3 +176,12 @@ export function submissionPastDated(payload: { startsAt?: string }, now: Date): 
   const t = payload.startsAt ? new Date(payload.startsAt).getTime() : NaN;
   return Number.isFinite(t) && t + SUBMISSION_EXPIRE_GRACE_MS < now.getTime();
 }
+
+/* The YYYY-MM-DD prefix, only when it is a real calendar date, so a bad
+   value like 2026-02-31 never reaches the ::date cast and throws. */
+export function validDay(startsAt: string | undefined): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(startsAt ?? "");
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.toISOString().slice(0, 10) === m[0] ? m[0] : null;
+}

@@ -198,3 +198,13 @@ describe("submissionPastDated", () => {
     expect(submissionPastDated({}, NOW)).toBe(false);
   });
 });
+
+import { validDay } from "@/lib/autopilot";
+describe("validDay", () => {
+  test("keeps real dates, drops impossible ones", () => {
+    expect(validDay("2026-11-17T18:00")).toBe("2026-11-17");
+    expect(validDay("2026-02-31T10:00")).toBeNull();
+    expect(validDay("garbage")).toBeNull();
+    expect(validDay(undefined)).toBeNull();
+  });
+});
