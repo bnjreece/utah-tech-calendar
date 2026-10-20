@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, or, sql } from "drizzle-orm";
 import { db, adminSettings, sources, reviewDecisions } from "@/lib/db";
 import {
   detectAlerts,
@@ -167,7 +167,8 @@ export async function GET(request: NextRequest) {
   const alerts = detectAlerts(sourceRows, { settings });
 
   /* Gate-anomaly (DB-based, outside the pure source detector): count the
-     distinct events the LLM gate auto-screened in the last 24h. */
+     distinct events the LLM gate or the queue autopilot auto-hid in the
+     last 24h. */
   try {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const [{ n }] = await db
@@ -176,7 +177,10 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           eq(reviewDecisions.decision, "hide"),
-          eq(reviewDecisions.reason, "llm-screened"),
+          or(
+            eq(reviewDecisions.reason, "llm-screened"),
+            eq(reviewDecisions.decidedBy, "autopilot"),
+          ),
           eq(reviewDecisions.channel, "auto"),
           gte(reviewDecisions.decidedAt, since),
         ),

@@ -1,0 +1,154 @@
+import {
+  CRYPTO_RE,
+  PROTECTED_VERTICAL_RE,
+  routeVerdict,
+  type EventVerdict,
+} from "@/lib/verdict";
+
+/* Queue autopilot: decides a PENDING scraped event right after the classifier
+   scores it, so the review queue drains without a human. Pure (no DB): the
+   caller (classifyUnchecked) gathers the DB facts into ctx and applies the
+   result with one guarded write. Rules run in order; the first that fires
+   wins:
+     0. eligibility (pending, unlocked, scraped, upcoming)
+     1. structural hide (patterns proven to be junk, checked before the model)
+     2. duplicate hide (same event already approved, or pending earlier)
+     3. policy holds (crypto, protected verticals, southern/rural Utah)
+     4. auto-reject (a confident "no" from the model)
+     5. auto-publish (only with AUTOPILOT_PUBLISH=on, at most 8 per run)
+     6. everything else stays pending; unreviewed rows expire hidden. */
+
+export type AutopilotAction = "hide" | "publish" | "hold";
+
+export interface AutopilotDecision {
+  action: AutopilotAction;
+  /* Ledger reason for hide/publish ("autopilot:..."); a "hold:..." label
+     otherwise (never written, used by the replay script and tests). */
+  reason: string;
+  hiddenReason?: "spam" | "cross-post" | "llm-screened";
+}
+
+export interface AutopilotRow {
+  title: string;
+  description: string | null;
+  venueName: string | null;
+  city: string | null;
+  isOnline: boolean;
+  source: string;
+  status: string;
+  statusLocked: boolean;
+  startsAt: Date;
+}
+
+export interface AutopilotCtx {
+  now: Date;
+  /* sources.url of the row's source_id (null if unknown). */
+  sourceUrl: string | null;
+  /* Same normalized title + same Denver date as an approved row or an
+     earlier-created pending row. */
+  duplicate: boolean;
+  /* Other rows from the same source_id with the same title created in the
+     last 30 days. */
+  seriesCount: number;
+  publishEnabled: boolean;
+  publishedThisRun: number;
+}
+
+export const MAX_PUBLISH_PER_RUN = 8;
+
+/* Lowercase, drop punctuation and ticket-tier words, so two listings of one
+   event ("HackerX - Employer Ticket" and "HackerX") compare equal. */
+const TIER_RE =
+  /\b(employer tickets?|hiring partner( tickets?)?|vendor pass(es)?|general admission|early bird|student tickets?|vip)\b/g;
+export function normalizeEventTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(TIER_RE, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/* Rule 1 patterns, each taken from rows in the queue. */
+const ELEVATING_RE = /elevating your potential/i;
+const VENUE_MILL_RE = /for venue details reach us/i;
+const PROVO_TECH_SOURCE = "ut--provo/tech--events";
+const ATHLETICS_RE =
+  /\b(pregame|sideline|gameday|game day|cougar walk|halftime|football delivery|tailgate)\b/i;
+
+export function structuralHide(row: AutopilotRow, sourceUrl: string | null): string | null {
+  if (ELEVATING_RE.test(row.title)) return "elevating";
+  if (row.venueName && VENUE_MILL_RE.test(row.venueName)) return "venue-mill";
+  if (sourceUrl?.includes(PROVO_TECH_SOURCE) && ATHLETICS_RE.test(row.title))
+    return "byu-athletics";
+  return null;
+}
+
+/* Rule 3 widening of the protected verticals, pending rows only (the shared
+   PROTECTED_VERTICAL_RE is unchanged so approved-row routing is unchanged). */
+const PROTECTED_EXTRA_RE = /\b(biolog|iso ?10993|space\b|astronaut|satellite)/;
+const RURAL_CITY_RE =
+  /\b(st\.? ?george|saint george|cedar city|hurricane|logan|washington|ivins|kanab|moab|vernal|price)\b/i;
+
+/* Rule 5 publish vetoes. Employer / recruiter / vendor tiers of a real event
+   are not community tickets (salvaged from the parked autoapprove branch). */
+const NOT_COMMUNITY_RE =
+  /\b(employer|recruiter|recruiting|sponsor|sponsorship|exhibitor|vendor|hiring[\s-]*partner)[\s-]*(ticket|tickets|pass|passes|admission|booth|table)\b/i;
+const CLOSED_EVENT_RE =
+  /\b(members?[\s-]*only|orientation|invite[\s-]*only|invitation only|advisory board|participants?[\s-]*only|board meeting)\b/i;
+const VAGUE_VENUE_RE = /^\s*$|\b(tbd|tba|to be announced|online|virtual)\b/i;
+
+export function decidePending(
+  row: AutopilotRow,
+  v: EventVerdict,
+  ctx: AutopilotCtx,
+): AutopilotDecision {
+  const hold = (why: string): AutopilotDecision => ({ action: "hold", reason: `hold:${why}` });
+
+  /* 0. Eligibility. The caller also checks llm_gate_enabled. */
+  if (
+    row.status !== "pending" ||
+    row.statusLocked ||
+    row.source === "manual" ||
+    row.startsAt.getTime() <= ctx.now.getTime()
+  )
+    return hold("ineligible");
+
+  /* 1. Structural hide. */
+  const struct = structuralHide(row, ctx.sourceUrl);
+  if (struct)
+    return { action: "hide", reason: `autopilot:struct:${struct}`, hiddenReason: "spam" };
+
+  /* 2. Duplicate hide. */
+  if (ctx.duplicate)
+    return { action: "hide", reason: "autopilot:dup", hiddenReason: "cross-post" };
+
+  /* 3. Policy holds. */
+  const conf = Number(v.confidence) || 0;
+  const hay = `${(v.category || "").toLowerCase()} ${row.title}`.toLowerCase();
+  const saysNo = !v.isTechRelevant || v.isSpam;
+  if (CRYPTO_RE.test(hay)) return hold("crypto");
+  if (saysNo && (PROTECTED_VERTICAL_RE.test(hay) || PROTECTED_EXTRA_RE.test(hay)))
+    return hold("protected");
+  if (saysNo && conf < 0.95 && row.city && RURAL_CITY_RE.test(row.city)) return hold("rural");
+
+  /* 4. Auto-reject. Eventbrite's keyword searches are the noisiest source,
+     so its bar is lower (0.85) than everyone else's (0.90). */
+  const bar = row.source === "eventbrite" ? 0.85 : 0.9;
+  const route = routeVerdict(v, bar, row.title);
+  if (route === "screen")
+    return { action: "hide", reason: "autopilot:screen", hiddenReason: "llm-screened" };
+
+  /* 5. Auto-publish. */
+  if (route !== "keep" || conf < 0.9) return hold("unsure");
+  if (v.isOnline || row.isOnline) return hold("online");
+  if (NOT_COMMUNITY_RE.test(row.title) || CLOSED_EVENT_RE.test(row.title))
+    return hold("not-community");
+  const venue = (row.venueName ?? "").trim();
+  if ((row.description ?? "").trim().length < 40 && !venue) return hold("thin");
+  if (row.source === "eventbrite" && VAGUE_VENUE_RE.test(venue)) return hold("venue");
+  if (ctx.seriesCount >= 3) return hold("series");
+  if (!ctx.publishEnabled) return hold("publish-off");
+  if (ctx.publishedThisRun >= MAX_PUBLISH_PER_RUN) return hold("publish-cap");
+  return { action: "publish", reason: "autopilot:publish" };
+}

@@ -10,8 +10,32 @@ import { db, events, pendingSubmissions, reviewDecisions } from "@/lib/db";
 type EventRow = typeof events.$inferSelect;
 type SubmissionRow = typeof pendingSubmissions.$inferSelect;
 
-export type DecisionKind = "approve" | "reject" | "hide" | "restore" | "review";
+export type DecisionKind = "approve" | "reject" | "hide" | "restore" | "review" | "expire" | "duplicate";
 export type DecisionChannel = "admin-ui" | "magic-link" | "auto";
+
+/* The frozen view of a scraped event stored in review_decisions.snapshot.
+   Shared with the autopilot's single-statement writes so every ledger row
+   has the same shape. */
+export function eventSnapshot(before: EventRow) {
+  return {
+    title: before.title,
+    description: before.description,
+    link: before.link,
+    source: before.source,
+    venueName: before.venueName,
+    address: before.address,
+    city: before.city,
+    isOnline: before.isOnline,
+    tags: before.tags,
+    /* The heuristic verdict at decision time - the signal that lets us
+       mine "human overruled the auto-classifier" examples later. */
+    flags: {
+      isConference: before.isConference,
+      isPaid: before.isPaid,
+      hiddenReason: before.hiddenReason,
+    },
+  };
+}
 
 /* Record a decision on a scraped event. Pass the row as read BEFORE the
    status UPDATE so prior_status + the snapshot reflect what the decider
@@ -41,24 +65,7 @@ export async function recordEventDecision(
       /* The classifier's shadow verdict at decision time - this paired with
          the human decision is the agree/disagree signal Phase 2+ mines. */
       llmVerdict: before.llmVerdict ?? null,
-      snapshot: {
-        title: before.title,
-        description: before.description,
-        link: before.link,
-        source: before.source,
-        venueName: before.venueName,
-        address: before.address,
-        city: before.city,
-        isOnline: before.isOnline,
-        tags: before.tags,
-        /* The heuristic verdict at decision time - the signal that lets us
-           mine "human overruled the auto-classifier" examples later. */
-        flags: {
-          isConference: before.isConference,
-          isPaid: before.isPaid,
-          hiddenReason: before.hiddenReason,
-        },
-      },
+      snapshot: eventSnapshot(before),
     });
   } catch (err) {
     console.warn("[review-log] event decision insert failed", err);
