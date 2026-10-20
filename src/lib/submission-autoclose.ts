@@ -59,7 +59,11 @@ export async function closeStaleSubmissions(): Promise<{ expired: number; duplic
       await closeOne(row, now, out);
     } catch (err) {
       /* One bad draft must not stop the rest; it stays pending for a human. */
-      console.warn("[submission-autoclose] skipped", row.id, err);
+      console.warn(
+        "[submission-autoclose] skipped",
+        row.id,
+        err instanceof Error ? err.name : "unknown error",
+      );
     }
   }
   return out;

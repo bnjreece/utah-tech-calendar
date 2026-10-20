@@ -145,6 +145,10 @@ export function decidePending(
   if (saysNo && (PROTECTED_VERTICAL_RE.test(hay) || PROTECTED_EXTRA_RE.test(hay)))
     return hold("protected");
   if (saysNo && conf < 0.95 && row.city && RURAL_CITY_RE.test(row.city)) return hold("rural");
+  /* Kids events always go to a human: real youth coding classes are
+     protected from auto-hide, and paid edtech free-trial funnels look like
+     them, so neither side is safe to automate. */
+  if (KIDS_AUDIENCE_RE.test(row.title)) return hold("kids-audience");
 
   /* 4. Auto-reject. Eventbrite's keyword searches are the noisiest source,
      so its bar is lower (0.85) than everyone else's (0.90). */
@@ -158,7 +162,6 @@ export function decidePending(
   if (v.isOnline || row.isOnline) return hold("online");
   if (NOT_COMMUNITY_RE.test(row.title) || CLOSED_EVENT_RE.test(row.title))
     return hold("not-community");
-  if (KIDS_AUDIENCE_RE.test(row.title)) return hold("kids-audience");
   const venue = (row.venueName ?? "").trim();
   if ((row.description ?? "").trim().length < 40 && !venue) return hold("thin");
   if (row.source === "eventbrite" && VAGUE_VENUE_RE.test(venue)) return hold("venue");

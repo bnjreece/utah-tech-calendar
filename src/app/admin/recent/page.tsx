@@ -88,9 +88,9 @@ export default async function RecentIngestsPage() {
            the row is: this is where the digest sends you to unpublish one. */
         or(
           gte(events.createdAt, since),
-          sql`${events.id} IN (SELECT subject_id FROM review_decisions
-            WHERE subject_type = 'scraped_event' AND decided_by = 'autopilot'
-              AND decision = 'approve' AND created_at >= ${since.toISOString()}::timestamptz)`,
+          sql`${events.id} IN (SELECT rd.subject_id FROM review_decisions rd
+            WHERE rd.subject_type = 'scraped_event' AND rd.decided_by = 'autopilot'
+              AND rd.decision = 'approve' AND rd.decided_at >= ${since.toISOString()}::timestamptz)`,
         ),
       ),
     )

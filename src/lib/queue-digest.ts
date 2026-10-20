@@ -204,7 +204,8 @@ export function digestHasNews(snapshot: QueueSnapshot): boolean {
       snapshot.pendingSubmissions.length +
       snapshot.screenedToday.length +
       snapshot.autoPublished.length +
-      snapshot.autoHiddenCount >
+      snapshot.autoHiddenCount +
+      snapshot.goodLost7d >
     0
   );
 }

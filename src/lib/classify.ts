@@ -63,8 +63,9 @@ export async function classifyEvent(input: ClassifyInput): Promise<EventVerdict 
       ]
         .filter(Boolean)
         .join("\n")
-        /* Untrusted scraped text: keep it from closing the wrapper tag. */
-        .replace(/<\/?event>/gi, "")}\n</event>`,
+        /* Untrusted text cannot open or close a tag. */
+        .replace(/</g, "‹")
+        .replace(/>/g, "›")}\n</event>`,
     });
     /* Clamp confidence defensively - the model can return out of range. */
     const confidence = Math.max(0, Math.min(1, Number(object.confidence) || 0));
