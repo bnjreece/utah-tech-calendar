@@ -40,9 +40,8 @@ export interface DedupResult {
 
    5. Queue twins (lib/queue-twins.ts): a PENDING row that duplicates an
       upcoming approved row, or another pending row, on the same Denver
-      day, by strict evidence only: the same upstream listing id from one
-      source, or a stale relist (same source, title and start minute, no
-      longer scraped while its twin still is). Hidden as 'cross-post' and
+      day, by strict evidence only: the same upstream listing id (Eventbrite,
+      Meetup or Luma event) from one source. Hidden as 'cross-post' and
       ledgered by the autopilot ('autopilot:queue-dup'); runs only while
       the LLM gate is on.
 
@@ -218,9 +217,9 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
       /* One failed hide (a lock timeout, say) leaves that row pending and
          does not stop the rest of the plan. */
       try {
-        if (await applyQueueTwinHide(row, keep, h.evidence)) {
+        if (await applyQueueTwinHide(row, keep)) {
           queueHidden++;
-          details.push({ signature: `queue-twin:${h.evidence}`, source: h.keep.source, kept: h.keep.title, hiddenCount: 1 });
+          details.push({ signature: `queue-twin:listing`, source: h.keep.source, kept: h.keep.title, hiddenCount: 1 });
         }
       } catch (err) {
         console.warn("[dedup] queue twin hide failed", row.id, err);

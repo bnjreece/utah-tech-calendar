@@ -119,25 +119,19 @@ describe("pendingFacts", () => {
   });
 });
 
-describe("applyQueueTwinHide (Astra round 6)", () => {
+describe("applyQueueTwinHide", () => {
   const hide = baseRow([]);
   const keep = { ...(baseRow([]) as object), id: "00000000-0000-0000-0000-000000000009", externalId: "evt-1" } as never;
-  test("every hide locks a live keeper, pins the hidden row and checks the gate", async () => {
-    await applyQueueTwinHide(hide, keep, "listing");
+  test("locks a live keeper, pins the hidden row and checks the gate; never reads updated_at", async () => {
+    await applyQueueTwinHide(hide, keep);
     const q = dialect.sqlToQuery(captured!).sql;
     expect(q).toContain("FOR SHARE");
     expect(q).toContain("k.status IN ('pending', 'approved')");
+    expect(q).toContain("k.link IS NOT DISTINCT FROM");
     expect(q).toContain("status_locked = false");
     expect(q).toContain("source <> 'manual'");
     expect(q).toContain("llm_gate_enabled");
     expect(q).toContain("'autopilot:queue-dup'");
-    expect(q).not.toContain("make_interval");
-  });
-  test("a stale-relist hide rechecks that the hidden row is still stale and the keeper still seen", async () => {
-    await applyQueueTwinHide(hide, keep, "relist");
-    const { sql: q, params } = dialect.sqlToQuery(captured!);
-    expect(q).toContain("updated_at <= now() - make_interval(secs =>");
-    expect(q).toContain("k.updated_at > now() - make_interval(secs =>");
-    expect(params).toContain(2 * 24 * 60 * 60);
+    expect(q).not.toMatch(/updated_at\s*[<>]/);
   });
 });

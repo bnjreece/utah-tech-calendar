@@ -4,14 +4,16 @@
    1. Queue twins (lib/queue-twins.ts): the hides the dedup sweep would make,
       and, as an audit, every same-day pair across ALL upcoming pending +
       approved rows that shares a listing id or a normalized title + start
-      minute, any source, with each row's scraper freshness.
+      minute, any source, with each row's freshness (updated_at within 2
+      days; informational, it only ranks the keeper of one listing).
    2. Low-confidence yes: pending rows whose STORED verdict decidePending
       now hides as autopilot:lowconf-yes. */
 import { and, asc, gt, inArray } from "drizzle-orm";
 import { db, events } from "../src/lib/db";
 import { decidePending } from "../src/lib/autopilot";
 import { loadSourceUrls, pendingFacts } from "../src/lib/autopilot-db";
-import { listingKey, plainTitle, planQueueTwinHides, seenByScraper, type QueueTwinRow } from "../src/lib/queue-twins";
+import { listingKey, planQueueTwinHides, type QueueTwinRow } from "../src/lib/queue-twins";
+import { STALE_AFTER_MS } from "../src/lib/same-day-twins";
 import { mtDayKey } from "../src/lib/time";
 import type { EventVerdict } from "../src/lib/verdict";
 
@@ -25,11 +27,13 @@ async function main() {
   const pending = rows.filter((r) => r.status === "pending");
   console.log(`${rows.length} upcoming rows (${pending.length} pending)`);
 
+  const fresh = (r: QueueTwinRow) => now.getTime() - r.updatedAt.getTime() < STALE_AFTER_MS;
+  const plainTitle = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const short = (r: QueueTwinRow) =>
-    `${r.id.slice(0, 8)} [${r.status}] ${r.source} ${seenByScraper(r, now) ? "seen " : "STALE"} ${r.title}`;
+    `${r.id.slice(0, 8)} [${r.status}] ${r.source} ${fresh(r) ? "fresh" : "STALE"} ${r.title}`;
   console.log("\n=== 1. Queue twins: planned hides");
   const plan = planQueueTwinHides(rows, now);
-  for (const h of plan) console.log(`  HIDE ${short(h.hide)}\n    keep ${short(h.keep)}  (${h.evidence})`);
+  for (const h of plan) console.log(`  HIDE ${short(h.hide)}\n    keep ${short(h.keep)}  (same listing)`);
   console.log(`  total ${plan.length}`);
 
   console.log("\n=== 1b. Audit: same-day pairs sharing a listing id, or a title + start minute");
@@ -43,7 +47,7 @@ async function main() {
       const sameId = k !== null && k === listingKey(b.link);
       const sameTitle = a.startsAt.getTime() === b.startsAt.getTime() && plainTitle(a.title) === plainTitle(b.title);
       if (!sameId && !sameTitle) continue;
-      const hit = planned.has(a.id) || planned.has(b.id) ? "HIDE " : "keep ";
+      const hit = planned.has(a.id) || planned.has(b.id) ? "HIDE " : "human";
       console.log(`  ${hit} ${sameId ? `id ${k}` : "title+start"}\n      ${short(a)}\n      ${short(b)}`);
     }
 

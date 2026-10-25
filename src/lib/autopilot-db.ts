@@ -2,8 +2,6 @@ import { sql } from "drizzle-orm";
 import { db, events, sources } from "@/lib/db";
 import { eventSnapshot } from "@/lib/review-log";
 import { normalizeEventTitle, type AutopilotDecision } from "@/lib/autopilot";
-import { STALE_AFTER_MS } from "@/lib/same-day-twins";
-import type { TwinEvidence } from "@/lib/queue-twins";
 import type { EventVerdict } from "@/lib/verdict";
 
 /* DB side of the queue autopilot (lib/autopilot.ts holds the pure rules).
@@ -156,20 +154,12 @@ export async function applyPendingDecision(
    is still pending, unlocked, scraped, upcoming and unchanged since it was
    read, the gate is on, and the row it defers to (`keep`) is still pending
    or approved with its start, title, link, source and external id
-   unchanged. A stale-relist hide (evidence "relist") also needs the hidden
-   row still unseen by the scraper and the keeper still seen, so a re-scrape
-   that refreshes the hidden row in between makes it a no-op. The keeper
+   unchanged (the link is the listing identity the twin match read). The keeper
    check takes a FOR SHARE lock, so a concurrent scrape that reschedules or
    renames the keeper either commits first (the recheck then fails and
    nothing is hidden) or waits until this statement commits. Returns true
    when the row changed. */
-export async function applyQueueTwinHide(r: EventRow, keep: EventRow, evidence: TwinEvidence): Promise<boolean> {
-  const staleSecs = Math.floor(STALE_AFTER_MS / 1000);
-  const relist = evidence === "relist";
-  const keeperSeen = relist
-    ? sql`AND (k.source = 'manual' OR k.updated_at > now() - make_interval(secs => ${staleSecs}))`
-    : sql``;
-  const rowStale = relist ? sql`AND updated_at <= now() - make_interval(secs => ${staleSecs})` : sql``;
+export async function applyQueueTwinHide(r: EventRow, keep: EventRow): Promise<boolean> {
   const res = await db.execute(sql`
     WITH keeper AS (
       SELECT k.id FROM events k
@@ -181,7 +171,6 @@ export async function applyQueueTwinHide(r: EventRow, keep: EventRow, evidence: 
         AND k.link IS NOT DISTINCT FROM ${keep.link}::text
         AND k.source IS NOT DISTINCT FROM ${keep.source}::text
         AND k.external_id IS NOT DISTINCT FROM ${keep.externalId}::text
-        ${keeperSeen}
       FOR SHARE
     ), upd AS (
       UPDATE events
@@ -196,7 +185,6 @@ export async function applyQueueTwinHide(r: EventRow, keep: EventRow, evidence: 
         AND link IS NOT DISTINCT FROM ${r.link}::text
         AND source IS NOT DISTINCT FROM ${r.source}::text
         AND external_id IS NOT DISTINCT FROM ${r.externalId}::text
-        ${rowStale}
         AND EXISTS (SELECT 1 FROM keeper)
         AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
       RETURNING id, source_id, source, llm_verdict

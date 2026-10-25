@@ -3,50 +3,40 @@ import { mtDayKey } from "./time";
 
 /* Queue twins: duplicates sitting in the PENDING review queue. The autopilot
    checks for a duplicate only once, when a row is first classified, so a
-   twin that arrives later (an organizer renames or relists an Eventbrite
-   event) waits for a human. The dedup sweep runs this after every scrape.
+   twin that arrives later (an organizer renames an Eventbrite listing and
+   the new slug is scraped as a new row) waits for a human. The dedup sweep runs this after every scrape.
 
-   Only two kinds of evidence count, both strict. There is no fuzzy title
-   matching and no venue or place heuristic: a missed duplicate is a
-   nuisance, a hidden event is a loss.
-
-   A. SAME LISTING. Same source, and both links name the same upstream
-      listing id: an Eventbrite event id (/e/<slug>-tickets-<id> or
-      /e/<id>; a renamed slug keeps the id), a Meetup event id
-      (/<group>/events/<id>) or a Luma event slug (lu.ma/<slug>, counted
-      only on Luma rows with an event id, evt-..., since a lu.ma path can
-      also be a calendar, and never on a Luma calendar's external listing,
-      calev-..., which only points elsewhere). Any other link (an organizer
-      homepage, a recurrence source's one shared URL) is never identity.
-      Titles may differ.
-   B. STALE RELIST. Same source, the same title after case, whitespace and
-      punctuation are normalized (nothing else: no containment, no
-      qualifier stripping), the same start minute, and the row to hide is
-      no longer seen by the scraper while its twin is. Two rows the scraper
-      still sees are never merged, whatever their titles (two chapters can
-      run one event at one time), nor are two stale rows.
-
-   "Seen by the scraper": every re-scrape upserts the row and refreshes
-   updated_at (lib/scrape-runner.ts), and scrapes run every few hours, so a
-   row not refreshed for STALE_AFTER_MS (2 days) has dropped off its source.
-   Manual rows are never re-scraped and always count as seen.
+   Only one kind of evidence counts: the SAME LISTING. Same source, and
+   both links name the same upstream listing id: an Eventbrite event id
+   (/e/<slug>-tickets-<id> or /e/<id>; a renamed slug keeps the id), a
+   Meetup event id (/<group>/events/<id>) or a Luma event slug (lu.ma/<slug>,
+   counted only on Luma rows with an event id, evt-..., since a lu.ma path
+   can also be a calendar, and never on a Luma calendar's external listing,
+   calev-..., which only points elsewhere). Any other link (an organizer
+   homepage, a recurrence source's one shared URL) is never identity.
+   Titles may differ. There is no title, venue or place matching: two
+   listings with different ids are two events as far as this rule knows
+   (a missed duplicate is a nuisance, a hidden event is a loss), and a
+   human decides them.
 
    Both rows start on the same Denver day. Which row stays: a pending row
    with an approved twin is hidden (the approved row is already public).
-   Among pending twins the kept row is a locked one, then one still seen by
-   the scraper, then the oldest (created_at, id). Locked and manual rows are
-   never hidden. Pure: the sweep loads rows and applies the result. */
+   Among pending twins the kept row is a locked one, then the more recently
+   refreshed one, then the oldest (created_at, id). Freshness only ranks two
+   rows already known to be one listing, never decides a match: updated_at
+   is refreshed by every re-scrape (lib/scrape-runner.ts) but also by admin
+   actions, so it is not proof of anything on its own. A row not refreshed
+   for STALE_AFTER_MS (2 days) ranks behind one that was; manual rows always
+   rank as refreshed. Locked and manual rows are never hidden. Pure: the
+   sweep loads rows and applies the result. */
 
 export interface QueueTwinRow extends TwinRow {
   status: string;
 }
 
-export type TwinEvidence = "listing" | "relist";
-
 export interface QueueTwinHide {
   hide: QueueTwinRow;
   keep: QueueTwinRow;
-  evidence: TwinEvidence;
 }
 
 /* The upstream listing a link names, or null when the link is not a known
@@ -64,22 +54,15 @@ export function listingKey(link: string | null | undefined): string | null {
   return null;
 }
 
-/* Case, whitespace and punctuation only. */
-export function plainTitle(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
-
-/* Still being refreshed by its scraper. */
-export function seenByScraper(r: QueueTwinRow, now: Date): boolean {
+/* Refreshed recently (keeper ranking only, see the header). */
+function recent(r: QueueTwinRow, now: Date): boolean {
   return r.source === "manual" || now.getTime() - r.updatedAt.getTime() < STALE_AFTER_MS;
 }
 
 /* A lu.ma link names one event only on a Luma event row (evt-...). */
 const lumaEvent = (r: QueueTwinRow) => r.source === "luma" && Boolean(r.externalId?.startsWith("evt-"));
 
-/* A: same source, same upstream listing id. */
+/* Same source, same upstream listing id. */
 export function sameListing(a: QueueTwinRow, b: QueueTwinRow): boolean {
   if (a.source !== b.source) return false;
   const ka = listingKey(a.link);
@@ -87,27 +70,14 @@ export function sameListing(a: QueueTwinRow, b: QueueTwinRow): boolean {
   return !ka.startsWith("luma:") || (lumaEvent(a) && lumaEvent(b));
 }
 
-/* B: `stale` is a relist of `fresh`: same source, title and start minute,
-   `stale` no longer seen by the scraper, `fresh` still seen. */
-export function staleRelist(stale: QueueTwinRow, fresh: QueueTwinRow, now: Date): boolean {
-  if (stale.source !== fresh.source) return false;
-  if (stale.startsAt.getTime() !== fresh.startsAt.getTime()) return false;
-  const t = plainTitle(stale.title);
-  if (!t || PLACEHOLDER_TITLE_RE.test(t) || t !== plainTitle(fresh.title)) return false;
-  return !seenByScraper(stale, now) && seenByScraper(fresh, now);
-}
-
-/* Evidence that `hide` duplicates `keep`, or null. Same Denver day always. */
-export function twinEvidence(hide: QueueTwinRow, keep: QueueTwinRow, now: Date): TwinEvidence | null {
-  if (hide.id === keep.id || mtDayKey(hide.startsAt) !== mtDayKey(keep.startsAt)) return null;
-  if (sameListing(hide, keep)) return "listing";
-  if (staleRelist(hide, keep, now)) return "relist";
-  return null;
+/* `hide` and `keep` are one listing on the same Denver day. */
+export function isQueueTwin(hide: QueueTwinRow, keep: QueueTwinRow): boolean {
+  return hide.id !== keep.id && mtDayKey(hide.startsAt) === mtDayKey(keep.startsAt) && sameListing(hide, keep);
 }
 
 /* Lower sorts first = kept. */
 function rank(r: QueueTwinRow, now: Date): number[] {
-  return [r.statusLocked ? 0 : 1, seenByScraper(r, now) ? 0 : 1, r.createdAt.getTime()];
+  return [r.statusLocked ? 0 : 1, recent(r, now) ? 0 : 1, r.createdAt.getTime()];
 }
 
 /* Ties on created_at break on id, matching (created_at, id) in SQL. */
@@ -136,9 +106,8 @@ export function planQueueTwinHides(rows: QueueTwinRow[], now: Date): QueueTwinHi
     const approved = day.filter((r) => r.status === "approved").sort((a, b) => compare(a, b, now));
     for (const p of day.filter(hideable)) {
       for (const a of approved) {
-        const ev = twinEvidence(p, a, now);
-        if (ev) {
-          out.push({ hide: p, keep: a, evidence: ev });
+        if (isQueueTwin(p, a)) {
+          out.push({ hide: p, keep: a });
           hidden.add(p.id);
           break;
         }
@@ -152,8 +121,7 @@ export function planQueueTwinHides(rows: QueueTwinRow[], now: Date): QueueTwinHi
       const [keep, ...others] = rest;
       const drop: QueueTwinHide[] = [];
       for (const r of others) {
-        const ev = hideable(r) ? twinEvidence(r, keep, now) : null;
-        if (ev) drop.push({ hide: r, keep, evidence: ev });
+        if (hideable(r) && isQueueTwin(r, keep)) drop.push({ hide: r, keep });
       }
       out.push(...drop);
       rest = others.filter((r) => !drop.some((d) => d.hide.id === r.id));

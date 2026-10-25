@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { listingKey, plainTitle, planQueueTwinHides, type QueueTwinRow } from "@/lib/queue-twins";
+import { listingKey, planQueueTwinHides, type QueueTwinRow } from "@/lib/queue-twins";
 
 /* Real pending pairs from the production queue (2026-10-25), plus the
-   events that must never merge. Since Astra round 6 only two kinds of
-   evidence count: the same upstream listing id, or a stale relist. */
+   events that must never merge. Since Astra round 7 only one kind of
+   evidence counts: the same upstream listing id from one source. */
 
 const NOW = new Date("2026-10-25T18:00:00Z");
 const FRESH = new Date("2026-10-25T15:00:00Z");
@@ -69,24 +69,21 @@ const techspoNew = row({
 });
 
 describe("the real queue pairs (2026-10-25)", () => {
-  test("TECHSPO: one Eventbrite id under two slugs; the stale slug goes, the one still scraped stays", () => {
-    const p = plan([techspoOld, techspoNew]);
-    expect(p.map((h) => [h.hide.id, h.keep.id, h.evidence])).toEqual([[techspoOld.id, techspoNew.id, "listing"]]);
+  test("TECHSPO: one Eventbrite id under two slugs; the stale slug goes, the recently refreshed one stays", () => {
+    expect(pairs([techspoOld, techspoNew])).toEqual([[techspoOld.id, techspoNew.id]]);
   });
-  test("HackerX: two ids, same title and start; the stale relist goes", () => {
-    const p = plan([hackerStale, hackerFresh]);
-    expect(p.map((h) => [h.hide.id, h.keep.id, h.evidence])).toEqual([[hackerStale.id, hackerFresh.id, "relist"]]);
+  test("HackerX: two ids with one title and start go to a human, even with one row stale", () => {
+    expect(plan([hackerStale, hackerFresh])).toEqual([]);
   });
   test("Bitcoin: different ids and titles are left for a human", () => {
     expect(plan([bitcoinOld, bitcoinUvu])).toEqual([]);
   });
-  test("all six at once hide exactly the two stale rows", () => {
-    const hidden = plan([bitcoinOld, bitcoinUvu, hackerFresh, hackerStale, techspoOld, techspoNew]).map((h) => h.hide.id);
-    expect(hidden.sort()).toEqual([hackerStale.id, techspoOld.id].sort());
+  test("all six at once hide only the stale TECHSPO slug", () => {
+    expect(pairs([bitcoinOld, bitcoinUvu, hackerFresh, hackerStale, techspoOld, techspoNew])).toEqual([[techspoOld.id, techspoNew.id]]);
   });
 });
 
-describe("A. same listing", () => {
+describe("same listing", () => {
   const d = new Date("2026-11-12T01:00:00Z");
   test("listingKey: Eventbrite, Meetup and Luma ids; anything else is not identity", () => {
     expect(listingKey("https://www.eventbrite.com/e/a-b-tickets-1996064919908?aff=x")).toBe("eventbrite:1996064919908");
@@ -137,35 +134,29 @@ describe("A. same listing", () => {
   });
 });
 
-describe("B. stale relist", () => {
+describe("one title, one start, two listing ids: never merged (Astra rounds 6 and 7)", () => {
   const d = new Date("2026-11-12T01:00:00Z");
-  test("plainTitle only normalizes case, whitespace and punctuation", () => {
-    expect(plainTitle("  HackerX -  Utah County!! ")).toBe("hackerx utah county");
-    expect(plainTitle("Workshop (Beginner)")).not.toBe(plainTitle("Workshop (Advanced)"));
-    expect(plainTitle("HackerX - Employer Ticket")).not.toBe(plainTitle("HackerX"));
+  test("two rows still refreshed, two stale rows, or one of each", () => {
+    for (const [ua, ub] of [[FRESH, FRESH], [STALE, STALE], [STALE, FRESH]])
+      expect(plan([row({ title: "Rust Builders Night", startsAt: d, updatedAt: ua }), row({ title: "Rust Builders Night", startsAt: d, updatedAt: ub })])).toEqual([]);
   });
-  test("punctuation and case differences still match a stale relist", () => {
-    const fresh = row({ title: "Rust Builders Night", startsAt: d });
-    const stale = row({ title: "rust builders night!", startsAt: d, updatedAt: STALE });
-    expect(pairs([stale, fresh])).toEqual([[stale.id, fresh.id]]);
-  });
-  test("two rows the scraper still sees are never merged (two chapters, one time)", () => {
-    expect(plan([row({ title: "Rust Builders Night", startsAt: d }), row({ title: "Rust Builders Night", startsAt: d })])).toEqual([]);
-  });
-  test("two stale rows are never merged", () => {
-    expect(plan([row({ title: "Rust Builders Night", startsAt: d, updatedAt: STALE }), row({ title: "Rust Builders Night", startsAt: d, updatedAt: STALE })])).toEqual([]);
-  });
-  test("a different start minute, or a different source, is not a relist", () => {
-    expect(plan([row({ title: "Rust Builders Night", startsAt: d, updatedAt: STALE }), row({ title: "Rust Builders Night", startsAt: new Date(d.getTime() + 60_000) })])).toEqual([]);
-    expect(plan([row({ title: "Rust Builders Night", startsAt: d, updatedAt: STALE }), row({ title: "Rust Builders Night", startsAt: d, source: "meetup" })])).toEqual([]);
-  });
-  test("placeholder titles never relist", () => {
-    expect(plan([row({ title: "TBD", startsAt: d, updatedAt: STALE }), row({ title: "TBD", startsAt: d })])).toEqual([]);
+  test("an admin approval refreshing one row never hides the other (Astra round 7 repro)", () => {
+    const m = (id: string) => `https://www.meetup.com/rust-utah/events/${id}/`;
+    const a = row({ title: "Rust Builders Night", startsAt: d, source: "meetup", link: m("316281874"), updatedAt: STALE });
+    const b = row({ title: "Rust Builders Night", startsAt: d, source: "meetup", link: m("316281875"), updatedAt: STALE });
+    expect(plan([a, b])).toEqual([]);
+    /* approveEvent: status approved, locked, updated_at = now, no scrape. */
+    const approved = { ...a, status: "approved", statusLocked: true, updatedAt: NOW };
+    expect(plan([approved, b])).toEqual([]);
+    /* Restore or send back to review: pending, locked, updated_at = now. */
+    const restored = { ...a, statusLocked: true, updatedAt: NOW };
+    expect(plan([restored, b])).toEqual([]);
   });
 });
 
 /* Every false merge from Astra rounds 1 to 6: distinct events with
-   separate listings, one stale, the other still scraped. None may merge. */
+   separate listings, one stale, the other recently refreshed. None may
+   merge. */
 describe("distinct events never merge (Astra rounds 1-6)", () => {
   const d = new Date("2026-11-12T01:00:00Z");
   const pair = (staleTitle: string, freshTitle: string, s: Partial<QueueTwinRow> = {}, f: Partial<QueueTwinRow> = {}) =>
@@ -177,8 +168,8 @@ describe("distinct events never merge (Astra rounds 1-6)", () => {
     expect(pair("Python Data Science Bootcamp - Advanced", "Python Data Science Bootcamp")).toEqual([]);
     expect(pair("Python Data Science Bootcamp", "Python Data Science Bootcamp - Advanced")).toEqual([]);
   });
-  test("one title at University of Utah and at Kiln is merged only by the stale-relist rule, never by venue", () => {
-    /* Both still scraped: two events. */
+  test("one title at University of Utah and at Kiln, or at a museum ending in \"Utah\"", () => {
+    expect(pair("Rust Builders Night", "Rust Builders Night", { venueName: "University of Utah" }, { venueName: "Kiln" })).toEqual([]);
     expect(plan([
       row({ title: "Rust Builders Night", startsAt: d, venueName: "University of Utah" }),
       row({ title: "Rust Builders Night", startsAt: d, venueName: "Kiln" }),
@@ -214,12 +205,12 @@ describe("distinct events never merge (Astra rounds 1-6)", () => {
 describe("who stays", () => {
   const d = new Date("2026-11-12T01:00:00Z");
   const link = "https://www.eventbrite.com/e/rust-night-tickets-1234567890123";
-  test("same listing: the row still scraped beats an older stale one", () => {
+  test("same listing: the recently refreshed row beats an older stale one", () => {
     const old = row({ title: "Rust Night", startsAt: d, link, createdAt: new Date("2026-08-01T00:00:00Z"), updatedAt: STALE });
     const fresh = row({ title: "Rust Night", startsAt: d, link: `${link}?aff=x`, createdAt: new Date("2026-10-01T00:00:00Z") });
     expect(pairs([old, fresh])).toEqual([[old.id, fresh.id]]);
   });
-  test("same listing, both still scraped: the oldest stays; equal created_at breaks on id", () => {
+  test("same listing, both recently refreshed: the oldest stays; equal created_at breaks on id", () => {
     const old = row({ title: "Rust Night", startsAt: d, link, createdAt: new Date("2026-08-01T00:00:00Z") });
     const newer = row({ title: "Rust Night", startsAt: d, link: `${link}?aff=x`, createdAt: new Date("2026-10-01T00:00:00Z"), updatedAt: new Date("2026-10-25T17:59:00Z") });
     expect(pairs([newer, old])).toEqual([[newer.id, old.id]]);
@@ -240,8 +231,8 @@ describe("who stays", () => {
     expect(pairs([techspoOld, pub])).toEqual([[techspoOld.id, pub.id]]);
     /* Same listing: the pending row goes even when it is the fresh one. */
     expect(pairs([{ ...techspoOld, status: "approved" }, techspoNew])).toEqual([[techspoNew.id, techspoOld.id]]);
-    /* Stale relist: only the stale pending row goes, never a fresh one. */
-    expect(pairs([hackerStale, { ...hackerFresh, status: "approved" }])).toEqual([[hackerStale.id, hackerFresh.id]]);
+    /* Two listing ids never merge, approved or not. */
+    expect(plan([hackerStale, { ...hackerFresh, status: "approved" }])).toEqual([]);
     expect(plan([{ ...hackerStale, status: "approved" }, hackerFresh])).toEqual([]);
   });
   test("two approved twins are left to the approved sweep; hidden rows are ignored", () => {
