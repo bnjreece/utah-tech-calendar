@@ -197,8 +197,32 @@ test("sessions hours apart, other days, locked rows and placeholder titles are l
   assert.deepEqual(findSameDayTwins([o1, o2], now), []);
 });
 
-test("links compare across lu.ma / luma.com, www, case, query and trailing slash", () => {
+test("links compare across lu.ma / luma.com, www, case, tracking query and trailing slash", () => {
   assert.equal(normalizeLink("https://luma.com/Z9G8NKKK/?utm=x#y"), normalizeLink("https://lu.ma/z9g8nkkk"));
   assert.equal(normalizeLink("https://www.eventbrite.com/e/a"), normalizeLink("http://eventbrite.com/e/a/"));
   assert.equal(normalizeLink("not a url"), null);
+});
+
+test("identity-bearing query keys are kept; tracking keys are dropped (Astra queue round 4)", () => {
+  assert.notEqual(normalizeLink("https://example.org/event?id=101"), normalizeLink("https://example.org/event?id=202"));
+  assert.equal(normalizeLink("https://example.org/event?id=101&utm_source=x"), normalizeLink("https://example.org/event/?id=101"));
+  assert.equal(normalizeLink("https://example.org/e?b=2&a=1"), normalizeLink("https://example.org/e?a=1&b=2"));
+  assert.equal(
+    normalizeLink("https://www.eventbrite.com/e/above-beyond-tickets-2002090077316?aff=oddtdtcreator"),
+    normalizeLink("https://www.eventbrite.com/e/above-beyond-tickets-2002090077316"),
+  );
+  assert.equal(
+    normalizeLink("https://bioutah.growthzoneapp.com/ap/Events/Register/abc?sourceTypeId=Website"),
+    normalizeLink("https://bioutah.growthzoneapp.com/ap/Events/Register/abc"),
+  );
+});
+
+test("a shared link never overrides conflicting locations (Astra queue round 4)", () => {
+  const shared = "https://example.org/register";
+  const kiln = row({ id: "k", title: "Rust Builders Night", link: shared, venueName: "Kiln, 26 S Rio Grande St, Salt Lake City", latitude: 40.762, longitude: -111.903 });
+  const provo = row({ id: "p", title: "Rust Builders Night", link: shared, venueName: "Provo Library, 550 N University Ave, Provo", latitude: 40.24, longitude: -111.658 });
+  assert.deepEqual(findSameDayTwins([kiln, provo], now), []);
+  /* Positive control: same link, no conflicting place, still one event. */
+  const twin = row({ id: "t", title: "Rust Builders Night", link: shared, source: "eventbrite" });
+  assert.equal(findSameDayTwins([kiln, twin], now).length, 1);
 });

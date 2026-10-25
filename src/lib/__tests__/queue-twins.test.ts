@@ -285,3 +285,39 @@ describe("planQueueTwinHides: keeper agrees with the classifier (Astra round 3)"
     expect(planQueueTwinHides([a, b]).map((h) => h.keep.id)).toEqual([b.id]);
   });
 });
+
+describe("planQueueTwinHides: shared links never override places (Astra round 4)", () => {
+  const d = new Date("2026-11-12T01:00:00Z");
+  const later = new Date("2026-09-10T00:00:00Z");
+  test("query-addressed events at different cities are two events (the reproduction)", () => {
+    const a = row({ title: "Rust Builders Night", startsAt: d, venueName: "Kiln", city: "Salt Lake City", source: "meetup", externalId: "101", link: "https://example.org/event?id=101" });
+    const b = row({ title: "Rust Builders Night", startsAt: d, venueName: "Provo Library", city: "Provo", source: "meetup", externalId: "202", link: "https://example.org/event?id=202", createdAt: later });
+    expect(listingKey(a.link)).not.toBe(listingKey(b.link));
+    expect(hides([a, b])).toEqual([]);
+  });
+  test("one shared registration URL at two cities, two venues or far-apart pins is still two events", () => {
+    const link = "https://example.org/register";
+    const base = { title: "Rust Builders Night", startsAt: d, source: "meetup", link };
+    const slc = row({ ...base, venueName: "Kiln", city: "Salt Lake City" });
+    expect(hides([slc, row({ ...base, venueName: "Provo Library", city: "Provo", createdAt: later })])).toEqual([]);
+    expect(hides([slc, row({ ...base, venueName: "Salt Lake City Public Library", city: "Salt Lake City", createdAt: later })])).toEqual([]);
+    const pinA = row({ ...base, latitude: 40.762, longitude: -111.903 });
+    const pinB = row({ ...base, latitude: 40.24, longitude: -111.658, createdAt: later });
+    expect(hides([pinA, pinB])).toEqual([]);
+    /* Different minutes, two sources, one link, two cities: still two. */
+    const x = row({ ...base, venueName: "Kiln", city: "Salt Lake City" });
+    const y = row({ ...base, source: "luma", startsAt: new Date(d.getTime() + 30 * 60 * 1000), venueName: "Provo Library", city: "Provo", createdAt: later });
+    expect(hides([x, y])).toEqual([]);
+  });
+  test("positive controls: a shared link with compatible places, and Eventbrite tracking params, still match", () => {
+    const link = "https://example.org/register";
+    const a = row({ title: "Rust Builders Night", startsAt: d, source: "meetup", link, venueName: "Kiln", city: "Salt Lake City" });
+    const b = row({ title: "Rust Builders Night", startsAt: d, source: "meetup", link, venueName: null, city: "Salt Lake City", createdAt: later });
+    expect(hides([a, b])).toEqual([[b.title, a.title]]);
+    const eb1 = row({ title: "Rust Builders Night", startsAt: d, link: "https://www.eventbrite.com/e/rust-night-tickets-1998617983189?aff=oddtdtcreator", city: "Salt Lake City" });
+    const eb2 = row({ title: "Rust Builders Night", startsAt: d, link: "https://www.eventbrite.com/e/rust-builders-night-tickets-1998617983189?utm_source=x&keep=1", city: "Salt Lake City", createdAt: later });
+    expect(listingKey(eb1.link)).toBe("eventbrite:1998617983189");
+    expect(listingKey(eb2.link)).toBe("eventbrite:1998617983189");
+    expect(hides([eb1, eb2])).toEqual([[eb2.title, eb1.title]]);
+  });
+});

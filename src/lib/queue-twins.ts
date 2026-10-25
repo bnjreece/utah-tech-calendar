@@ -25,11 +25,11 @@ import { mtDayKey } from "./time";
      three extra words, none of which names a different part of an event
      ("VIP Section", "After Party", "Day 2", "Part 8", a number); AND
    - there is IDENTITY evidence:
-     . the same listing (same link, or the same Eventbrite event id under a
-       renamed slug): at the same start minute, or within 90 minutes from
-       two different sources (one source listing a title at two times is two
-       sessions, even under one registration link); or, at the same start
-       minute and with compatible places (below),
+     . the same listing (same link, query keys other than click tracking
+       included, or the same Eventbrite event id under a renamed slug): at
+       the same start minute, or within 90 minutes from two different
+       sources (one source listing a title at two times is two sessions,
+       even under one registration link); or, at the same start minute,
      . same venue name or map pins within 250 m (exact or contained title),
        when the locations do not conflict (lib/same-day-twins.ts) and the
        rows do not name two different specific venues; a
@@ -40,6 +40,8 @@ import { mtDayKey } from "./time";
        with neither row giving more than a city or county as its venue and
        one row's city inside the other's county ("HackerX - Utah County"
        listed at "Provo" and at "Utah County").
+   Whatever the evidence, never when the places conflict: two different
+   cities, conflicting pins or streets, or two different specific venues.
    Places are compatible unless both rows name a city and the two differ,
    except a county and a city in it ("Utah County" and "Provo"). Provo and
    Ogden never match, whatever the title or source.
@@ -117,7 +119,7 @@ export function matchTitles(a: string, b: string): TitleMatch | null {
 export function listingKey(link: string | null | undefined): string | null {
   const n = normalizeLink(link);
   if (!n) return null;
-  const eb = /^eventbrite\.[a-z.]+\/e\/(?:.*-)?(\d{9,})$/.exec(n);
+  const eb = /^eventbrite\.[a-z.]+\/e\/(?:.*-)?(\d{9,})(?:\?.*)?$/.exec(n);
   return eb ? `eventbrite:${eb[1]}` : n;
 }
 
@@ -159,6 +161,15 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
   if (mtDayKey(a.startsAt) !== mtDayKey(b.startsAt)) return false;
   const apart = Math.abs(a.startsAt.getTime() - b.startsAt.getTime());
   if (apart > TWIN_WINDOW_MS) return false;
+  /* Known different places are two events, whatever the title, the link,
+     the map pins or the source ("Rust Builders Night" at Kiln in Salt Lake
+     City and at the Provo library, even under one shared registration URL,
+     with pins a block apart or one row a Luma pointer). These vetoes run
+     before every positive match, the shared link included. */
+  const place = placeRelation(a, b);
+  if (place === "conflict") return false;
+  if (locationsConflict(a, b)) return false;
+  if (distinctVenues(a, b)) return false;
   const la = listingKey(a.link);
   const sameListing = Boolean(la && la === listingKey(b.link));
   /* Different start minutes: the same listing only across two sources. One
@@ -166,14 +177,6 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
      both share one registration link (same rule as same-day-twins.ts). */
   if (apart !== 0) return sameListing && a.source !== b.source;
   if (sameListing) return true;
-  const place = placeRelation(a, b);
-  if (place === "conflict") return false;
-  if (locationsConflict(a, b)) return false;
-  /* Two different named venues are two events, whatever the title, the
-     map pins or the source ("Rust Builders Night" at Kiln and at the
-     library, even with pins a block apart or one row a Luma pointer).
-     This veto runs before every positive place match. */
-  if (distinctVenues(a, b)) return false;
   if (venueEvidence(a, b)) return true;
   if (match !== "exact") return false;
   /* A Luma calendar's external listing only points at an event hosted

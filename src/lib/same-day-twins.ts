@@ -13,7 +13,8 @@ import { mtDayKey } from "./time";
    run the same tour twice an hour apart. So a pair is only a twin when it
    ALSO has identity evidence, and the evidence needed depends on time:
    - Different start minutes: only the same link (lu.ma and luma.com count
-     as one host; query and fragment ignored), and only across two sources.
+     as one host; fragment and click-tracking query keys ignored, any other
+     query key kept), and only across two sources.
      One source listing a title twice at two times is two sessions.
    - The same start minute: the same link, or, when the two locations do
      not conflict, the same venue (same venue name, or map pins within
@@ -24,6 +25,7 @@ import { mtDayKey } from "./time";
    or both venues go on past the name (a street or a city) and that next
    part differs ("Kiln, 26 S Rio Grande St, Salt Lake City" vs "Kiln, 2701
    N Thanksgiving Way, Lehi", or "Kiln, Salt Lake City" vs "Kiln, Lehi").
+   Conflicting locations rule out a twin even under the same link.
    A row with none of this evidence stays visible even when the title
    matches: a missed duplicate is a nuisance, a hidden event is a loss.
 
@@ -63,13 +65,25 @@ export const CONFLICT_METERS = 1000;
 const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
 export const PLACEHOLDER_VENUE_RE = /^(online|virtual|zoom|tbd|tba|to be (announced|determined)|none)$/;
 
+/* Query keys that only say where a click came from, never which event it
+   is (utm_source=luma, Eventbrite's aff=..., GrowthZone's
+   sourceTypeId=Website). Every other key is kept: on many sites the event
+   is the query ("event?id=101"), and two such links must stay apart. */
+const TRACKING_PARAM_RE =
+  /^(utm(_.*)?|aff|ref|ref_src|referrer|fbclid|gclid|dclid|msclkid|mc_cid|mc_eid|_gl|_ga|igshid|si|trk|sourcetypeid|calendarmonth)$/;
+
 export function normalizeLink(link: string | null | undefined): string | null {
   if (!link) return null;
   try {
     const u = new URL(link.trim());
     const host = u.hostname.toLowerCase().replace(/^www\./, "").replace(/^luma\.com$/, "lu.ma");
     const path = u.pathname.replace(/\/+$/, "").toLowerCase();
-    return `${host}${path}`;
+    const query = [...u.searchParams]
+      .filter(([k]) => !TRACKING_PARAM_RE.test(k.toLowerCase()))
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .sort()
+      .join("&");
+    return query ? `${host}${path}?${query}` : `${host}${path}`;
   } catch {
     return null;
   }
@@ -124,11 +138,13 @@ export function locationsConflict(a: TwinRow, b: TwinRow): boolean {
 
 /* Identity evidence beyond title, day and time (see the header). */
 export function sameEventEvidence(a: TwinRow, b: TwinRow): boolean {
+  /* Known different places are two events, even under one link: a shared
+     registration page can front several venues. */
+  if (locationsConflict(a, b)) return false;
   const la = normalizeLink(a.link);
   const sameLink = Boolean(la && la === normalizeLink(b.link));
   if (a.startsAt.getTime() !== b.startsAt.getTime()) return sameLink && a.source !== b.source;
   if (sameLink) return true;
-  if (locationsConflict(a, b)) return false;
   const va = venueKey(a.venueName);
   if (va && va === venueKey(b.venueName)) return true;
   const ca = coords(a);
