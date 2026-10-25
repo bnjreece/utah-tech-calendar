@@ -3,7 +3,8 @@ import { db, events, sources, groups, scrapeRuns } from "./db";
 import { eventAdapters, type EventItem } from "./scrapers";
 import { inferTagsFromTitle, isCertSpam, CERT_SPAM_STRIPPED_TAGS } from "./auto-tag";
 import { recordEventDecision } from "./review-log";
-import { specialWeekTagsFor, SPECIAL_WEEK_SLUGS } from "./special-weeks";
+import { specialWeekTagsFor } from "./special-weeks";
+import { rescrapeUpdateValues } from "./rescrape-values";
 
 export interface ScrapeResult {
   sourceId: string;
@@ -156,7 +157,6 @@ async function upsertEvent(
       id: events.id,
       groupLocked: events.groupLocked,
       onlineLocked: events.onlineLocked,
-      tags: events.tags,
     })
     .from(events)
     .where(sql`${events.source} = ${item.source} AND ${events.externalId} = ${item.externalId}`)
@@ -181,16 +181,9 @@ async function upsertEvent(
   const scrubbedInjected = certSpam
     ? injectedTags.filter((t) => !CERT_SPAM_STRIPPED_TAGS.has(t))
     : injectedTags;
-  /* Special-week tags (lib/special-weeks.ts): earned by title + date, and
-     sticky once a row has one. The same Luma event is scraped by several
-     calendars (the official Hard Tech Week calendar injects the tag, the
-     47G calendar does not), and each scrape rewrites tags - without the
-     carry-over the tag would flip on and off every tick. */
-  const weekTags = [
-    ...specialWeekTagsFor(item),
-    ...(existing[0]?.tags ?? []).filter((t) => SPECIAL_WEEK_SLUGS.has(t)),
-  ];
-  const extra = [...scrubbedInjected, ...weekTags];
+  /* Special-week tags (lib/special-weeks.ts): earned by title + date here,
+     and sticky once a row has one (see the update below). */
+  const extra = [...scrubbedInjected, ...specialWeekTagsFor(item)];
   const tags = extra.length > 0 ? Array.from(new Set([...inferred, ...extra])) : inferred;
 
   const baseValues = {
@@ -221,13 +214,13 @@ async function upsertEvent(
        don't overwrite is_conference/is_paid back to false if a heuristic
        missed but admin flagged. Likewise, if an admin manually set this
        event's group (groupLocked) or corrected its online flag
-       (onlineLocked), leave those columns untouched. */
-    const { groupId: nextGroupId, isOnline: nextIsOnline, ...rest } = baseValues;
-    const setValues = {
-      ...rest,
-      ...(existing[0].groupLocked ? {} : { groupId: nextGroupId }),
-      ...(existing[0].onlineLocked ? {} : { isOnline: nextIsOnline }),
-    };
+       (onlineLocked), leave those columns untouched. A partial item and the
+       sticky week tags: see lib/rescrape-values.ts. */
+    const setValues = rescrapeUpdateValues(baseValues, {
+      groupLocked: existing[0].groupLocked,
+      onlineLocked: existing[0].onlineLocked,
+      partial: item.partial === true,
+    });
     await db.update(events).set(setValues).where(eq(events.id, existing[0].id));
     return "updated" as const;
   }

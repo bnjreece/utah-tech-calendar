@@ -9,33 +9,47 @@
 -- Run (one transaction; commits only if every statement succeeds):
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f hard_tech_week_source.sql
 --
--- Idempotent: rerunning changes 0 rows in every block (each guard accepts 0
--- on a rerun and raises on anything else).
+-- Idempotent: rerunning changes 0 rows in every block. Block 1 accepts 0 or
+-- 1 inserts. Block 2 checks each stale listing's FINAL state on its own, so
+-- it passes whether this run hid both, one (an admin or a sweep hid the
+-- other first) or neither (a rerun).
 --
 -- How auto-approve works (verified in code, 2026-10-25):
 --   sources.requires_review = false makes scrape-runner insert new rows as
 --   status 'approved' (true inserts them 'pending'). Safety checks still run:
 --   - at insert: cert-spam and craft titles are born hidden, and series
 --     memory inherits a human hide on an earlier instance;
---   - after insert: the classifier (admin_settings.llm_gate_enabled = true,
---     threshold 0.92 on 2026-10-25) scores every new upcoming row; on an
---     approved, unlocked row it hides confident spam / not-tech
---     ('llm-screened') and sends crypto, protected verticals and anything
---     unsure to the review queue ('pending'). requires_review only picks
---     the starting status; it does not bypass the gate.
+--   - after insert: classifyUnchecked (lib/classify.ts) scores up to 25
+--     unchecked upcoming rows per tick, so the ~44 new rows are scored over
+--     two ticks and are public in the meantime. With
+--     admin_settings.llm_gate_enabled = true (threshold 0.92 on 2026-10-25),
+--     routeVerdict acts on an approved, unlocked row: crypto/web3 and
+--     protected verticals always go to review ('pending'); a relevant,
+--     non-spam verdict stays approved WHATEVER its confidence; confident
+--     spam, or confident not-tech outside event-like categories, is hidden
+--     ('llm-screened'); anything else flagged goes to review. The autopilot
+--     acts only on 'pending' rows, so it does not touch this source's rows.
+--     requires_review only picks the starting status; it does not bypass
+--     the gate.
 --   - the cross-post sweep (now with same-day twins) runs after every tick.
 --
 -- Expected row counts, from read-only SELECTs on 2026-10-25:
 --   1. sources insert: 1 (0 sources match 47g-hardtechweek today)
 --   2. stale listings hide: 2 events + 2 ledger rows (Opening Party twin,
---      Pitch Competition)
+--      Pitch Competition); both approved, unlocked, no ledger rows yet.
+--      Fewer if one was hidden before this runs; the block still passes.
 -- First scrape of the new source (dry run, 2026-10-25): 53 upcoming events
 -- (47 Luma events + 6 external listings); 9 already exist under source
 -- 'luma' with the same evt- ids and are UPDATED, not duplicated; 44 are
--- inserted approved. The sweep then hides the external listings that
--- duplicate an existing row (Women in Tech SLC on Eventbrite, Vibe Code Club
--- on Silicon Slopes). The two other "Hard Tech Week" rows the 2026-10-25
--- audit matched are the stale listings hidden below.
+-- inserted approved (re-checked 2026-10-25: 53 upcoming feed entries, 9 of
+-- the 47 evt- ids in events under source 'luma', 8 approved + 1 pending).
+-- The sweep then hides the two external listings that duplicate an
+-- existing row and moves their hard-tech-week tag onto it (simulated on
+-- the live rows): Women in Tech Salt Lake City 2026 (same Eventbrite link)
+-- and Vibe Code Club for Entrepreneurs (calendar pointer, same minute as
+-- the Silicon Slopes row). It hides nothing on today's rows without the
+-- new source. The two other "Hard Tech Week" rows the 2026-10-25 audit
+-- matched are the stale listings hidden below.
 
 -- 1. The official calendar. url is the calendar page; the adapter reads the
 --    calendar id from it and pulls the ICS feed. No group: there is no 47G
@@ -67,18 +81,21 @@ END $$;
 --    deleted." for both; nothing has refreshed them since 2026-09-16, so
 --    they still show on the public calendar:
 --    - evt-Q63JywDcGB9ut21 "Hard Tech Week Opening Party", Oct 26 6:30pm,
---      a twin of the live evt-zVrciaV3YtD2HtB (6:00pm, Traeger HQ). The new
---      same-day-twins sweep would hide this one on its own; doing it here
---      takes it down before the next tick. hidden_reason 'cross-post', as
---      the sweep would set.
+--      a stale copy of the live evt-zVrciaV3YtD2HtB (6:00pm, Traeger HQ).
+--      Different venue, link and minute, so the same-day-twins sweep does
+--      NOT treat them as one event; it is hidden here. hidden_reason
+--      'cross-post' (a duplicate listing, the reason the sweep uses).
 --    - evt-NXojnHmT1CHRqJw "Hard Tech Week Pitch Competition", Oct 26
 --      5:30pm. Not on the official calendar; no live twin, so no sweep
 --      catches it. hidden_reason 'manual'.
 --    Hidden the way the admin Hide action does (unlocked, restorable from
 --    /admin/hidden), and ledgered in the same statement.
---    Expected: 2 events + 2 ledger rows (0 on rerun).
+--    Expected: 2 events + 2 ledger rows (0 on rerun). Each target's final
+--    state is then checked on its own: hidden for any reason passes; a row
+--    an admin approved and locked is left alone with a WARNING; a missing
+--    row, or one still approved and unlocked, raises.
 DO $$
-DECLARE n int;
+DECLARE n int; r record;
 BEGIN
   WITH before AS (
     SELECT * FROM events
@@ -115,8 +132,27 @@ BEGIN
     RETURNING 1
   )
   SELECT count(*) INTO n FROM led;
-  IF n NOT IN (0, 2) THEN RAISE EXCEPTION 'stale listings: expected 0 or 2, got %', n; END IF;
-  RAISE NOTICE 'hid % stale listings', n;
+  IF n > 2 THEN RAISE EXCEPTION 'stale listings: expected at most 2, got %', n; END IF;
+  RAISE NOTICE 'hid % stale listings in this run', n;
+
+  FOR r IN
+    SELECT t.ext, e.status, e.status_locked, e.hidden_reason
+    FROM (VALUES
+      ('e48f1519-fe85-4314-8741-b10b6f83dad2'::uuid, 'evt-Q63JywDcGB9ut21'),
+      ('bae95611-7e19-4b63-b2f4-9cddab86a145'::uuid, 'evt-NXojnHmT1CHRqJw')
+    ) AS t(id, ext)
+    LEFT JOIN events e ON e.id = t.id AND e.source = 'luma' AND e.external_id = t.ext
+  LOOP
+    IF r.status IS NULL THEN
+      RAISE EXCEPTION 'stale listing % not found', r.ext;
+    ELSIF r.status = 'approved' AND NOT r.status_locked THEN
+      RAISE EXCEPTION 'stale listing % is still approved', r.ext;
+    ELSIF r.status = 'approved' THEN
+      RAISE WARNING 'stale listing % was approved and locked by an admin; left alone', r.ext;
+    ELSE
+      RAISE NOTICE 'stale listing %: % (%)', r.ext, r.status, coalesce(r.hidden_reason, 'no reason');
+    END IF;
+  END LOOP;
 END $$;
 
 -- Check.

@@ -274,22 +274,26 @@ export const lumaAdapter: Adapter<EventItem> = {
     /* Enrich each Luma event with its body (and, for an ICS-only entry,
        its full node: cover, venue, city, page URL). The list data never
        carries a body, so this is what gives Luma events a real description.
-       Fails soft - an event keeps its list data if its detail fetch errors.
+       Fails soft - an event keeps its list data if its detail fetch errors
+       (marked partial when that list data is the ICS feed's).
        Four lanes keep a large calendar from bursting the API. */
     await mapPool(items, 4, async (item) => {
       if (!item.externalId.startsWith("evt-")) return;
       const fromIcs = icsOnly.has(item);
       if (item.description && !fromIcs) return;
       const detail = await fetchLumaDetail(item.externalId);
+      /* An ICS-only event without its detail is list data only (a "Hosted
+         by" stub for a body, no cover). Mark it so a rescrape that hits a
+         rate limit does not overwrite what an earlier full scrape stored. */
+      const full =
+        fromIcs && detail?.node ? normalize({ ...detail.node, api_id: item.externalId }) : null;
+      if (fromIcs && !full) item.partial = true;
       if (!detail) return;
-      if (fromIcs && detail.node) {
-        const full = normalize({ ...detail.node, api_id: item.externalId });
-        if (full) {
-          /* The feed's times and location stay the fallback for anything
-             the node lacks. */
-          for (const [k, v] of Object.entries(full)) {
-            if (v !== undefined && v !== null && v !== "") (item as unknown as Record<string, unknown>)[k] = v;
-          }
+      if (full) {
+        /* The feed's times and location stay the fallback for anything
+           the node lacks. */
+        for (const [k, v] of Object.entries(full)) {
+          if (v !== undefined && v !== null && v !== "") (item as unknown as Record<string, unknown>)[k] = v;
         }
       }
       if (detail.description) item.description = detail.description;

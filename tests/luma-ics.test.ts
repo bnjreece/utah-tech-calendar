@@ -151,6 +151,13 @@ test("a calendar scrape lists every upcoming feed event and prefers page nodes",
   const tour = items.find((i) => i.externalId === "evt-YYJtXAkn5XHlYbo")!;
   assert.equal(tour.title, "Albany Engineered Composites Tour");
   assert.equal(tour.link, "https://lu.ma/k9poepkf");
+  /* ...and marks it partial, so a rescrape keeps the stored body, venue and
+     cover instead of the "Hosted by" stub (lib/rescrape-values.ts). */
+  assert.equal(tour.partial, true);
+  assert.equal(quantum.partial, undefined);
+  assert.equal(party.partial, undefined);
+  /* External listings are never enriched; their stub is all there is. */
+  assert.ok(items.filter((i) => i.externalId.startsWith("calev-")).every((i) => i.partial === undefined));
   /* External listings never hit the event endpoint. */
   assert.ok(detailCalls.every((id) => id.startsWith("evt-")));
 

@@ -2,6 +2,7 @@ import { db, events } from "./db";
 import { sql, inArray, and, eq, gte } from "drizzle-orm";
 import { recordEventDecision } from "./review-log";
 import { findSameDayTwins } from "./same-day-twins";
+import { appendTagsSql } from "./tag-merge";
 
 export interface DedupResult {
   clustersFound: number;
@@ -26,10 +27,13 @@ export interface DedupResult {
       avoids eating 3-track conferences at one room.
 
    4. Same-day twins (lib/same-day-twins.ts): same normalized title, same
-      Denver day, starts within 90 minutes, across sources. Catches a stale
-      deleted-and-reposted listing and one event listed on two calendars.
-      Keeps a locked row, then a row still being refreshed by scrapes, then
-      the oldest; locked rows are never hidden.
+      Denver day, starts within 90 minutes, across sources, AND identity
+      evidence (same link, same venue, or a Luma calendar's external
+      listing at the same minute). Catches one event listed on two
+      calendars or sources. Keeps a locked row, then a row still being
+      refreshed by scrapes, then the oldest; locked rows are never hidden.
+      The kept row inherits any special-week tag (Hard Tech Week) a hidden
+      twin carried, so the event stays in that week's filtered view.
 
    Keeps the OLDEST event in each of clusters 1-3 as canonical; hides the rest.
    Hide-only by design - manual restore happens via /admin/hidden. */
@@ -118,10 +122,16 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
       id: events.id,
       title: events.title,
       source: events.source,
+      externalId: events.externalId,
+      link: events.link,
+      venueName: events.venueName,
+      latitude: events.latitude,
+      longitude: events.longitude,
       startsAt: events.startsAt,
       createdAt: events.createdAt,
       updatedAt: events.updatedAt,
       statusLocked: events.statusLocked,
+      tags: events.tags,
     })
     .from(events)
     .where(and(eq(events.status, "approved"), gte(events.startsAt, now)));
@@ -139,6 +149,18 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
       kept: c.keep.title,
       hiddenCount: c.drop.length,
     });
+  }
+
+  /* Carry week tags to the kept row BEFORE hiding its twin, as one atomic
+     array merge (a concurrent scrape rewriting tags cannot drop it, see
+     lib/tag-merge.ts). If the hide below then fails, the tag
+     is on both rows, which is harmless. */
+  for (const c of twinClusters) {
+    if (c.carryTags.length === 0 || toHide.has(c.keep.id)) continue;
+    await db
+      .update(events)
+      .set({ tags: appendTagsSql(c.carryTags) })
+      .where(eq(events.id, c.keep.id));
   }
 
   if (toHide.size > 0) {
