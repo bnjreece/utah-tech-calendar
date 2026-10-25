@@ -321,3 +321,37 @@ describe("planQueueTwinHides: shared links never override places (Astra round 4)
     expect(hides([eb1, eb2])).toEqual([[eb2.title, eb1.title]]);
   });
 });
+
+describe("planQueueTwinHides: differing parentheticals need one listing (Astra round 5)", () => {
+  const d = new Date("2026-11-12T16:00:00Z");
+  const later = new Date("2026-09-10T00:00:00Z");
+  const at = { startsAt: d, venueName: "Salt Lake Community College", city: "Salt Lake City" };
+  test("Beginner vs Advanced at one venue and minute, separate links, stay (the reproduction)", () => {
+    const beg = row({ title: "Python Programming Workshop (Beginner)", ...at });
+    const adv = row({ title: "Python Programming Workshop (Advanced)", ...at, createdAt: later });
+    expect(matchTitles(beg.title, adv.title)).toBe("core");
+    expect(hides([beg, adv])).toEqual([]);
+  });
+  test("other qualifiers, a bare title vs a qualified one, and pins within 250 m also stay", () => {
+    const a = row({ title: "Intro to Data Science Bootcamp (Teens)", ...at });
+    const b = row({ title: "Intro to Data Science Bootcamp (Adults)", ...at, createdAt: later });
+    expect(hides([a, b])).toEqual([]);
+    const bare = row({ title: "Intro to Data Science Bootcamp", ...at, createdAt: later });
+    expect(hides([a, bare])).toEqual([]);
+    const pinA = row({ title: "Python Programming Workshop (Beginner)", startsAt: d, latitude: 40.762, longitude: -111.903, city: "Salt Lake City" });
+    const pinB = row({ title: "Python Programming Workshop (Advanced)", startsAt: d, latitude: 40.7621, longitude: -111.9031, city: "Salt Lake City", createdAt: later });
+    expect(hides([pinA, pinB])).toEqual([]);
+    /* Containment across differing parentheticals is held to the same bar. */
+    const c1 = row({ title: "Salt Lake Python Programming Workshop (Beginner)", ...at });
+    const c2 = row({ title: "Python Programming Workshop Series (Advanced)", ...at, createdAt: later });
+    expect(hides([c1, c2])).toEqual([]);
+  });
+  test("positive controls: one Eventbrite id across differing parentheticals, and equal parentheticals at one venue, still match", () => {
+    const beg = row({ title: "Python Programming Workshop (Beginner)", ...at, link: "https://www.eventbrite.com/e/python-workshop-beginner-tickets-1998617983190" });
+    const ren = row({ title: "Python Programming Workshop (Beginners)", ...at, link: "https://www.eventbrite.com/e/python-workshop-beginners-tickets-1998617983190", createdAt: later });
+    expect(hides([beg, ren])).toEqual([[ren.title, beg.title]]);
+    const x = row({ title: "Utah Rust Builders Monthly Social Club (SLC)", ...at });
+    const y = row({ title: "Rust Builders Monthly Social Club (SLC)", ...at, createdAt: later });
+    expect(hides([x, y])).toEqual([[y.title, x.title]]);
+  });
+});

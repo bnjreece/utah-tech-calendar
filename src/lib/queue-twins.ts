@@ -30,7 +30,9 @@ import { mtDayKey } from "./time";
        the same start minute, or within 90 minutes from two different
        sources (one source listing a title at two times is two sessions,
        even under one registration link); or, at the same start minute,
-     . same venue name or map pins within 250 m (exact or contained title),
+     . same venue name or map pins within 250 m (exact or contained title;
+       never when the trailing parentheticals differ, which only the same
+       listing can bridge: "Workshop (Beginner)" vs "(Advanced)"),
        when the locations do not conflict (lib/same-day-twins.ts) and the
        rows do not name two different specific venues; a
        placeholder venue ("TBD", "Online", "Zoom") is never a venue; or
@@ -87,7 +89,16 @@ export function coreTitle(title: string): string {
 }
 
 const words = (s: string) => (s ? s.split(" ") : []);
-const parenWords = (title: string) => words(normalizeEventTitle(PAREN_SUFFIX_RE.exec(title)?.[1] ?? ""));
+const parenText = (title: string) => normalizeEventTitle(PAREN_SUFFIX_RE.exec(title)?.[1] ?? "");
+const parenWords = (title: string) => words(parenText(title));
+
+/* The two titles carry different trailing parentheticals (one may have
+   none). A parenthetical can name a class level, audience or track
+   ("Workshop (Beginner)" vs "(Advanced)") that no word list can know, so a
+   non-exact match across differing parentheticals needs the same listing. */
+export function parentheticalsDiffer(a: string, b: string): boolean {
+  return parenText(a) !== parenText(b);
+}
 const VIP_RE = /\bvip\b/i;
 
 export function matchTitles(a: string, b: string): TitleMatch | null {
@@ -177,6 +188,10 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
      both share one registration link (same rule as same-day-twins.ts). */
   if (apart !== 0) return sameListing && a.source !== b.source;
   if (sameListing) return true;
+  /* Titles that differ in a parenthetical ("Python Workshop (Beginner)" and
+     "(Advanced)" at one college, one minute) are two classes unless they
+     are one listing, checked above. */
+  if (match !== "exact" && parentheticalsDiffer(a.title, b.title)) return false;
   if (venueEvidence(a, b)) return true;
   if (match !== "exact") return false;
   /* A Luma calendar's external listing only points at an event hosted
