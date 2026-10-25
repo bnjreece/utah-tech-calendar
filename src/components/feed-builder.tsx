@@ -10,6 +10,7 @@ import {
   type EventType,
 } from "@/lib/filters";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
+import { tagDisplayName } from "@/lib/tag-taxonomy";
 import { SubscribePopover } from "@/components/subscribe-popover";
 import { InfoTip, Term } from "@/components/ui/tooltip";
 import { SITE_URL } from "@/lib/seo";
@@ -117,7 +118,7 @@ export function FeedBuilder({ cities, tags, sources, groups }: Props) {
     label: c.value === "Unknown" ? "Location TBD" : c.value,
     count: c.count,
   }));
-  const tagOptions = tags.map((t) => ({ value: t.value, label: t.value, count: t.count }));
+  const tagOptions = tags.map((t) => ({ value: t.value, label: tagDisplayName(t.value), count: t.count }));
   const sourceOptions = sources.map((s) => ({
     value: s.value,
     label: sourceLabel(s.value),

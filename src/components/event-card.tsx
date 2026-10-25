@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { displayTags, tagDisplayName } from "@/lib/tag-taxonomy";
 import type { EventWithGroup } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { eventSlug } from "@/lib/slugs";
@@ -19,6 +20,9 @@ export function EventCard({ event }: { event: EventWithGroup }) {
   /* Slug uses raw title for URL stability; presentation uses the
      prettified form so "TBD" reads as e.g. "Utah Go · TBD". */
   const title = displayTitle(event);
+  /* Canonical names, most specific first, so the 4-tag cut keeps
+     Hard Tech Week / Aerospace & Defense over generic ones. */
+  const shownTags = displayTags(event.tags);
 
   return (
     <Link
@@ -87,12 +91,12 @@ export function EventCard({ event }: { event: EventWithGroup }) {
           )}
         </div>
 
-        {(event.group || (event.tags && event.tags.length > 0)) && (
+        {(event.group || shownTags.length > 0) && (
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-ink-soft pt-1">
             {event.group && <span>{event.group.name}</span>}
-            {event.tags && event.tags.length > 0 && (
+            {shownTags.length > 0 && (
               <div className="flex flex-wrap gap-1" role="list">
-                {event.tags.slice(0, 4).map((t) => (
+                {shownTags.slice(0, 4).map((t) => (
                   <ActionTip
                     key={t}
                     tip="A topic tag; use the Tag filter to find more like this."
@@ -101,7 +105,7 @@ export function EventCard({ event }: { event: EventWithGroup }) {
                       role="listitem"
                       className="inline-flex items-center rounded-full bg-paper-deep px-2 py-0.5 text-xs text-ink-soft"
                     >
-                      {t}
+                      {tagDisplayName(t)}
                     </span>
                   </ActionTip>
                 ))}

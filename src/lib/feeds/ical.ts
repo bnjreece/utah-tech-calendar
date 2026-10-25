@@ -1,5 +1,6 @@
 import type { EventWithGroup } from "../queries";
 import { displayTitle } from "../display";
+import { displayTags, tagDisplayName } from "../tag-taxonomy";
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -49,7 +50,7 @@ export function eventsToIcal(events: EventWithGroup[], host: string): string {
     const descriptionParts = [
       e.description ?? "",
       e.group ? `Group: ${e.group.name}` : "",
-      e.tags && e.tags.length ? `Tags: ${e.tags.join(", ")}` : "",
+      displayTags(e.tags).length ? `Tags: ${displayTags(e.tags).map(tagDisplayName).join(", ")}` : "",
       e.link ? `Link: ${e.link}` : "",
     ].filter(Boolean);
 

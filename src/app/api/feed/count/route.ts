@@ -3,6 +3,7 @@ import { and, eq, gte, lte, ilike, or, inArray, sql } from "drizzle-orm";
 import { db, events } from "@/lib/db";
 import { parseFilters } from "@/lib/filters";
 import { categorizeRegion } from "@/lib/regions";
+import { tagFilterSql } from "@/lib/queries";
 
 export const runtime = "nodejs";
 
@@ -38,14 +39,10 @@ export async function GET(req: NextRequest) {
   }
   if (filters.cities.length) conditions.push(inArray(events.city, filters.cities));
   if (filters.groups.length) conditions.push(inArray(events.groupId, filters.groups));
-  if (filters.tags.length) {
-    conditions.push(
-      sql`${events.tags} && ARRAY[${sql.join(
-        filters.tags.map((t) => sql`${t}`),
-        sql`, `,
-      )}]::text[]`,
-    );
-  }
+  /* Same tag condition as the feeds (special-week title match and old
+     tag spellings included), so the count equals what the feed delivers. */
+  const tagCond = tagFilterSql(filters.tags);
+  if (tagCond) conditions.push(tagCond);
   if (filters.sources.length) conditions.push(inArray(events.source, filters.sources));
   if (filters.types.length) {
     const typeConds = filters.types.map((t) => {

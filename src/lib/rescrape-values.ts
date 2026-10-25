@@ -16,8 +16,10 @@ import { rescrapeTagsSql } from "./tag-merge";
      Luma event is scraped by several calendars (the official Hard Tech Week
      calendar injects the week tag, the 47G calendar does not) and the dedup
      sweep adds a week tag to a kept twin. A week tag, once on a row,
-     survives every rescrape. A column left out of the result is not
-     written. */
+     survives every rescrape. The row's stored classifier suggestions
+     (llm_verdict.suggestedTags, mapped by opts.llmPairs) are merged in
+     the same UPDATE, so classifier tags survive a rescrape too. A column
+     left out of the result is not written. */
 const KEPT_ON_PARTIAL = [
   "description",
   "link",
@@ -34,12 +36,17 @@ export function rescrapeUpdateValues<
   T extends { groupId?: unknown; isOnline?: unknown; tags: string[] },
 >(
   base: T,
-  opts: { groupLocked: boolean; onlineLocked: boolean; partial: boolean },
+  opts: {
+    groupLocked: boolean;
+    onlineLocked: boolean;
+    partial: boolean;
+    llmPairs?: ReadonlyArray<readonly [string, string]>;
+  },
 ): Partial<Omit<T, "tags">> & { tags: SQL } {
   const { groupId, isOnline, tags, ...rest } = base;
   const out: Record<string, unknown> = {
     ...rest,
-    tags: rescrapeTagsSql(tags, { slugs: SPECIAL_WEEK_SLUGS, keepAll: opts.partial }),
+    tags: rescrapeTagsSql(tags, { slugs: SPECIAL_WEEK_SLUGS, keepAll: opts.partial }, opts.llmPairs),
   };
   if (!opts.groupLocked) out.groupId = groupId;
   if (!opts.onlineLocked && !opts.partial) out.isOnline = isOnline;

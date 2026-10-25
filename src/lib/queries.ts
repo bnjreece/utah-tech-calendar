@@ -3,6 +3,7 @@ import { db, events, groups, type Event, type Group } from "./db";
 import { categorizeRegion, type UtahRegion } from "./regions";
 import type { FilterState } from "./filters";
 import { getSpecialWeek } from "./special-weeks";
+import { canonicalizeTags, tagQueryVariants } from "./auto-tag";
 
 /* A special week's tag (lib/special-weeks.ts) also matches rows whose
    title fits the week inside its dates, so events scraped before the week
@@ -14,6 +15,24 @@ export function specialWeekMatchSql(slug: string) {
   return sql`(${events.title} ~* ${w.titlePattern}
     AND (${events.startsAt} AT TIME ZONE 'America/Denver')::date
       BETWEEN ${w.eventFrom}::date AND ${w.eventTo}::date)`;
+}
+
+/* The ?tags= condition shared by the homepage, embed, feeds and
+   /api/feed/count, so a count always equals what the feed delivers: the
+   row carries any requested tag (or an old spelling of it, e.g. `startup`
+   for founders, on a row not yet rewritten), or matches a requested
+   special week by title and date. Build an explicit ARRAY[...]::text[]
+   literal because the neon-http driver serializes a JS array as a single
+   text parameter, which Postgres can't parse as `text[]` for `&&`. */
+export function tagFilterSql(tags: readonly string[]) {
+  if (tags.length === 0) return undefined;
+  const variants = [...new Set(tags.flatMap(tagQueryVariants))];
+  const overlap = sql`${events.tags} && ARRAY[${sql.join(
+    variants.map((t) => sql`${t}`),
+    sql`, `,
+  )}]::text[]`;
+  const weekMatches = tags.map(specialWeekMatchSql).filter((c) => c !== null);
+  return weekMatches.length ? or(overlap, ...weekMatches)! : overlap;
 }
 
 export interface EventWithGroup extends Event {
@@ -73,17 +92,8 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
     );
   }
 
-  if (filters.tags.length) {
-    /* Build an explicit ARRAY[…]::text[] literal because the neon-http
-       driver serializes a JS array as a single text parameter, which
-       Postgres can't parse as `text[]` for the `&&` overlap operator. */
-    const overlap = sql`${events.tags} && ARRAY[${sql.join(
-      filters.tags.map((t) => sql`${t}`),
-      sql`, `,
-    )}]::text[]`;
-    const weekMatches = filters.tags.map(specialWeekMatchSql).filter((c) => c !== null);
-    conditions.push(weekMatches.length ? or(overlap, ...weekMatches)! : overlap);
-  }
+  const tagCond = tagFilterSql(filters.tags);
+  if (tagCond) conditions.push(tagCond);
 
   if (filters.sources.length) {
     conditions.push(inArray(events.source, filters.sources));
@@ -225,7 +235,7 @@ export async function getDistinctTags(): Promise<string[]> {
     .where(and(eq(events.status, "approved"), eq(events.isOnline, false)));
   const set = new Set<string>();
   for (const r of rows) {
-    for (const t of r.tags ?? []) set.add(t);
+    for (const t of canonicalizeTags(r.tags)) set.add(t);
   }
   return Array.from(set).sort();
 }
@@ -293,9 +303,11 @@ export async function getTagCounts(): Promise<Array<{ tag: string; count: number
     .select({ tags: events.tags })
     .from(events)
     .where(and(eq(events.status, "approved"), eq(events.isOnline, false), gte(events.startsAt, new Date())));
+  /* Counted under canonical names (a row with `startup` counts toward
+     founders, once), so the chips match what ?tags= returns. */
   const counts = new Map<string, number>();
   for (const r of rows) {
-    for (const t of r.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+    for (const t of canonicalizeTags(r.tags)) counts.set(t, (counts.get(t) ?? 0) + 1);
   }
   return Array.from(counts.entries())
     .map(([tag, count]) => ({ tag, count }))

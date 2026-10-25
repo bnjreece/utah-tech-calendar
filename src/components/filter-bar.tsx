@@ -12,7 +12,7 @@ import {
   type EventType,
 } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
-import { tagLabel } from "@/lib/special-weeks";
+import { tagDisplayName } from "@/lib/tag-taxonomy";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
 import { ShareFilterButton } from "@/components/share-filter-button";
 import { InfoTip } from "@/components/ui/tooltip";
@@ -184,7 +184,7 @@ export function FilterBar({ cities, tags, sources, groups, specialWeeks = [] }: 
   }));
   const cityLabel = (c: string) => (c === "Unknown" ? "Location TBD" : c);
   const regionLabel = (r: string) => (r === "Unknown" ? "Location TBD" : r);
-  const tagOptions = tags.map((t) => ({ value: t.value, label: tagLabel(t.value), count: t.count }));
+  const tagOptions = tags.map((t) => ({ value: t.value, label: tagDisplayName(t.value), count: t.count }));
   const groupOptions = groups.map((g) => ({ value: g.slug, label: g.name, count: g.count }));
   const groupNameBySlug = new Map(groups.map((g) => [g.slug, g.name]));
   const groupLabel = (slug: string) => groupNameBySlug.get(slug) ?? slug;
@@ -312,7 +312,7 @@ export function FilterBar({ cities, tags, sources, groups, specialWeeks = [] }: 
             <ActiveChip key={`c-${c}`} label={cityLabel(c)} onRemove={() => clearOne("cities", c)} />
           ))}
           {filters.tags.map((t) => (
-            <ActiveChip key={`t-${t}`} label={tagLabel(t)} onRemove={() => clearOne("tags", t)} />
+            <ActiveChip key={`t-${t}`} label={tagDisplayName(t)} onRemove={() => clearOne("tags", t)} />
           ))}
           {filters.groups.map((g) => (
             <ActiveChip key={`g-${g}`} label={groupLabel(g)} onRemove={() => clearOne("groups", g)} />

@@ -24,11 +24,36 @@ export function appendTagsSql(add: readonly string[]): SQL {
   return sql`${current} || ARRAY(SELECT DISTINCT t FROM unnest(${a}) AS t WHERE NOT (t = ANY(${current})))`;
 }
 
-/* `next` (the scrape's freshly computed tags), plus whichever of the row's
-   current tags `keep` says survive a rescrape: the special-week slugs, or
-   every current tag when keepAll is set. */
-export function rescrapeTagsSql(next: readonly string[], keep: { slugs: Iterable<string>; keepAll?: boolean }): SQL {
+/* `next` (the scrape's freshly computed tags), then the row's stored
+   classifier suggestions (llm_verdict.suggestedTags) mapped through
+   `llmPairs` (suggested spelling -> canonical tag, see
+   lib/auto-tag.ts llmTagPairs; a spelling not listed maps to nothing),
+   then whichever of the row's current tags `keep` says survive a
+   rescrape: the special-week slugs, or every current tag when keepAll is
+   set. All three are read inside the UPDATE, so a verdict or week tag
+   written by another writer in between is not lost. De-duplicated,
+   first occurrence wins. */
+export function rescrapeTagsSql(
+  next: readonly string[],
+  keep: { slugs: Iterable<string>; keepAll?: boolean },
+  llmPairs: ReadonlyArray<readonly [string, string]> = [],
+): SQL {
   const n = textArray(next);
   const survives = keep.keepAll ? sql`true` : sql`t = ANY(${textArray([...keep.slugs])})`;
-  return sql`${n} || ARRAY(SELECT DISTINCT t FROM unnest(${current}) AS t WHERE ${survives} AND NOT (t = ANY(${n})))`;
+  const kept = sql`ARRAY(SELECT t FROM unnest(${current}) AS t WHERE ${survives})`;
+  if (llmPairs.length === 0) return dedupe(sql`${n} || ${kept}`);
+  const pairs = sql.join(
+    llmPairs.map(([f, t]) => sql`(${f}::text, ${t}::text)`),
+    sql`, `,
+  );
+  const suggested = sql`CASE WHEN jsonb_typeof(${events.llmVerdict}->'suggestedTags') = 'array'
+    THEN ${events.llmVerdict}->'suggestedTags' ELSE '[]'::jsonb END`;
+  const llm = sql`ARRAY(SELECT m.t FROM jsonb_array_elements_text(${suggested}) WITH ORDINALITY AS s(v, o)
+    JOIN (VALUES ${pairs}) AS m(f, t) ON m.f = lower(btrim(s.v)) ORDER BY s.o)`;
+  return dedupe(sql`${n} || ${llm} || ${kept}`);
+}
+
+/* An array without repeats, in first-occurrence order. */
+function dedupe(arr: SQL): SQL {
+  return sql`ARRAY(SELECT u.t FROM unnest(${arr}) WITH ORDINALITY AS u(t, o) GROUP BY u.t ORDER BY min(u.o))`;
 }

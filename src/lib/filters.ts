@@ -1,4 +1,5 @@
 import type { UtahRegion } from "./regions";
+import { canonicalTag, RETIRED_TAG_SEARCH } from "./auto-tag";
 
 export type EventType = "conference" | "paid" | "free" | "penciled";
 
@@ -88,11 +89,29 @@ export function parseFilters(searchParams: URLSearchParams | Record<string, stri
   const validTypes: EventType[] = ["conference", "paid", "free", "penciled"];
   const types = csv("types").filter((t): t is EventType => validTypes.includes(t as EventType));
 
+  /* Old tag spellings keep working: ?tags=startup or founder reads as
+     founders, healthtech as biotech (lib/auto-tag.ts TAG_ALIASES). A
+     retired tag (product-management) becomes a search when nothing else
+     narrows the view, so an old link or feed still returns PM events
+     instead of the whole calendar. */
+  const rawTags = csv("tags");
+  const tags: string[] = [];
+  let retiredSearch: string | undefined;
+  for (const raw of rawTags) {
+    const t = canonicalTag(raw);
+    if (t) {
+      if (!tags.includes(t)) tags.push(t);
+    } else {
+      retiredSearch ??= RETIRED_TAG_SEARCH[raw.trim().toLowerCase()];
+    }
+  }
+  const q = get("q") ?? "";
+
   return {
-    q: get("q") ?? "",
+    q: q || (tags.length === 0 && retiredSearch) || "",
     regions: csv("regions") as UtahRegion[],
     cities: csv("cities"),
-    tags: csv("tags"),
+    tags,
     sources: csv("sources"),
     groups: csv("groups"),
     types,

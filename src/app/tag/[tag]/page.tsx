@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { and, asc, eq, gte, or, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { specialWeekMatchSql, type EventWithGroup } from "@/lib/queries";
@@ -11,8 +11,22 @@ import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { toSlug, eventSlug } from "@/lib/slugs";
 import { getTagMeta, getAllCanonicalTags, type TagMeta } from "@/lib/tag-taxonomy";
 import { getSpecialWeek } from "@/lib/special-weeks";
+import { canonicalTag, RETIRED_TAG_SEARCH, TAG_ALIASES, tagQueryVariants } from "@/lib/auto-tag";
 
 export const dynamic = "force-dynamic";
+
+/* An old tag spelling (/tag/startup, /tag/healthtech) moves to its
+   canonical page; a retired tag (/tag/product-management) becomes a
+   homepage search. next.config.ts sends the same 308s before rendering;
+   this covers any spelling that slips past it (e.g. different case). */
+function redirectAlias(slug: string): void {
+  const key = slug.toLowerCase();
+  if (!Object.prototype.hasOwnProperty.call(TAG_ALIASES, key)) return;
+  const canonical = canonicalTag(key);
+  if (canonical) permanentRedirect(`/tag/${toSlug(canonical)}`);
+  const q = RETIRED_TAG_SEARCH[key];
+  permanentRedirect(q ? `/?q=${encodeURIComponent(q)}` : "/");
+}
 
 /* Resolve a URL slug to a canonical tag. Two-pass lookup:
    1. The curated taxonomy (TAG_TAXONOMY) is the source of truth for
@@ -22,6 +36,7 @@ export const dynamic = "force-dynamic";
    2. Otherwise fall back to whatever tag strings actually exist on
       approved upcoming events. */
 async function tagFromSlug(slug: string): Promise<{ tag: string; meta: TagMeta | null }> {
+  redirectAlias(slug);
   for (const t of getAllCanonicalTags()) {
     if (toSlug(t.tag) === slug) return { tag: t.tag, meta: t };
   }
@@ -50,7 +65,11 @@ async function fetchTagEvents(tag: string): Promise<EventWithGroup[]> {
         eq(events.isOnline, false),
         gte(events.startsAt, new Date()),
         or(
-          sql`lower(${tag}) = ANY(SELECT lower(t) FROM unnest(${events.tags}) AS t)`,
+          /* Old spellings too, for rows not yet rewritten. */
+          sql`EXISTS (SELECT 1 FROM unnest(${events.tags}) AS t WHERE lower(t) IN (${sql.join(
+            tagQueryVariants(tag.toLowerCase()).map((v) => sql`${v}`),
+            sql`, `,
+          )}))`,
           specialWeekMatchSql(tag) ?? sql`false`,
         ),
       ),

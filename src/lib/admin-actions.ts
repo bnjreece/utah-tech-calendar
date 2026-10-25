@@ -9,6 +9,7 @@ import { recordEventDecision, recordSubmissionDecision } from "@/lib/review-log"
 import { notifySubmitterEvent, notifySubmitterSource } from "@/lib/submitter-followup";
 import { absoluteUrl } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
+import { finalizeTags } from "@/lib/auto-tag";
 
 /* Detect a source-suggestion row (from /api/submit-source) vs an
    event draft (from /api/submit). Source rows carry type:"source"
@@ -195,7 +196,8 @@ export async function approveSubmission(id: string) {
     city: payload.city,
     state: payload.state ?? "UT",
     postalCode: payload.postalCode,
-    tags: payload.tags,
+    /* Submitter tags through the same alias map as scraped ones. */
+    tags: payload.tags ? finalizeTags(payload.tags) : payload.tags,
     status: "approved",
     /* Human approval - lock it so the LLM gate can't re-screen it. */
     statusLocked: true,

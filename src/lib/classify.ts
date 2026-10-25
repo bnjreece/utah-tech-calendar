@@ -6,6 +6,8 @@ import { recordEventDecision } from "@/lib/review-log";
 import { VerdictSchema, routeVerdict, type EventVerdict } from "@/lib/verdict";
 import { decidePending, MAX_PUBLISH_PER_RUN } from "@/lib/autopilot";
 import { applyPendingDecision, loadSourceUrls, pendingFacts } from "@/lib/autopilot-db";
+import { isCertSpam, llmTagsFor } from "@/lib/auto-tag";
+import { appendTagsSql } from "@/lib/tag-merge";
 
 /* Phase 1 (shadow) LLM classifier. A cheap Haiku pass that scores a
    scraped event on the same axes our heuristics use, plus a confidence.
@@ -177,9 +179,20 @@ export async function classifyUnchecked(
       continue;
     const verdict = await classifyEvent(r);
     if (!verdict) continue;
+    /* The verdict arrives after the row was inserted, so its tags are
+       merged here (aliased, allowlisted, cert-spam scrubbed) instead of
+       waiting for the next rescrape, which merges them again from the
+       stored verdict (lib/tag-merge.ts). Appended under the row lock. */
+    const llmTags = llmTagsFor(verdict.suggestedTags, {
+      certSpam: isCertSpam(`${r.title} ${r.description ?? ""}`),
+    });
     await db
       .update(events)
-      .set({ llmVerdict: verdict, llmCheckedAt: new Date() })
+      .set({
+        llmVerdict: verdict,
+        llmCheckedAt: new Date(),
+        ...(llmTags.length > 0 ? { tags: appendTagsSql(llmTags) } : {}),
+      })
       .where(eq(events.id, r.id));
     classified++;
 

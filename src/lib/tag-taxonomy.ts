@@ -13,6 +13,9 @@
    landing page still works (via the DB fallback in tagFromSlug) but
    you miss the editorial polish. Both should move together. */
 
+import { canonicalTag, canonicalizeTags } from "./auto-tag";
+import { getSpecialWeek, SPECIAL_WEEK_SLUGS } from "./special-weeks";
+
 export interface TagMeta {
   /* The canonical tag string as stored in events.tags. Lowercase
      kebab-case to match the slug. */
@@ -61,28 +64,20 @@ export const TAG_TAXONOMY: TagMeta[] = [
     intro:
       "Utah's fintech corridor runs from Sandy to Lehi: Galileo, MX, SoFi, Finicity, Marqeta, Ramp. This page lists in-person events for engineers, founders, and operators building in payments, banking infrastructure, lending, and digital assets.",
     anchors: ["Galileo Financial Technologies", "MX", "SoFi", "Finicity", "Marqeta", "Ramp", "FinWise Bank"],
-    featured: true,
+    /* Unfeatured 2026-10-25: no upcoming events. Re-feature when it has some. */
+    featured: false,
   },
   {
-    tag: "healthtech",
-    display: "Healthtech",
-    seoTitle: "Utah Healthtech Events · Digital Health, EHR, Med Devices · Utah Tech Calendar",
-    seoDescription:
-      "Utah healthtech meetups and conferences - digital health, EHR/EMR, telehealth, patient platforms. Oracle Health, Intermountain, Owlet, Recursion.",
-    intro:
-      "Utah's healthtech employer base is unusually deep: Oracle Health, Intermountain Health's innovation org, Owlet, Nomi Health (Orem), Health Catalyst, and the patient-platform startups across Sandy and Lehi. This page collects in-person events for engineers and operators in digital health.",
-    anchors: ["Oracle Health", "Intermountain Health", "Nomi Health", "Health Catalyst", "Owlet", "Recursion Pharmaceuticals"],
-    featured: true,
-  },
-  {
+    /* Stored as `biotech`; healthtech and medtech alias here
+       (lib/auto-tag.ts TAG_ALIASES), so /tag/healthtech redirects. */
     tag: "biotech",
-    display: "Biotech",
-    seoTitle: "Utah Biotech Events · Life Sciences, Genomics, Devices · Utah Tech Calendar",
+    display: "Health & Life Sciences",
+    seoTitle: "Utah Health & Life Sciences Events · Biotech, Medtech · Utah Tech Calendar",
     seoDescription:
-      "Utah biotech meetups, conferences, and lab events - life sciences, genomics, medical devices. Recursion, Myriad, BD Medical, U of U research.",
+      "Utah biotech, medtech and digital health events - life sciences talks, BioUtah meetups, device and pharma research. Recursion, Myriad, BD Medical, Intermountain.",
     intro:
-      "Utah biotech sits at the intersection of computational drug discovery (Recursion), genomics legacy (Myriad), and a strong device-manufacturing base (BD Medical, Edwards Lifesciences). This page tracks the in-person research talks, founder dinners, and industry meetups happening across the Wasatch front.",
-    anchors: ["Recursion Pharmaceuticals", "Myriad Genetics", "BD Medical", "Edwards Lifesciences", "BioHive"],
+      "Utah's health and life sciences cluster runs from computational drug discovery (Recursion) and genomics (Myriad) to a deep device-manufacturing base (BD Medical, Edwards Lifesciences) and digital health (Intermountain Health, Health Catalyst). This page tracks the in-person research talks, BioUtah meetups, and industry events across the Wasatch front.",
+    anchors: ["Recursion Pharmaceuticals", "Myriad Genetics", "BD Medical", "Edwards Lifesciences", "Intermountain Health", "BioUtah"],
     featured: true,
   },
   {
@@ -94,7 +89,8 @@ export const TAG_TAXONOMY: TagMeta[] = [
     intro:
       "Utah's edtech cluster centers on Lehi - Instructure (Canvas), Pluralsight, Civitas Learning - with deep BYU and U of U research crossover. This page lists the in-person events for engineers, learning designers, and founders building education tools.",
     anchors: ["Instructure (Canvas)", "Pluralsight", "Civitas Learning", "BYU OpenCourseWare", "U of U EdTech"],
-    featured: true,
+    /* Unfeatured 2026-10-25: no upcoming events. Re-feature when it has some. */
+    featured: false,
   },
   {
     tag: "aerospace",
@@ -108,6 +104,19 @@ export const TAG_TAXONOMY: TagMeta[] = [
     featured: true,
   },
   {
+    /* Permanent umbrella: aerospace and defense, manufacturing,
+       robotics, energy, hardware. Outlives the Hard Tech Week tag. */
+    tag: "hard-tech",
+    display: "Hard Tech",
+    seoTitle: "Utah Hard Tech Events · Aerospace, Manufacturing, Robotics · Utah Tech Calendar",
+    seoDescription:
+      "Utah hard tech events - aerospace and defense, advanced manufacturing, composites, robotics, drones and energy. Facility tours, 47G roundtables, founder nights.",
+    intro:
+      "Utah builds physical things: composites at Hexcel and Albany, defense tech around Hill Air Force Base, counter-drone systems at Fortem, robotics and energy startups up and down the Wasatch front. This page lists the in-person hard tech events, from facility tours to 47G roundtables.",
+    anchors: ["47G", "Hexcel", "Northrop Grumman", "Fortem Technologies", "Albany Engineered Composites", "Nammo"],
+    featured: true,
+  },
+  {
     tag: "gamedev",
     display: "Game Dev",
     seoTitle: "Utah Game Dev Events · Unity, Unreal, Indie · Utah Tech Calendar",
@@ -116,7 +125,8 @@ export const TAG_TAXONOMY: TagMeta[] = [
     intro:
       "Utah's game dev scene is split between two anchors: WB Games SLC (formerly Avalanche) and the BYU + U of U game programs that feed indie studios across the front. This page lists Utah Indie Game meetups, jams, showcases, and the occasional Unity / Unreal user-group night.",
     anchors: ["WB Games SLC", "Smart Bomb Interactive", "BYU EAE", "U of U Entertainment Arts", "Utah Indie Games"],
-    featured: true,
+    /* Unfeatured 2026-10-25: no upcoming events. Re-feature when it has some. */
+    featured: false,
   },
   {
     tag: "cybersecurity",
@@ -166,6 +176,105 @@ const BY_TAG: Map<string, TagMeta> = new Map(TAG_TAXONOMY.map((t) => [t.tag, t])
 
 export function getTagMeta(tag: string): TagMeta | null {
   return BY_TAG.get(tag.toLowerCase()) ?? null;
+}
+
+/* Display names for tags outside the curated taxonomy. Anything not
+   listed falls back to a title-cased slug. */
+const TAG_LABELS: Readonly<Record<string, string>> = {
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  python: "Python",
+  rust: "Rust",
+  go: "Go",
+  java: "Java",
+  kotlin: "Kotlin",
+  swift: "Swift",
+  ruby: "Ruby",
+  php: "PHP",
+  elixir: "Elixir",
+  "c-sharp": "C# / .NET",
+  scala: "Scala",
+  dart: "Dart",
+  react: "React",
+  vue: "Vue",
+  angular: "Angular",
+  svelte: "Svelte",
+  nextjs: "Next.js",
+  django: "Django",
+  flask: "Flask",
+  rails: "Rails",
+  laravel: "Laravel",
+  flutter: "Flutter",
+  "machine-learning": "Machine Learning",
+  blockchain: "Blockchain",
+  cloud: "Cloud",
+  hardware: "Hardware",
+  design: "Design",
+  mobile: "Mobile",
+  web: "Web Dev",
+  "women-in-tech": "Women in Tech",
+  hackathon: "Hackathon",
+  conference: "Conference",
+  workshop: "Workshop",
+  meetup: "Meetup",
+};
+
+function titleCase(tag: string): string {
+  return tag
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/* The name a person sees for a stored tag: a special week's label, the
+   taxonomy's display name, a listed label, else the title-cased slug.
+   Old spellings show under their canonical name (startup -> Founders). */
+export function tagDisplayName(tag: string): string {
+  const t = canonicalTag(tag) ?? tag.toLowerCase();
+  return getSpecialWeek(t)?.label ?? BY_TAG.get(t)?.display ?? TAG_LABELS[t] ?? titleCase(t);
+}
+
+/* Card order: special weeks, hard tech and industries first, then
+   topics, audience, languages/frameworks, and format tags last, so the
+   4-tag cut on event cards keeps the most specific ones. */
+const TAG_GROUP_RANK: Readonly<Record<string, number>> = {
+  "hard-tech": 1,
+  aerospace: 1,
+  biotech: 2,
+  fintech: 2,
+  blockchain: 2,
+  edtech: 2,
+  gamedev: 2,
+  ai: 3,
+  "machine-learning": 3,
+  cybersecurity: 3,
+  data: 3,
+  devops: 3,
+  cloud: 3,
+  hardware: 3,
+  mobile: 3,
+  web: 3,
+  design: 3,
+  founders: 4,
+  "women-in-tech": 4,
+  conference: 6,
+  hackathon: 6,
+  workshop: 6,
+  meetup: 6,
+};
+function tagRank(tag: string): number {
+  if (SPECIAL_WEEK_SLUGS.has(tag)) return 0;
+  return TAG_GROUP_RANK[tag] ?? 5;
+}
+
+/* Stored tags ready to show: canonical names, no retired tags, no
+   repeats, most specific first (stable within a group). */
+export function displayTags(tags: readonly string[] | null | undefined): string[] {
+  return canonicalizeTags(tags)
+    .map((t, i) => ({ t, i, r: tagRank(t) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map((x) => x.t);
 }
 
 export function getFeaturedVerticals(): TagMeta[] {

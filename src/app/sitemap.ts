@@ -5,6 +5,7 @@ import { SITE_URL } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
 import { listUpcomingPeriodSlugs, listPastPeriodSlugs } from "@/lib/period";
 import { getAllCanonicalTags } from "@/lib/tag-taxonomy";
+import { canonicalTag } from "@/lib/auto-tag";
 
 /* Dynamic sitemap. Pulls every approved upcoming event so Google can
    crawl each detail page (using the canonical slug URL); also includes
@@ -130,6 +131,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   `);
   const tags = (Array.isArray(tagRows) ? tagRows : tagRows.rows ?? []) as Array<{ tag: string }>;
   for (const t of tags) {
+    /* Old spellings (startup, healthtech, product-management) redirect;
+       list only canonical pages. */
+    if (canonicalTag(t.tag) !== t.tag) continue;
     const slug = toSlug(t.tag);
     if (tagSlugs.has(slug)) continue;
     tagSlugs.add(slug);

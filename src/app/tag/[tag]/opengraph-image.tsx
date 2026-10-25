@@ -12,6 +12,7 @@ import { ImageResponse } from "next/og";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db, events } from "@/lib/db";
 import { getTagMeta } from "@/lib/tag-taxonomy";
+import { canonicalTag, tagQueryVariants } from "@/lib/auto-tag";
 import { toSlug } from "@/lib/slugs";
 
 export const runtime = "nodejs";
@@ -37,10 +38,10 @@ const DUSK = "#6B7A8E";
 const TAG_ACCENT: Record<string, string> = {
   ai: TERRACOTTA,
   fintech: DUSK,
-  healthtech: SAGE,
   biotech: SAGE,
   edtech: SUNSET,
   aerospace: TERRACOTTA,
+  "hard-tech": TERRACOTTA,
   cybersecurity: SUNSET,
   gamedev: DUSK,
   founders: SUNSET,
@@ -54,7 +55,10 @@ async function countUpcoming(tag: string): Promise<number> {
       and(
         eq(events.status, "approved"),
         gte(events.startsAt, new Date()),
-        sql`lower(${tag}) = ANY(SELECT lower(t) FROM unnest(${events.tags}) AS t)`,
+        sql`EXISTS (SELECT 1 FROM unnest(${events.tags}) AS t WHERE lower(t) IN (${sql.join(
+          tagQueryVariants(tag.toLowerCase()).map((v) => sql`${v}`),
+          sql`, `,
+        )}))`,
       ),
     );
   return rows[0]?.c ?? 0;
@@ -68,7 +72,7 @@ export default async function TagOgImage({
   const { tag: slug } = await params;
   /* Resolve to the canonical tag string via the taxonomy first; if
      it's not curated, fall back to the slug itself capitalized. */
-  const meta = getTagMeta(slug);
+  const meta = getTagMeta(canonicalTag(slug) ?? slug);
   const display = meta?.display ?? slug.charAt(0).toUpperCase() + slug.slice(1);
   const intro =
     meta?.intro ??

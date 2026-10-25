@@ -12,6 +12,7 @@ import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { mtDate, mtTime } from "@/lib/time";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
+import { displayTags, tagDisplayName } from "@/lib/tag-taxonomy";
 
 /* ISR: bots crawl every event URL from the sitemap; an hourly cache stops
    each crawl from waking the database. Fresh enough for a 3-hour scrape cadence. */
@@ -190,15 +191,15 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {event.tags && event.tags.length > 0 && (
+          {displayTags(event.tags).length > 0 && (
             <div className="mt-6 flex flex-wrap gap-1.5" role="list">
-              {event.tags.map((t) => (
+              {displayTags(event.tags).map((t) => (
                 <span
                   key={t}
                   role="listitem"
                   className="inline-flex items-center rounded-full bg-paper-deep px-3 py-1 text-xs text-ink-soft"
                 >
-                  {t}
+                  {tagDisplayName(t)}
                 </span>
               ))}
             </div>

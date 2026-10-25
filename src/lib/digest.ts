@@ -4,6 +4,7 @@ import { sourceLabel, TYPE_LABELS } from "./filters";
 import { SITE_URL, absoluteUrl } from "./seo";
 import { eventSlug } from "./slugs";
 import { displayTitle } from "./display";
+import { tagDisplayName } from "./tag-taxonomy";
 
 /* Human-readable filter description for the digest header + subject.
    Returns null when the slice is "everything" so the caller can fall
@@ -14,7 +15,7 @@ export function describeFilters(f: FilterState): string | null {
   const parts: string[] = [];
   if (f.regions.length) parts.push(f.regions.join(", "));
   if (f.cities.length) parts.push(f.cities.join(", "));
-  if (f.tags.length) parts.push(f.tags.join(", "));
+  if (f.tags.length) parts.push(f.tags.map(tagDisplayName).join(", "));
   if (f.sources.length) parts.push(f.sources.map((s) => sourceLabel(s)).join(", "));
   if (f.types.length) parts.push(f.types.map((t) => TYPE_LABELS[t]).join(", "));
   if (!parts.length) return null;

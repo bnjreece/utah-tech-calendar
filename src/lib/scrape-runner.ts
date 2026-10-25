@@ -1,7 +1,7 @@
 import { sql, eq, desc } from "drizzle-orm";
 import { db, events, sources, groups, scrapeRuns } from "./db";
 import { eventAdapters, type EventItem } from "./scrapers";
-import { inferTagsFromTitle, isCertSpam, CERT_SPAM_STRIPPED_TAGS } from "./auto-tag";
+import { buildEventTags, isCertSpam, llmTagPairs } from "./auto-tag";
 import { recordEventDecision } from "./review-log";
 import { specialWeekTagsFor } from "./special-weeks";
 import { rescrapeUpdateValues } from "./rescrape-values";
@@ -162,29 +162,30 @@ async function upsertEvent(
     .where(sql`${events.source} = ${item.source} AND ${events.externalId} = ${item.externalId}`)
     .limit(1);
 
-  /* If the scraper supplied tags, trust them. Otherwise infer from the
-     title (and description if present) so /tag/[tag] landing pages have
-     actual content. Then union with source-injected defaultTags so a
-     "Utah Crypto" source row tags all its events with `fintech` even
-     when the title says nothing crypto-flavored.
+  /* Tags (lib/auto-tag.ts buildEventTags): inferred from the title (and
+     strong description phrases), UNIONED with scraper-supplied tags (they
+     used to replace inference), the source's defaultTags (so a "Utah
+     Crypto" source row tags all its events `blockchain` even when the
+     title says nothing crypto-flavored) and special-week tags (earned by
+     title + date, sticky once a row has one). Everything goes through the
+     alias map, so a source still configured with `startup`/`healthtech`
+     stores `founders`/`biotech`.
 
      Cert-spam scrubber applies to BOTH inferred AND injected: a
-     `bioutah` row tagged `[biotech, healthtech]` ingesting a PMP cert-
-     spam event would otherwise smuggle the strong content tag past
-     the scrubber that exists to protect /tag/ai etc from spam. */
-  const inferred =
-    item.tags && item.tags.length > 0
-      ? item.tags
-      : inferTagsFromTitle(item.title, item.description);
-  const haystack = `${item.title} ${item.description ?? ""}`;
-  const certSpam = isCertSpam(haystack);
-  const scrubbedInjected = certSpam
-    ? injectedTags.filter((t) => !CERT_SPAM_STRIPPED_TAGS.has(t))
-    : injectedTags;
-  /* Special-week tags (lib/special-weeks.ts): earned by title + date here,
-     and sticky once a row has one (see the update below). */
-  const extra = [...scrubbedInjected, ...specialWeekTagsFor(item)];
-  const tags = extra.length > 0 ? Array.from(new Set([...inferred, ...extra])) : inferred;
+     `bioutah` row tagged `[biotech]` ingesting a PMP cert-spam event
+     would otherwise smuggle the strong content tag past the scrubber
+     that exists to protect /tag/ai etc from spam. The classifier's
+     suggestedTags are merged inside the rescrape UPDATE (lib/tag-merge.ts)
+     and right after classification (lib/classify.ts), with the same
+     scrub. */
+  const certSpam = isCertSpam(`${item.title} ${item.description ?? ""}`);
+  const tags = buildEventTags({
+    title: item.title,
+    description: item.description,
+    supplied: item.tags,
+    injected: injectedTags,
+    specialWeek: specialWeekTagsFor(item),
+  });
 
   const baseValues = {
     title: item.title,
@@ -220,6 +221,7 @@ async function upsertEvent(
       groupLocked: existing[0].groupLocked,
       onlineLocked: existing[0].onlineLocked,
       partial: item.partial === true,
+      llmPairs: llmTagPairs({ certSpam }),
     });
     await db.update(events).set(setValues).where(eq(events.id, existing[0].id));
     return "updated" as const;
