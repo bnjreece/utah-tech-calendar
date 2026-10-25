@@ -4,7 +4,6 @@ import { listingKey, matchTitles, placeRelation, planQueueTwinHides, type QueueT
 /* Real pending pairs from the production queue (2026-10-25), plus the
    events that must never merge. */
 
-const NOW = new Date("2026-10-25T18:00:00Z");
 const FRESH = new Date("2026-10-25T15:00:00Z");
 const STALE = new Date("2026-09-28T03:00:00Z");
 let seq = 0;
@@ -50,46 +49,46 @@ const techspoNew = row({
 });
 
 const hides = (rows: QueueTwinRow[]) =>
-  planQueueTwinHides(rows, NOW).map((h) => [h.hide.title, h.keep.title]);
+  planQueueTwinHides(rows).map((h) => [h.hide.title, h.keep.title]);
 
 describe("planQueueTwinHides: the real queue pairs", () => {
   test("Bitcoin: org prefix is the only difference; the oldest stays", () => {
     expect(hides([bitcoinUvu, bitcoinOld])).toEqual([[bitcoinUvu.title, bitcoinOld.title]]);
   });
-  test("HackerX: same title and minute, city-only venues; the listing still seen upstream stays", () => {
-    const plan = planQueueTwinHides([hackerStale, hackerFresh], NOW);
+  test("HackerX: same title and minute, city-only venues; the oldest stays", () => {
+    const plan = planQueueTwinHides([hackerStale, hackerFresh]);
     expect(plan.map((h) => [h.hide.id, h.keep.id])).toEqual([[hackerStale.id, hackerFresh.id]]);
   });
-  test("TECHSPO: one Eventbrite id under two slugs; the fresh listing stays", () => {
-    const plan = planQueueTwinHides([techspoOld, techspoNew], NOW);
-    expect(plan.map((h) => h.hide.id)).toEqual([techspoOld.id]);
+  test("TECHSPO: one Eventbrite id under two slugs; the oldest stays", () => {
+    const plan = planQueueTwinHides([techspoOld, techspoNew]);
+    expect(plan.map((h) => h.hide.id)).toEqual([techspoNew.id]);
   });
   test("all three at once hide exactly three rows", () => {
-    expect(planQueueTwinHides([bitcoinOld, bitcoinUvu, hackerFresh, hackerStale, techspoOld, techspoNew], NOW)).toHaveLength(3);
+    expect(planQueueTwinHides([bitcoinOld, bitcoinUvu, hackerFresh, hackerStale, techspoOld, techspoNew])).toHaveLength(3);
   });
 });
 
 describe("planQueueTwinHides: who stays", () => {
   test("a pending twin of an approved row is hidden, the approved row is never touched", () => {
     const pub = row({ ...bitcoinUvu, id: "a", status: "approved", createdAt: new Date("2026-10-20T00:00:00Z") });
-    const plan = planQueueTwinHides([bitcoinOld, pub], NOW);
+    const plan = planQueueTwinHides([bitcoinOld, pub]);
     expect(plan.map((h) => [h.hide.id, h.keep.id])).toEqual([[bitcoinOld.id, "a"]]);
   });
   test("two approved twins are left to the approved sweep", () => {
-    expect(planQueueTwinHides([{ ...bitcoinOld, status: "approved" }, { ...bitcoinUvu, status: "approved" }], NOW)).toEqual([]);
+    expect(planQueueTwinHides([{ ...bitcoinOld, status: "approved" }, { ...bitcoinUvu, status: "approved" }])).toEqual([]);
   });
   test("the attendee listing beats an older employer ticket", () => {
     const employer = row({ title: "Women in Tech 2026 - Salt Lake City Employer Ticket", startsAt: OCT31, venueName: "Nice", city: "Sandy", createdAt: new Date("2026-08-01T00:00:00Z") });
     const attendee = row({ title: "Women in Tech 2026 - Salt Lake City", startsAt: OCT31, venueName: "Nice", city: "Sandy", createdAt: new Date("2026-09-01T00:00:00Z") });
-    expect(planQueueTwinHides([employer, attendee], NOW).map((h) => h.hide.id)).toEqual([employer.id]);
+    expect(planQueueTwinHides([employer, attendee]).map((h) => h.hide.id)).toEqual([employer.id]);
   });
   test("locked and manual rows are never hidden", () => {
-    expect(planQueueTwinHides([bitcoinOld, { ...bitcoinUvu, statusLocked: true }], NOW).map((h) => h.hide.id)).toEqual([bitcoinOld.id]);
-    expect(planQueueTwinHides([{ ...bitcoinOld, source: "manual" }, { ...bitcoinUvu, source: "manual" }], NOW)).toEqual([]);
-    expect(planQueueTwinHides([{ ...bitcoinOld, statusLocked: true }, { ...bitcoinUvu, statusLocked: true }], NOW)).toEqual([]);
+    expect(planQueueTwinHides([bitcoinOld, { ...bitcoinUvu, statusLocked: true }]).map((h) => h.hide.id)).toEqual([bitcoinOld.id]);
+    expect(planQueueTwinHides([{ ...bitcoinOld, source: "manual" }, { ...bitcoinUvu, source: "manual" }])).toEqual([]);
+    expect(planQueueTwinHides([{ ...bitcoinOld, statusLocked: true }, { ...bitcoinUvu, statusLocked: true }])).toEqual([]);
   });
   test("hidden rows are ignored", () => {
-    expect(planQueueTwinHides([bitcoinOld, { ...bitcoinUvu, status: "hidden" }], NOW)).toEqual([]);
+    expect(planQueueTwinHides([bitcoinOld, { ...bitcoinUvu, status: "hidden" }])).toEqual([]);
   });
 });
 
@@ -247,5 +246,42 @@ describe("matchTitles and listingKey", () => {
     expect(listingKey("https://www.eventbrite.com/e/c-d-tickets-1996064919908")).toBe("eventbrite:1996064919908");
     expect(listingKey("https://luma.com/abc/")).toBe("lu.ma/abc");
     expect(listingKey(null)).toBeNull();
+  });
+});
+
+describe("planQueueTwinHides: the venue veto runs first (Astra round 3)", () => {
+  const d = new Date("2026-11-12T01:00:00Z");
+  const kiln = () => row({ title: "Rust Builders Night", startsAt: d, venueName: "Kiln", city: "Salt Lake City", link: "https://example.org/kiln" });
+  test("a Luma calendar pointer at a different named venue is another event", () => {
+    const lib = row({ title: "Rust Builders Night", startsAt: d, venueName: "Salt Lake City Public Library", city: "Salt Lake City", source: "luma", externalId: "calev-library", link: "https://luma.com/library", createdAt: new Date("2026-09-10T00:00:00Z") });
+    expect(hides([kiln(), lib])).toEqual([]);
+  });
+  test("two different named venues with pins about 111 m apart are two events", () => {
+    const a = row({ ...kiln(), latitude: 40.76, longitude: -111.89 });
+    const b = row({ title: "Rust Builders Night", startsAt: d, venueName: "Salt Lake City Public Library", city: "Salt Lake City", latitude: 40.761, longitude: -111.89, link: "https://example.org/library", createdAt: new Date("2026-09-10T00:00:00Z") });
+    expect(hides([a, b])).toEqual([]);
+  });
+  test("positive controls: one named venue, or a city-only venue, with near pins or a pointer still match", () => {
+    const a = row({ ...kiln(), latitude: 40.76, longitude: -111.89 });
+    const b = row({ title: "Rust Builders Night", startsAt: d, venueName: "Kiln", city: "Salt Lake City", latitude: 40.7605, longitude: -111.89, link: "https://example.org/kiln-2", source: "meetup", createdAt: new Date("2026-09-10T00:00:00Z") });
+    expect(hides([a, b])).toEqual([[b.title, a.title]]);
+    const k = kiln();
+    const ptr = row({ title: "Rust Builders Night", startsAt: d, venueName: null, city: "Salt Lake City", source: "luma", externalId: "calev-x", link: "https://luma.com/x", createdAt: new Date("2026-09-10T00:00:00Z") });
+    expect(hides([k, ptr])).toEqual([[ptr.title, k.title]]);
+  });
+});
+
+describe("planQueueTwinHides: keeper agrees with the classifier (Astra round 3)", () => {
+  test("identical same-link pending listings keep the OLDER row, even when the newer one was refreshed later", () => {
+    const link = "https://www.eventbrite.com/e/rust-night-tickets-1234567890123";
+    const older = row({ title: "Rust Builders Night SLC", startsAt: OCT31, link, venueName: "Kiln", city: "Salt Lake City", createdAt: new Date("2026-10-01T00:00:00Z"), updatedAt: new Date("2026-10-20T00:00:00Z") });
+    const newer = row({ title: "Rust Builders Night SLC", startsAt: OCT31, link, venueName: "Kiln", city: "Salt Lake City", createdAt: new Date("2026-10-10T00:00:00Z"), updatedAt: new Date("2026-10-25T00:00:00Z") });
+    expect(planQueueTwinHides([newer, older]).map((h) => [h.hide.id, h.keep.id])).toEqual([[newer.id, older.id]]);
+  });
+  test("equal created_at breaks on id, like (created_at, id) in SQL", () => {
+    const at = new Date("2026-10-01T00:00:00Z");
+    const a = row({ ...bitcoinOld, id: "00000000-0000-0000-0000-00000000000b", createdAt: at });
+    const b = row({ ...bitcoinOld, id: "00000000-0000-0000-0000-00000000000a", createdAt: at });
+    expect(planQueueTwinHides([a, b]).map((h) => h.keep.id)).toEqual([b.id]);
   });
 });

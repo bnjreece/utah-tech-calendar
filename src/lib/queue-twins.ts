@@ -4,7 +4,6 @@ import {
   normalizeLink,
   PLACEHOLDER_VENUE_RE,
   sameEventEvidence,
-  STALE_AFTER_MS,
   TWIN_WINDOW_MS,
   type TwinRow,
 } from "./same-day-twins";
@@ -32,7 +31,8 @@ import { mtDayKey } from "./time";
        sessions, even under one registration link); or, at the same start
        minute and with compatible places (below),
      . same venue name or map pins within 250 m (exact or contained title),
-       when the locations do not conflict (lib/same-day-twins.ts); a
+       when the locations do not conflict (lib/same-day-twins.ts) and the
+       rows do not name two different specific venues; a
        placeholder venue ("TBD", "Online", "Zoom") is never a venue; or
      . exact title only, with a title of three or more words so a generic
        "Monthly Meetup" never matches, and never when the two rows name
@@ -49,7 +49,7 @@ import { mtDayKey } from "./time";
    Which row stays: a pending row with an approved twin is hidden (the
    approved row is already public). Among pending twins the kept row is a
    locked one, then an attendee listing over an employer / vendor tier, then
-   one still being seen upstream, then the oldest. Locked and manual rows
+   the oldest. Locked and manual rows
    are never hidden. Pure: the sweep loads rows and applies the result. */
 
 export interface QueueTwinRow extends TwinRow {
@@ -169,15 +169,17 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
   const place = placeRelation(a, b);
   if (place === "conflict") return false;
   if (locationsConflict(a, b)) return false;
+  /* Two different named venues are two events, whatever the title, the
+     map pins or the source ("Rust Builders Night" at Kiln and at the
+     library, even with pins a block apart or one row a Luma pointer).
+     This veto runs before every positive place match. */
+  if (distinctVenues(a, b)) return false;
   if (venueEvidence(a, b)) return true;
   if (match !== "exact") return false;
   /* A Luma calendar's external listing only points at an event hosted
      elsewhere (same rule as same-day-twins.ts). */
   if (isCalendarPointer(a) || isCalendarPointer(b)) return true;
   if (words(normalizeEventTitle(a.title)).length < MIN_CITY_MATCH_WORDS) return false;
-  /* Two different named venues in one city are two events, whatever the
-     title ("Rust Builders Night" at Kiln and at the library). */
-  if (distinctVenues(a, b)) return false;
   if (place === "same") return true;
   return (
     place === "county" &&
@@ -213,15 +215,18 @@ function venueEvidence(a: QueueTwinRow, b: QueueTwinRow): boolean {
   return sameEventEvidence(strip(a), strip(b));
 }
 
-function rank(r: QueueTwinRow, now: Date): number[] {
-  /* Lower sorts first = kept. */
-  const fresh = r.source === "manual" || now.getTime() - r.updatedAt.getTime() < STALE_AFTER_MS;
-  return [r.statusLocked ? 0 : 1, NOT_COMMUNITY_RE.test(r.title) ? 1 : 0, fresh ? 0 : 1, r.createdAt.getTime()];
+/* Lower sorts first = kept. No freshness term: the classifier's duplicate
+   check (pendingFacts) treats the OLDER same-link pending row as the
+   original, and the two must name the same keeper. */
+function rank(r: QueueTwinRow): number[] {
+  return [r.statusLocked ? 0 : 1, NOT_COMMUNITY_RE.test(r.title) ? 1 : 0, r.createdAt.getTime()];
 }
 
-function compare(a: QueueTwinRow, b: QueueTwinRow, now: Date): number {
-  const ra = rank(a, now);
-  const rb = rank(b, now);
+/* Ties on created_at break on id, matching (created_at, id) in SQL
+   (uuid order is the order of its lowercase hex text). */
+function compare(a: QueueTwinRow, b: QueueTwinRow): number {
+  const ra = rank(a);
+  const rb = rank(b);
   for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
@@ -230,7 +235,7 @@ const hideable = (r: QueueTwinRow) => r.status === "pending" && !r.statusLocked 
 
 /* Plan the hides over upcoming pending + approved rows. Approved rows are
    only ever kept (the approved-vs-approved sweep is same-day-twins.ts). */
-export function planQueueTwinHides(rows: QueueTwinRow[], now: Date): QueueTwinHide[] {
+export function planQueueTwinHides(rows: QueueTwinRow[]): QueueTwinHide[] {
   const byDay = new Map<string, QueueTwinRow[]>();
   for (const r of rows) {
     if (r.status !== "pending" && r.status !== "approved") continue;
@@ -245,7 +250,7 @@ export function planQueueTwinHides(rows: QueueTwinRow[], now: Date): QueueTwinHi
     };
     const hidden = new Set<string>();
     /* 1. A pending row with an approved twin goes. */
-    const approved = day.filter((r) => r.status === "approved").sort((a, b) => compare(a, b, now));
+    const approved = day.filter((r) => r.status === "approved").sort((a, b) => compare(a, b));
     for (const p of day.filter(hideable)) {
       for (const a of approved) {
         const m = twin(a, p);
@@ -259,7 +264,7 @@ export function planQueueTwinHides(rows: QueueTwinRow[], now: Date): QueueTwinHi
     /* 2. Pending twins: keep the best, drop rows twinned with it, repeat. */
     let rest = day
       .filter((r) => r.status === "pending" && !hidden.has(r.id))
-      .sort((a, b) => compare(a, b, now));
+      .sort((a, b) => compare(a, b));
     while (rest.length >= 2) {
       const [keep, ...others] = rest;
       const drop: QueueTwinHide[] = [];

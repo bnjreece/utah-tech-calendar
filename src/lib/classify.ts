@@ -158,7 +158,7 @@ export async function classifyUnchecked(
         publishEnabled,
         publishedThisRun: published,
       });
-      if (await applyPendingDecision(r, verdict, decision)) {
+      if (await applyPendingDecision(r, verdict, decision, facts.originals)) {
         if (decision.action === "hide") screened++;
         else published++;
       }

@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db, events, sources } from "@/lib/db";
 import { eventSnapshot } from "@/lib/review-log";
-import { normalizeEventTitle, type AutopilotDecision } from "@/lib/autopilot";
+import { NOT_COMMUNITY_RE, normalizeEventTitle, type AutopilotDecision } from "@/lib/autopilot";
 import type { EventVerdict } from "@/lib/verdict";
 
 /* DB side of the queue autopilot (lib/autopilot.ts holds the pure rules).
@@ -19,16 +19,23 @@ export async function loadSourceUrls(): Promise<Map<string, string>> {
   return new Map(rows.map((s) => [s.id, s.url]));
 }
 
+export interface DupOriginal {
+  id: string;
+  title: string;
+}
+
 const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
 
 /* Rule 2 and the rule 5 series check, both read-only. Dates compare in SQL
-   in America/Denver, never against a JS timestamp. */
+   in America/Denver, never against a JS timestamp. `originals` lists the
+   rows the duplicate defers to (id and title as read), so the write can
+   recheck that one of them is still there (see applyPendingDecision). */
 export async function pendingFacts(
   r: EventRow,
-): Promise<{ duplicate: boolean; seriesCount: number }> {
-  const sameDay = rowsOf<{ title: string }>(
+): Promise<{ duplicate: boolean; seriesCount: number; originals: DupOriginal[] }> {
+  const sameDay = rowsOf<{ id: string; title: string; status: string }>(
     await db.execute(sql`
-      SELECT o.title FROM events o, events me
+      SELECT o.id, o.title, o.status FROM events o, events me
       WHERE me.id = ${r.id} AND o.id <> me.id
         AND (o.starts_at AT TIME ZONE 'America/Denver')::date
           = (me.starts_at AT TIME ZONE 'America/Denver')::date
@@ -41,9 +48,19 @@ export async function pendingFacts(
     `),
   );
   const key = normalizeEventTitle(r.title);
-  /* Placeholder titles ("TBD") from different groups are not cross-posts. */
-  const duplicate =
-    key !== "" && !PLACEHOLDER_TITLE_RE.test(key) && sameDay.some((o) => normalizeEventTitle(o.title) === key);
+  /* Placeholder titles ("TBD") from different groups are not cross-posts.
+     An older pending employer / vendor tier never outranks an attendee
+     listing: the queue-twin sweep keeps the attendee row (lib/queue-twins.ts),
+     and the two must agree on the keeper. */
+  const attendee = !NOT_COMMUNITY_RE.test(r.title);
+  const originals =
+    key === "" || PLACEHOLDER_TITLE_RE.test(key)
+      ? []
+      : sameDay
+          .filter((o) => normalizeEventTitle(o.title) === key)
+          .filter((o) => o.status === "approved" || !(attendee && NOT_COMMUNITY_RE.test(o.title)))
+          .map((o) => ({ id: o.id, title: o.title }));
+  const duplicate = originals.length > 0;
 
   const [series] = rowsOf<{ n: number }>(
     await db.execute(sql`
@@ -54,8 +71,10 @@ export async function pendingFacts(
           = btrim(lower(regexp_replace(me.title, '[^a-zA-Z0-9]+', ' ', 'g')))
     `),
   );
-  return { duplicate, seriesCount: Number(series?.n ?? 0) };
+  return { duplicate, seriesCount: Number(series?.n ?? 0), originals };
 }
+
+const DUP_REASON = "autopilot:dup";
 
 /* Tags as a jsonb parameter (SQL NULL for no array), so the guard compares
    the whole array in order. A bare JS array in a drizzle sql template
@@ -70,18 +89,42 @@ export function tagsJson(tags: string[] | null | undefined): string | null {
    the crypto hold), so a human click or a re-scrape since classification
    makes it a no-op. The ledger row is
    inserted from the UPDATE's RETURNING, so both happen or neither does.
-   Returns true when the row changed. */
+   A duplicate hide (autopilot:dup) also needs one of the `originals` it
+   defers to still pending or approved, same Denver day, title unchanged,
+   and a pending one still the older same-link listing. That check takes a
+   FOR SHARE lock, so it cannot interleave with the queue-twin sweep hiding
+   the original (applyQueueTwinHide holds the mirror lock): whichever
+   commits first wins and the other finds its keeper gone, so two copies
+   are never both hidden. Returns true when the row changed. */
 export async function applyPendingDecision(
   r: EventRow,
   verdict: EventVerdict,
   d: AutopilotDecision,
+  originals: DupOriginal[] = [],
 ): Promise<boolean> {
   if (d.action === "hold") return false;
   const publish = d.action === "publish";
   const newStatus = publish ? "approved" : "hidden";
   const hiddenReason = publish ? null : (d.hiddenReason ?? null);
+  const dup = d.reason === DUP_REASON;
+  if (dup && originals.length === 0) return false;
+  const keeper = dup
+    ? sql`keeper AS (
+      SELECT k.id FROM events k, events me
+      WHERE me.id = ${r.id}::uuid AND k.id <> me.id
+        AND (k.id::text, k.title) IN (
+          SELECT e->>'id', e->>'title' FROM jsonb_array_elements(${JSON.stringify(originals)}::jsonb) e)
+        AND (k.starts_at AT TIME ZONE 'America/Denver')::date
+          = (me.starts_at AT TIME ZONE 'America/Denver')::date
+        AND (k.status = 'approved'
+          OR (k.status = 'pending' AND (k.created_at, k.id) < (me.created_at, me.id)
+            AND k.link IS NOT NULL AND rtrim(lower(k.link), '/') = rtrim(lower(me.link), '/')))
+      FOR SHARE OF k
+    ), `
+    : sql``;
+  const keeperGuard = dup ? sql`AND EXISTS (SELECT 1 FROM keeper)` : sql``;
   const res = await db.execute(sql`
-    WITH upd AS (
+    WITH ${keeper}upd AS (
       UPDATE events
       SET status = ${newStatus}, hidden_reason = ${hiddenReason}, updated_at = now()
       WHERE id = ${r.id}
@@ -97,6 +140,7 @@ export async function applyPendingDecision(
         AND is_online IS NOT DISTINCT FROM ${r.isOnline}::boolean
         AND source_id IS NOT DISTINCT FROM ${r.sourceId}::uuid
         AND to_jsonb(tags) IS NOT DISTINCT FROM ${tagsJson(r.tags)}::jsonb
+        ${keeperGuard}
         AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
       RETURNING id, source_id, source
     )

@@ -26,7 +26,7 @@ async function main() {
 
   const short = (r: { id: string; status: string; title: string }) => `${r.id.slice(0, 8)} [${r.status}] ${r.title}`;
   console.log("\n=== 1. Queue twins: planned hides");
-  const plan = planQueueTwinHides(rows, now);
+  const plan = planQueueTwinHides(rows);
   for (const h of plan) console.log(`  HIDE ${short(h.hide)}\n    keep ${short(h.keep)}  (${h.match})`);
   console.log(`  total ${plan.length}`);
 

@@ -206,7 +206,7 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
       .select()
       .from(events)
       .where(and(inArray(events.status, ["pending", "approved"]), gte(events.startsAt, new Date())));
-    const plan = planQueueTwinHides(live, new Date());
+    const plan = planQueueTwinHides(live);
     for (const h of plan) {
       const row = live.find((r) => r.id === h.hide.id);
       const keep = live.find((r) => r.id === h.keep.id);

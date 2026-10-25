@@ -8,11 +8,13 @@ import type { SQL } from "drizzle-orm";
    the crypto hold would now send the row to a human (Astra round 2). */
 
 let captured: SQL | null = null;
+/* Results handed back to the next execute calls, in order (default none). */
+let queued: unknown[][] = [];
 mock.module("@/lib/db", () => ({
   db: {
     execute: async (q: SQL) => {
       captured = q;
-      return { rows: [] };
+      return { rows: queued.shift() ?? [] };
     },
   },
   events: {},
@@ -21,7 +23,7 @@ mock.module("@/lib/db", () => ({
   reviewDecisions: {},
 }));
 
-const { applyPendingDecision, tagsJson } = await import("@/lib/autopilot-db");
+const { applyPendingDecision, pendingFacts, tagsJson } = await import("@/lib/autopilot-db");
 
 const dialect = new PgDialect();
 
@@ -78,5 +80,49 @@ describe("applyPendingDecision guards tags", () => {
     expect(tagsJson(undefined)).toBeNull();
     expect(tagsJson([])).toBe("[]");
     expect(tagsJson(["ai", "blockchain"])).toBe('["ai","blockchain"]');
+  });
+});
+
+describe("duplicate hides recheck their original (Astra round 3)", () => {
+  const dup = { action: "hide", reason: "autopilot:dup", hiddenReason: "cross-post" } as const;
+  const orig = [{ id: "00000000-0000-0000-0000-000000000009", title: "Rust Builders Night" }];
+  test("the write locks and requires a still-live original", async () => {
+    captured = null;
+    await applyPendingDecision(baseRow([]), verdict, dup, orig);
+    const q = dialect.sqlToQuery(captured!);
+    expect(q.sql).toContain("keeper AS (");
+    expect(q.sql).toContain("FOR SHARE OF k");
+    expect(q.sql).toContain("AND EXISTS (SELECT 1 FROM keeper)");
+    expect(q.sql).toContain("k.status = 'approved'");
+    expect(q.params).toContain(JSON.stringify(orig));
+  });
+  test("a duplicate decision with no original never writes", async () => {
+    captured = null;
+    expect(await applyPendingDecision(baseRow([]), verdict, dup)).toBe(false);
+    expect(captured).toBeNull();
+  });
+  test("other decisions carry no keeper clause", async () => {
+    await applyPendingDecision(baseRow([]), verdict, { action: "hide", reason: "autopilot:lowconf-yes", hiddenReason: "llm-screened" });
+    expect(dialect.sqlToQuery(captured!).sql).not.toContain("keeper");
+  });
+});
+
+describe("pendingFacts names the same keeper as the queue-twin sweep (Astra round 3)", () => {
+  const me = (title: string) => ({ ...(baseRow([]) as object), title }) as never;
+  test("an older pending employer tier is not the original of an attendee listing", async () => {
+    queued = [[{ id: "e", title: "HackerX Utah - Employer Ticket", status: "pending" }], [{ n: 0 }]];
+    const f = await pendingFacts(me("HackerX Utah"));
+    expect(f.duplicate).toBe(false);
+    expect(f.originals).toEqual([]);
+  });
+  test("an approved employer tier, or a pending attendee listing, still counts", async () => {
+    queued = [[{ id: "e", title: "HackerX Utah - Employer Ticket", status: "approved" }], [{ n: 0 }]];
+    expect((await pendingFacts(me("HackerX Utah"))).originals).toEqual([{ id: "e", title: "HackerX Utah - Employer Ticket" }]);
+    queued = [[{ id: "p", title: "HackerX Utah", status: "pending" }], [{ n: 0 }]];
+    expect((await pendingFacts(me("HackerX Utah - Employer Ticket"))).duplicate).toBe(true);
+  });
+  test("placeholder titles never duplicate", async () => {
+    queued = [[{ id: "p", title: "TBD", status: "approved" }], [{ n: 0 }]];
+    expect((await pendingFacts(me("TBD"))).duplicate).toBe(false);
   });
 });
