@@ -1,0 +1,846 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Luma//Hard Tech Week//EN
+X-WR-CALNAME:Hard Tech Week
+X-WR-CALDESC:Luma Calendar
+REFRESH-INTERVAL;VALUE=DURATION:PT12H
+X-PUBLISHED-TTL:PT12H
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+DTSTART:20260826T173000Z
+DTEND:20260826T190000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-quJep7erj9COFBC@events.lu.ma
+SUMMARY:Hard Tech Week Host Briefing
+DESCRIPTION:Get up-to-date information at: https://luma.com/26vw740q\n\nAd
+ dress:\nRobert H. and Katharine B. Garff Building\nGarff Auditorium - 1st 
+ Floor\nSalt Lake City, UT\nUnited States\n\nHosted by 47G
+LOCATION:Robert H. and Katharine B. Garff Building, 1731 E Campus Center D
+ r, Salt Lake City, UT 84112, USA
+GEO:40.7620344;-111.84199579999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260911T160000Z
+DTEND:20260911T163000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-x8ykHFeu5bd96eU@events.lu.ma
+SUMMARY:Hard Tech Week Virtual Host Briefing
+DESCRIPTION:Get up-to-date information at: https://luma.com/ubyok35i\n\nHo
+ sted by 47G
+LOCATION:https://luma.com/event/evt-x8ykHFeu5bd96eU
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261026T170000Z
+DTEND:20261026T200000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Joel McKay Smith":MAILTO:calendar-invite@lu.ma
+UID:evt-lsByb9xOaoQDXLy@events.lu.ma
+SUMMARY:Power and Intelligence: What's Next? Quantum!
+DESCRIPTION:Get up-to-date information at: https://luma.com/quantum-utah-h
+ ard-tech\n\nAddress:\nAlta Club\nSalt Lake City, UT\nUnited States\n\nHost
+ ed by Joel McKay Smith & 4 others
+LOCATION:Alta Club, 100 E S Temple St, Salt Lake City, UT 84111, USA
+GEO:40.768982699999995;-111.8875039
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261026T200000Z
+DTEND:20261026T210000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="University of Utah Technology Licensing Office":MAILTO:calendar-invite@lu.ma
+UID:evt-cg4SEJlB4CqdaVB@events.lu.ma
+SUMMARY:Meet Your Next Venture
+DESCRIPTION:Get up-to-date information at: https://luma.com/2qbu623h\n\nAd
+ dress:\nCheck event page for more details.\n\nHosted by University of Utah
+  Technology Licensing Office & Juan Arango
+LOCATION:https://luma.com/event/evt-cg4SEJlB4CqdaVB
+GEO:40.764884842082395;-111.82809238710216
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261026T220000Z
+DTEND:20261026T230000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-e3EhDOu8iTZw4ih@events.lu.ma
+SUMMARY:Hard Tech Hackathon Kickoff
+DESCRIPTION:Get up-to-date information at: https://luma.com/ric6ok7g\n\nAd
+ dress:\n250 E 200 S ste 320\nSalt Lake City, UT\nUnited States\n\nHosted b
+ y 47G, Utah Tech Week & Tyler Jennings
+LOCATION:250 E 200 S ste 320, Salt Lake City, UT 84111, USA
+GEO:40.7647283;-111.884339
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261026T233000Z
+DTEND:20261027T020000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Donald Plumlee":MAILTO:calendar-invite@lu.ma
+UID:evt-y3o6RbPg9HNQrKS@events.lu.ma
+SUMMARY:LIFTOFF - Red Rock to the Red Planet
+DESCRIPTION:Get up-to-date information at: https://luma.com/z5utbeh5\n\nAd
+ dress:\nUtah Tech University\nAmerica First Performing Arts Center (AFPAC)
+ \nSt. George, UT\nUnited States\n\nHosted by Donald Plumlee
+LOCATION:Utah Tech University, 225 S Univ Ave, St. George, UT 84770, USA
+GEO:37.10183043073206;-113.5677871706037
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T000000Z
+DTEND:20261027T030000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-zVrciaV3YtD2HtB@events.lu.ma
+SUMMARY:Hard Tech Week Opening Party
+DESCRIPTION:Get up-to-date information at: https://luma.com/z9g8nkkk\n\nAd
+ dress:\nTraeger Grills Headquarters\nSalt Lake City, UT\nUnited States\n\n
+ Hosted by 47G & Utah Tech Week
+LOCATION:Traeger Grills Headquarters, 533 S 400 W, Salt Lake City, UT 8410
+ 1, USA
+GEO:40.7577839;-111.9013277
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T000000Z
+DTEND:20261027T030000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-McSrJmuH2Rw1wXH@events.lu.ma
+SUMMARY:VIP Section: Hard Tech Week Opening Party
+DESCRIPTION:Get up-to-date information at: https://luma.com/f0ffihcw\n\nAd
+ dress:\nTraeger Grills Headquarters\nSalt Lake City, UT\nUnited States\n\n
+ Hosted by 47G & Utah Tech Week
+LOCATION:Traeger Grills Headquarters, 533 S 400 W, Salt Lake City, UT 8410
+ 1, USA
+GEO:40.7577839;-111.9013277
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T140000Z
+DTEND:20261027T160000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Bryan Warren":MAILTO:calendar-invite@lu.ma
+UID:evt-YYJtXAkn5XHlYbo@events.lu.ma
+SUMMARY:Albany Engineered Composites Tour
+DESCRIPTION:Get up-to-date information at: https://luma.com/k9poepkf\n\nAd
+ dress:\nAmelia Earhart Drive\nAll attendees must be wear closed-toed shoes
+ .\nSalt Lake City, UT\nUnited States\n\nHosted by Bryan Warren
+LOCATION:Amelia Earhart Drive, Amelia Earhart Dr, Salt Lake City, UT 84116
+ , USA
+GEO:40.7764463;-112.0077204
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T150000Z
+DTEND:20261027T173000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Conor Bentley":MAILTO:calendar-invite@lu.ma
+UID:evt-6W2wEA397MpjDCo@events.lu.ma
+SUMMARY:Westminster University Presents: Astrobiology and Utah with Dr. Bo
+ nnie Baxter
+DESCRIPTION:Get up-to-date information at: https://luma.com/sg136nra\n\nAd
+ dress:\nWestminster University\nEvent will take place in the Emma Eccles J
+ ones Recital Hall inside Florence J. Gillmor Hall.\nSalt Lake City, UT\nUn
+ ited States\n\nHosted by Conor Bentley
+LOCATION:Westminster University, 1840 S 1300 E, Salt Lake City, UT 84105, 
+ USA
+GEO:40.7322206;-111.8549815
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T160000Z
+DTEND:20261027T170000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Spencer Loveless":MAILTO:calendar-invite@lu.ma
+UID:evt-MigXVsFuxegksix@events.lu.ma
+SUMMARY:Mass production Additive manufaturing (3D printing)
+DESCRIPTION:Get up-to-date information at: https://luma.com/j4th6t4t\n\nAd
+ dress:\n600 S Nick Ln\nPrice, UT\nUnited States\n\nHosted by Spencer Lovel
+ ess
+LOCATION:600 S Nick Ln, Price, UT 84501, USA
+GEO:39.589513499999995;-110.7935773
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T163000Z
+DTEND:20261027T173000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-jI3e4I1PacOUHWD@events.lu.ma
+SUMMARY:Roundtable: AUKUS and the Industrial Base (47G Member Event)
+DESCRIPTION:Get up-to-date information at: https://luma.com/1e6s4h1j\n\nAd
+ dress:\n47G Boardroom\n\nHosted by 47G
+LOCATION:47G Boardroom
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T163000Z
+DTEND:20261027T190000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Trent Mano":MAILTO:calendar-invite@lu.ma
+UID:evt-OH11SjtXRMugOjA@events.lu.ma
+SUMMARY:Convoi Accelerator: F26 Demo Day
+DESCRIPTION:Get up-to-date information at: https://luma.com/n60g8r15\n\nAd
+ dress:\nCheck event page for more details.\n\nHosted by Trent Mano
+LOCATION:https://luma.com/event/evt-OH11SjtXRMugOjA
+GEO:40.75569086817541;-111.90969227793046
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T170000Z
+DTEND:20261027T190000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Jeremie Erasme":MAILTO:calendar-invite@lu.ma
+UID:evt-JVEdpDMllrbxC89@events.lu.ma
+SUMMARY:The Future of Physical AI Summit 2026
+DESCRIPTION:Get up-to-date information at: https://luma.com/oxedi1b7\n\nAd
+ dress:\nCheck event page for more details.\n\nHosted by Jeremie Erasme & J
+ oe Mabaya
+LOCATION:https://luma.com/event/evt-JVEdpDMllrbxC89
+GEO:40.26558723929971;-111.66527203454454
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T170000Z
+DTEND:20261027T190000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Eric Van Orden":MAILTO:calendar-invite@lu.ma
+UID:evt-P4QOmRgxU2GTBVG@events.lu.ma
+SUMMARY:Paramount Machine Tour
+DESCRIPTION:Get up-to-date information at: https://luma.com/b263akch\n\nAd
+ dress:\n1120 Pioneer Rd\nSalt Lake City, UT\nUnited States\n\nHosted by Er
+ ic Van Orden
+LOCATION:1120 Pioneer Rd, Salt Lake City, UT 84104, USA
+GEO:40.745302599999995;-111.9585219
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T170000Z
+DTEND:20261027T190000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Salt Lake Chamber Business Women's Forum":MAILTO:calendar-invite@lu.ma
+UID:calev-Z7GXP6XyDsiGpqH@events.lu.ma
+SUMMARY:From Buzzword to Tool: How Women Business Leaders Are Actually Usi
+ ng AI
+DESCRIPTION:Find more information on https://luma.com/47g-hardtechweek
+LOCATION:https://business.slchamber.com/events/details/business-women-s-fo
+ rum-2026-from-buzzword-to-tool-how-women-business-leaders-are-actually-usi
+ ng-ai-15866?calendarMonth=2026-10-01
+GEO:40.7647283;-111.884339
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T173000Z
+DTEND:20261027T193000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Mark Tullis":MAILTO:calendar-invite@lu.ma
+UID:evt-bzkB9onKu7oA1Zx@events.lu.ma
+SUMMARY:Drone Lunch & Learn: Smith College, UVU
+DESCRIPTION:Get up-to-date information at: https://luma.com/t9n2pm35\n\nAd
+ dress:\n500 W 1200 S\nThe event will take place in the auditorium on the f
+ irst floor of the new Smith Engineering Building, near the south entrance.
+ \nOrem, UT\nUnited States\n\nHosted by Mark Tullis
+LOCATION:500 W 1200 S, Orem, UT 84058, USA
+GEO:40.2754607;-111.70722450000001
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T173000Z
+DTEND:20261027T190000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Josh Rowley":MAILTO:calendar-invite@lu.ma
+UID:evt-4oGjxaGEJdPOsoJ@events.lu.ma
+SUMMARY:Executive Lunch with an Advisor
+DESCRIPTION:Get up-to-date information at: https://luma.com/2b7fxedl\n\nAd
+ dress:\nEide Bailly\nLehi, UT\nUnited States\n\nHosted by Josh Rowley
+LOCATION:Eide Bailly, 2901 N Ashton Blvd Ste. 200, Lehi, UT 84043, USA
+GEO:40.4235317;-111.89346870000001
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T173000Z
+DTEND:20261027T190000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Utah Veteran Business Resource Center":MAILTO:calendar-invite@lu.ma
+UID:calev-v7lKg1icjsSsUAc@events.lu.ma
+SUMMARY:Vibe Code Club for Entrepreneurs
+DESCRIPTION:Find more information on https://luma.com/47g-hardtechweek
+LOCATION:https://www.tickettailor.com/events/utahveteranbusinessresourcece
+ nter/2327380
+GEO:40.5754102;-111.9026444
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T180000Z
+DTEND:20261027T193000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="World Trade Center Utah":MAILTO:calendar-invite@lu.ma
+UID:evt-8II7WT82dD56v6s@events.lu.ma
+SUMMARY:Global Gateway: Strategic Advantage
+DESCRIPTION:Get up-to-date information at: https://luma.com/7ld2pqqf\n\nAd
+ dress:\nWorld Trade Center Utah\nEnter the City Creek East Parking Garage 
+ from State Street or 100 South. Take the elevator to Level 1 - Retail Shop
+ s & Food Court. You’ll exit near Chick-fil-A.\n\nWalk past Chick-fil-A a
+ nd take the escalator to the right of it. At the top, follow signs to the 
+ World Trade Center at City Creek lobby. Check in with lobby security, who 
+ will direct you to the third floor.\nSalt Lake City, UT\nUnited States\n\n
+ Hosted by World Trade Center Utah
+LOCATION:World Trade Center Utah, 60 E S Temple St #300, Salt Lake City, U
+ T 84111, USA
+GEO:40.7691449;-111.8891422
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T180000Z
+DTEND:20261027T193000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-1lLtzaiCBEH8wy2@events.lu.ma
+SUMMARY:Invite Only: Media Roundtable
+DESCRIPTION:Get up-to-date information at: https://luma.com/091wusad\n\nAd
+ dress:\nCheck event page for more details.\n\nHosted by 47G
+LOCATION:https://luma.com/event/evt-1lLtzaiCBEH8wy2
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T180000Z
+DTEND:20261027T200000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Morgan Bennett":MAILTO:calendar-invite@lu.ma
+UID:evt-aZTkZlFau9WA9Z1@events.lu.ma
+SUMMARY:Built for Utah: Water, Drones & What's Next
+DESCRIPTION:Get up-to-date information at: https://luma.com/blxwwfop\n\nAd
+ dress:\nWoodward Park City\nEvent Space: Upstairs in The Grind & Upper Tri
+ angle\nPark City, UT\nUnited States\n\nHosted by Morgan Bennett & Andrew V
+ erda
+LOCATION:Woodward Park City, 3863 Kilby Rd, Park City, UT 84098, USA
+GEO:40.754512999999996;-111.58564
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T190000Z
+DTEND:20261027T203000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Faaagi Gautavai":MAILTO:calendar-invite@lu.ma
+UID:evt-oVpufl8rIfdg7NH@events.lu.ma
+SUMMARY:Inside Nammo: Innovation in Composite Technology
+DESCRIPTION:Get up-to-date information at: https://luma.com/xh4i6qyn\n\nAd
+ dress:\n1020 S 500 W\nSalt Lake City, UT\nUnited States\n\nHosted by Faaag
+ i Gautavai
+LOCATION:1020 S 500 W, Salt Lake City, UT 84101, USA
+GEO:40.7468657;-111.90793950000001
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T194500Z
+DTEND:20261027T214500Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Implementing Ideas":MAILTO:calendar-invite@lu.ma
+UID:evt-qhTDkx3GVTG1fqK@events.lu.ma
+SUMMARY:Tech Fair - Hosted by Implementing Ideas
+DESCRIPTION:Get up-to-date information at: https://luma.com/gam2zsbi\n\nAd
+ dress:\n1201 N 800 E\nOrem, UT\nUnited States\n\nHosted by Implementing Id
+ eas & Carson Wall
+LOCATION:1201 N 800 E, Orem, UT 84097, USA
+GEO:40.3202917;-111.677374
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T200000Z
+DTEND:20261027T210000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Matthew Bates":MAILTO:calendar-invite@lu.ma
+UID:evt-iC9KfXMVHFXgJO5@events.lu.ma
+SUMMARY:Hexcel R&D and Carbon Fiber Tour
+DESCRIPTION:Get up-to-date information at: https://luma.com/n9q64447\n\nAd
+ dress:\n7232 W 5400 S\nWest Valley City, UT\nUnited States\n\nHosted by Ma
+ tthew Bates
+LOCATION:7232 W 5400 S, West Valley City, UT 84118, USA
+GEO:40.6554548;-112.0641113
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T210000Z
+DTEND:20261027T230000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Jenn Brandt":MAILTO:calendar-invite@lu.ma
+UID:evt-eElQbCg8OoOVVHY@events.lu.ma
+SUMMARY:Guidehouse and 47G: The New Acquisition Playbook
+DESCRIPTION:Get up-to-date information at: https://luma.com/sxhc488a\n\nAd
+ dress:\n175 W 200 S\nSuite 4100\nSalt Lake City, UT\nUnited States\n\nHost
+ ed by Jenn Brandt
+LOCATION:175 W 200 S, Salt Lake City, UT 84101, USA
+GEO:40.764493;-111.8964956
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T210000Z
+DTEND:20261027T220000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Yağmur Han Sağlam":MAILTO:calendar-invite@lu.ma
+UID:evt-iZu9bFFU5rSIqmd@events.lu.ma
+SUMMARY:Deploying Robots into the Real World: A Case Study with Blue Colla
+ r Robotics
+DESCRIPTION:Get up-to-date information at: https://luma.com/xplclp6p\n\nAd
+ dress:\nFOUNDRY43\nSalt Lake City, UT\nUnited States\n\nHosted by Yağmur 
+ Han Sağlam
+LOCATION:FOUNDRY43, 650 S 500 W, Salt Lake City, UT 84101, USA
+GEO:40.755276699999996;-111.9079768
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T220000Z
+DTEND:20261028T000000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Matthew Lasker":MAILTO:calendar-invite@lu.ma
+UID:evt-B9qaLnu82T6Tg3V@events.lu.ma
+SUMMARY:SuperSessions 26 | Salt Lake City
+DESCRIPTION:Get up-to-date information at: https://luma.com/3vs49yys\n\nAd
+ dress:\nEdison House\nSalt Lake City, UT\nUnited States\n\nHosted by Matth
+ ew Lasker & Saira Rahman
+LOCATION:Edison House, 335 S 200 W, Salt Lake City, UT 84101, USA
+GEO:40.7617511;-111.89633459999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T220000Z
+DTEND:20261028T000000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Michael Cherry":MAILTO:calendar-invite@lu.ma
+UID:evt-ljVuNclitygFFOd@events.lu.ma
+SUMMARY:Before You Build It: Modeling, Simulation & Human Performance Happ
+ y Hour
+DESCRIPTION:Get up-to-date information at: https://luma.com/eotonuda\n\nAd
+ dress:\nArchitectural Nexus\nSalt Lake City, UT\nUnited States\n\nHosted b
+ y Michael Cherry
+LOCATION:Architectural Nexus, 2505 E Parleys Way, Salt Lake City, UT 84109
+ , USA
+GEO:40.722083999999995;-111.81847379999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T000000Z
+DTEND:20261028T030000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Johnny Dance":MAILTO:calendar-invite@lu.ma
+UID:evt-tazRmThLkJb01dA@events.lu.ma
+SUMMARY:Hard Tech Networking Night (Dessert, Padel & Games)
+DESCRIPTION:Get up-to-date information at: https://luma.com/liatjyee\n\nAd
+ dress:\nConquer Padel Lehi\nLehi, UT\nUnited States\n\nHosted by Johnny Da
+ nce, Ben Lonsdale & Ryan Benson
+LOCATION:Conquer Padel Lehi, 4060 W 2100 N Ste 100, Lehi, UT 84043, USA
+GEO:40.4145991;-111.9138208
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T000000Z
+DTEND:20261028T023000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="OutGeek - Badass Pros":MAILTO:calendar-invite@lu.ma
+UID:calev-drrq40L0MTcIyso@events.lu.ma
+SUMMARY:Women in Tech Salt Lake City 2026
+DESCRIPTION:Find more information on https://luma.com/47g-hardtechweek
+LOCATION:https://www.eventbrite.com/e/women-in-tech-salt-lake-city-2026-ti
+ ckets-1998431363003
+GEO:40.5758504;-111.8920156
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T000000Z
+DTEND:20261028T033000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Cameron Archibald":MAILTO:calendar-invite@lu.ma
+UID:evt-Cg7I4lfq2bHaBCq@events.lu.ma
+SUMMARY:Fall Classic at the Ballpark | Columbia Bank
+DESCRIPTION:Get up-to-date information at: https://luma.com/vua4oijy\n\nAd
+ dress:\nThe Ballpark at America First Square\nSouth Jordan, UT\nUnited Sta
+ tes\n\nHosted by Cameron Archibald, Garrett Clark & Jeffrey Thomas
+LOCATION:The Ballpark at America First Square, 11111 Ballpark Dr, South Jo
+ rdan, UT 84009, USA
+GEO:40.549725099999996;-112.02298789999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T003000Z
+DTEND:20261028T030000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Matthew Lasker":MAILTO:calendar-invite@lu.ma
+UID:evt-WMznTnBU3FfWCuJ@events.lu.ma
+SUMMARY:SuperCouncil 26 | Salt Lake City
+DESCRIPTION:Get up-to-date information at: https://luma.com/ex9vg6qj\n\nAd
+ dress:\nEdison House\nSalt Lake City, UT\nUnited States\n\nHosted by Matth
+ ew Lasker & Saira Rahman
+LOCATION:Edison House, 335 S 200 W, Salt Lake City, UT 84101, USA
+GEO:40.7617511;-111.89633459999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T130000Z
+DTEND:20261029T180000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Lexi Silva":MAILTO:calendar-invite@lu.ma
+UID:evt-0EDhHWHpZh3s5Xv@events.lu.ma
+SUMMARY:Silent Auction - Operation Warm Heart
+DESCRIPTION:Get up-to-date information at: https://luma.com/eudsxury\n\nHo
+ sted by Lexi Silva
+LOCATION:https://luma.com/event/evt-0EDhHWHpZh3s5Xv
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T133000Z
+DTEND:20261029T220000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:calev-hoa1Ne9TobPGF7a@events.lu.ma
+SUMMARY:Zero Gravity Summit ↗︎ Day 1
+DESCRIPTION:Find more information on https://luma.com/47g-hardtechweek
+LOCATION:https://zerogravitysummit.com/
+GEO:40.7678827;-111.8961461
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T151500Z
+DTEND:20261028T154500Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Nicole Elliott":MAILTO:calendar-invite@lu.ma
+UID:evt-yThhSz8y05TEB2U@events.lu.ma
+SUMMARY:MITRE's Work in AAM
+DESCRIPTION:Get up-to-date information at: https://luma.com/87o49xcd\n\nAd
+ dress:\nMITRE Community Lounge 47G Zero Gravity Summit\n\nHosted by Nicole
+  Elliott
+LOCATION:MITRE Community Lounge 47G Zero Gravity Summit
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T210000Z
+DTEND:20261028T220000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Tammy Sill":MAILTO:calendar-invite@lu.ma
+UID:evt-rP3t0S5mTz6cCXc@events.lu.ma
+SUMMARY:CMMC Level 2: We Made It. Here’s What We Learned.
+DESCRIPTION:Get up-to-date information at: https://luma.com/ljb5z657\n\nAd
+ dress:\nSalt Palace Convention Center\nLSI Booth #504\nSalt Lake City, UT
+ \nUnited States\n\nHosted by Tammy Sill
+LOCATION:Salt Palace Convention Center, 100 S W Temple St, Salt Lake City,
+  UT 84101, USA
+GEO:40.7678827;-111.8961461
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T210000Z
+DTEND:20261028T230000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Justin Hawkes":MAILTO:calendar-invite@lu.ma
+UID:evt-qs8scec6pi82KJw@events.lu.ma
+SUMMARY:Pit Crew Challenge
+DESCRIPTION:Get up-to-date information at: https://luma.com/a809m21l\n\nAd
+ dress:\nUtah Industry Partners Booth (Nortwest)\n\nHosted by Justin Hawkes
+LOCATION:Utah Industry Partners Booth (Nortwest)
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T220000Z
+DTEND:20261028T223000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Nicole Elliott":MAILTO:calendar-invite@lu.ma
+UID:evt-68SrQTmiTrIQ8n1@events.lu.ma
+SUMMARY:MITRE-47G MOU Signing
+DESCRIPTION:Get up-to-date information at: https://luma.com/f2oqg9ek\n\nAd
+ dress:\nMITRE Community Lounge 47G Zero Gravity Summit\n\nHosted by Nicole
+  Elliott
+LOCATION:MITRE Community Lounge 47G Zero Gravity Summit
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T220000Z
+DTEND:20261029T000000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Joe Ross":MAILTO:calendar-invite@lu.ma
+UID:evt-HXsSBssdvGP3tK3@events.lu.ma
+SUMMARY:Beehive Energy Alliance - Utah Hard Week - Happy Hour - Everyone W
+ elcome
+DESCRIPTION:Get up-to-date information at: https://luma.com/wl2flrn3\n\nAd
+ dress:\nBeerhive Pub\nSalt Lake City, UT\nUnited States\n\nHosted by Joe R
+ oss
+LOCATION:Beerhive Pub, 128 S Main St, Salt Lake City, UT 84101, USA
+GEO:40.7663803;-111.8915176
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T223000Z
+DTEND:20261028T233000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Jeff Gardner":MAILTO:calendar-invite@lu.ma
+UID:evt-OkUVwYDO8uYVfHM@events.lu.ma
+SUMMARY:Fortem Technologies | 47G: Zero Gravity Summit — Live Counter-UA
+ S Demo
+DESCRIPTION:Get up-to-date information at: https://luma.com/1aur8cvn\n\nAd
+ dress:\n250 W 200 S\nRoyal Wood Plaza Parking Lot\nSalt Lake City, UT\nUni
+ ted States\n\nHosted by Jeff Gardner & 3 others
+LOCATION:250 W 200 S, Salt Lake City, UT 84101, USA
+GEO:40.765171099999996;-111.898296
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T230000Z
+DTEND:20261029T020000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Nick Mailhiot":MAILTO:calendar-invite@lu.ma
+UID:evt-pbE8aI1rMlI4wRZ@events.lu.ma
+SUMMARY:PassiveLogic Open House: Inside the Future of Physical AI
+DESCRIPTION:Get up-to-date information at: https://luma.com/qc6hsdww\n\nAd
+ dress:\n6510 Millrock Dr suite 350\nHolladay, UT\nUnited States\n\nHosted 
+ by Nick Mailhiot
+LOCATION:6510 Millrock Dr suite 350, Holladay, UT 84121, USA
+GEO:40.6331769;-111.80115099999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T230000Z
+DTEND:20261029T000000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-5K2PA2URa62EfUk@events.lu.ma
+SUMMARY:Hard Tech Hackathon Judging
+DESCRIPTION:Get up-to-date information at: https://luma.com/tb1m0b4h\n\nAd
+ dress:\n250 E 200 S ste 320\nSalt Lake City, UT\nUnited States\n\nHosted b
+ y 47G, Utah Tech Week & Tyler Jennings
+LOCATION:250 E 200 S ste 320, Salt Lake City, UT 84111, USA
+GEO:40.7647283;-111.884339
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T233000Z
+DTEND:20261029T010000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Sarah Humble":MAILTO:calendar-invite@lu.ma
+UID:evt-uvl0V3w06ygp47V@events.lu.ma
+SUMMARY:AI and the Future of Higher Education: Leadership Roundtable
+DESCRIPTION:Get up-to-date information at: https://luma.com/outy6cgl\n\nAd
+ dress:\nNeumont University\n**Parking: We recommend the two hours of free 
+ parking available at City Creek Center, approximately a seven-minute walk 
+ from campus.**\nSalt Lake City, UT\nUnited States\n\nHosted by Sarah Humbl
+ e & 4 others
+LOCATION:Neumont University, 143 S Main St, Salt Lake City, UT 84111, USA
+GEO:40.766079;-111.8908252
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261029T000000Z
+DTEND:20261029T030000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Danielle Quint":MAILTO:calendar-invite@lu.ma
+UID:evt-ntR3B9iSgSzoznT@events.lu.ma
+SUMMARY:Charged Connections: A Hard Tech Matchmaking Night
+DESCRIPTION:Get up-to-date information at: https://luma.com/t3a86riu\n\nAd
+ dress:\nCheck event page for more details.\n\nHosted by Danielle Quint, Ha
+ ley Andrews & Jerome Hewlett
+LOCATION:https://luma.com/event/evt-ntR3B9iSgSzoznT
+GEO:40.76296091852228;-111.8985453940026
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261029T000000Z
+DTEND:20261029T020000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:evt-ckzfXaevE69TmF0@events.lu.ma
+SUMMARY:Women in Aerospace Dinner Hosted By RAM + 47G
+DESCRIPTION:Get up-to-date information at: https://luma.com/761byvxv\n\nAd
+ dress:\nCheck event page for more details.\n\nHosted by 47G
+LOCATION:https://luma.com/event/evt-ckzfXaevE69TmF0
+GEO:40.77021141092667;-111.8886155426312
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261029T000000Z
+DTEND:20261029T030000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="SLC Department Of Economic Development":MAILTO:calendar-invite@lu.ma
+UID:calev-qFQM0VKQeoehSCK@events.lu.ma
+SUMMARY:Above & Beyond
+DESCRIPTION:Find more information on https://luma.com/47g-hardtechweek
+LOCATION:https://www.eventbrite.com/e/above-beyond-tickets-2002090077316?a
+ ff=oddtdtcreator
+GEO:40.7639799;-111.8892767
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261029T010000Z
+DTEND:20261029T033000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Joe Ross":MAILTO:calendar-invite@lu.ma
+UID:evt-MsJfHBdpCmR4pRj@events.lu.ma
+SUMMARY:Building the Future of Flight: Utah’s AAM Infrastructure & FAA S
+ afety Study Initiative
+DESCRIPTION:Get up-to-date information at: https://luma.com/z56pm0dm\n\nAd
+ dress:\nNeumont University\nSalt Lake City, UT\nUnited States\n\nHosted by
+  Joe Ross & Monica Thornburg
+LOCATION:Neumont University, 143 S Main St, Salt Lake City, UT 84111, USA
+GEO:40.766079;-111.8908252
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261029T133000Z
+DTEND:20261029T220000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="47G":MAILTO:calendar-invite@lu.ma
+UID:calev-m4Av2qzZGyeG8i8@events.lu.ma
+SUMMARY:Zero Gravity Summit ↗︎ Day 2
+DESCRIPTION:Find more information on https://luma.com/47g-hardtechweek
+LOCATION:https://zerogravitysummit.com/
+GEO:40.7678827;-111.8961461
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261029T213000Z
+DTEND:20261029T223000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Salma Djalal":MAILTO:calendar-invite@lu.ma
+UID:evt-8g5xv7Gx5Obw1Io@events.lu.ma
+SUMMARY:Global Gateway: Romania x Utah Aerospace & Defense Roundtable
+DESCRIPTION:Get up-to-date information at: https://luma.com/83d2lqbb\n\nAd
+ dress:\nWorld Trade Center Utah\nEnter the City Creek East Parking Garage 
+ from State Street or 100 South. Take the elevator to Level 1 - Retail Shop
+ s & Food Court. You’ll exit near Chick-fil-A.\n\nWalk past Chick-fil-A a
+ nd take the escalator to the right of it. At the top, follow signs to the 
+ World Trade Center at City Creek lobby. Check in with lobby security, who 
+ will direct you to the third floor.\nSalt Lake City, UT\nUnited States\n\n
+ Hosted by Salma Djalal
+LOCATION:World Trade Center Utah, 60 E S Temple St #300, Salt Lake City, U
+ T 84111, USA
+GEO:40.7691449;-111.8891422
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261030T150000Z
+DTEND:20261030T173000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Jessica Elwell":MAILTO:calendar-invite@lu.ma
+UID:evt-eW00COOi8LyqVdO@events.lu.ma
+SUMMARY:From the Space Shuttle to Mars: Astronaut Jeffrey Hoffman on Techn
+ ology When Failure Isn’t an Option | Sponsored by Tanner
+DESCRIPTION:Get up-to-date information at: https://luma.com/4kr38ton\n\nAd
+ dress:\nCheck event page for more details.\n\nHosted by Jessica Elwell & E
+ mily Pilstl
+LOCATION:https://luma.com/event/evt-eW00COOi8LyqVdO
+GEO:40.83680208041463;-111.94601257065993
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261030T150000Z
+DTEND:20261030T160000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Adam Robertson":MAILTO:calendar-invite@lu.ma
+UID:evt-AYCTh9JSeBepLOB@events.lu.ma
+SUMMARY:Fortem Technologies Facility Tour
+DESCRIPTION:Get up-to-date information at: https://luma.com/pot7fn8t\n\nAd
+ dress:\nFortem Technologies, Inc.\nLindon, UT\nUnited States\n\nHosted by 
+ Adam Robertson & Saloni Patni
+LOCATION:Fortem Technologies, Inc., 1855 W 500 N, Lindon, UT 84042, USA
+GEO:40.3473255;-111.75870599999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261030T153000Z
+DTEND:20261030T173000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Elisabeth Grossman":MAILTO:calendar-invite@lu.ma
+UID:evt-5p32ayP9DO3LEOA@events.lu.ma
+SUMMARY:Exclusive Workshop with Rami Goldratt, CEO of Goldratt Group
+DESCRIPTION:Get up-to-date information at: https://luma.com/fwk5hbd4\n\nAd
+ dress:\n350 East 400 South, Salt Lake City, UT 84111\n\nHosted by Elisabet
+ h Grossman & Duwaine Robinson
+LOCATION:350 East 400 South, Salt Lake City, UT 84111
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261030T210000Z
+DTEND:20261030T230000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Nathan Usevitch":MAILTO:calendar-invite@lu.ma
+UID:evt-9UlMj97SoupaB3d@events.lu.ma
+SUMMARY:BYU Engineering Lab-o-ween
+DESCRIPTION:Get up-to-date information at: https://luma.com/lv7xy169\n\nAd
+ dress:\nEngineering Building (EB)\nProvo, UT\nUnited States\n\nHosted by N
+ athan Usevitch
+LOCATION:Engineering Building (EB), Campus Dr, Provo, UT 84604, USA
+GEO:40.2462588;-111.64783609999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261030T220000Z
+DTEND:20261031T020000Z
+DTSTAMP:20261025T134409Z
+ORGANIZER;CN="Joel McKay Smith":MAILTO:calendar-invite@lu.ma
+UID:evt-UgwvaQC4Y4NxBrC@events.lu.ma
+SUMMARY:TimeBlok Presents: Hard Tech and The Future of Work
+DESCRIPTION:Get up-to-date information at: https://luma.com/TimeBlokHardTe
+ ch\n\nAddress:\nArchitectural Nexus\nSalt Lake City, UT\nUnited States\n\n
+ Hosted by Joel McKay Smith & 6 others
+LOCATION:Architectural Nexus, 2505 E Parleys Way, Salt Lake City, UT 84109
+ , USA
+GEO:40.722083999999995;-111.81847379999999
+SEQUENCE:215099049
+STATUS:TENTATIVE
+END:VEVENT
+END:VCALENDAR
