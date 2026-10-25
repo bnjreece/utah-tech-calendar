@@ -18,6 +18,8 @@ interface VariantProps {
   viewSlot: React.ReactNode;
   feedQuery: string;
   density?: ScheduleDensity;
+  /* Optional call-out above the filters (special-week banner). */
+  bannerSlot?: React.ReactNode;
 }
 
 /* ============================================================
@@ -115,7 +117,7 @@ function groupEventsByDay(events: EventWithGroup[]): DayGroup[] {
   return Array.from(groups.values());
 }
 
-export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuery, density = "weekly" }: VariantProps) {
+export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuery, density = "weekly", bannerSlot }: VariantProps) {
   const month = mtDate(new Date(), { month: "long", year: "numeric" });
   const dayGroups = groupEventsByDay(events);
   const isCompact = density === "monthly";
@@ -139,6 +141,7 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
           conferences, founder mixers, and developer nights across Salt Lake City, Provo,
           Lehi, Ogden, and Silicon Slopes.
         </p>
+        {bannerSlot}
         {filterBarSlot}
       </section>
       <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-16">

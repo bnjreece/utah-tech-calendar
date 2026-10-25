@@ -12,6 +12,8 @@ import { FilterBar } from "@/components/filter-bar";
 import { ViewTabs } from "@/components/view-tabs";
 import { EditorialLinearBlock } from "@/components/variant-blocks";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/json-ld";
+import { SpecialWeekBanner } from "@/components/special-week-banner";
+import { activeSpecialWeeks, SPECIAL_WEEKS } from "@/lib/special-weeks";
 
 export const dynamic = "force-dynamic";
 
@@ -79,13 +81,37 @@ export default async function HomePage({
 
   const feedQuery = filtersToSearchParams(filters).toString();
 
+  /* Special-week banner + chip, decided per request in Denver days (the
+     page is dynamic; only the queries are cached). */
+  const weeks = activeSpecialWeeks();
+  /* The chip also shows outside the window when a shared link has the
+     week's filter on, so it can be turned off. */
+  const specialWeeks = SPECIAL_WEEKS.filter(
+    (w) => weeks.includes(w) || filters.tags.includes(w.slug),
+  ).map((w) => ({ slug: w.slug, label: w.label }));
+
   return (
     <div className="theme-editorial">
       <OrganizationJsonLd />
       <WebSiteJsonLd />
       <EditorialLinearBlock
         events={events}
-        filterBarSlot={<FilterBar cities={cities} tags={tags} sources={sources} groups={groups} />}
+        bannerSlot={
+          weeks.length > 0
+            ? weeks.map((w) => (
+                <SpecialWeekBanner key={w.slug} week={w} filtered={filters.tags.includes(w.slug)} />
+              ))
+            : null
+        }
+        filterBarSlot={
+          <FilterBar
+            cities={cities}
+            tags={tags}
+            sources={sources}
+            groups={groups}
+            specialWeeks={specialWeeks}
+          />
+        }
         viewSlot={<ViewTabs current={view} />}
         feedQuery={feedQuery}
         density={density}

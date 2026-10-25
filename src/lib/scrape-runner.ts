@@ -3,6 +3,7 @@ import { db, events, sources, groups, scrapeRuns } from "./db";
 import { eventAdapters, type EventItem } from "./scrapers";
 import { inferTagsFromTitle, isCertSpam, CERT_SPAM_STRIPPED_TAGS } from "./auto-tag";
 import { recordEventDecision } from "./review-log";
+import { specialWeekTagsFor, SPECIAL_WEEK_SLUGS } from "./special-weeks";
 
 export interface ScrapeResult {
   sourceId: string;
@@ -131,6 +132,18 @@ function sourceFallbackCity(config: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }
 
+/* A source's jsonb config may set maxItems: how many events one scrape
+   keeps (soonest first for adapters that sort). Defaults to 30; bounded so
+   a typo can't turn one source into thousands of detail fetches. A
+   week-long event calendar (Hard Tech Week, ~55 events) needs more. */
+export const DEFAULT_MAX_ITEMS = 30;
+export function sourceMaxItems(config: unknown): number {
+  if (!config || typeof config !== "object") return DEFAULT_MAX_ITEMS;
+  const v = (config as Record<string, unknown>).maxItems;
+  if (typeof v !== "number" || !Number.isInteger(v)) return DEFAULT_MAX_ITEMS;
+  return Math.min(Math.max(v, 1), 150);
+}
+
 async function upsertEvent(
   item: EventItem,
   groupId: string | undefined,
@@ -139,7 +152,12 @@ async function upsertEvent(
   injectedTags: string[],
 ) {
   const existing = await db
-    .select({ id: events.id, groupLocked: events.groupLocked, onlineLocked: events.onlineLocked })
+    .select({
+      id: events.id,
+      groupLocked: events.groupLocked,
+      onlineLocked: events.onlineLocked,
+      tags: events.tags,
+    })
     .from(events)
     .where(sql`${events.source} = ${item.source} AND ${events.externalId} = ${item.externalId}`)
     .limit(1);
@@ -163,10 +181,17 @@ async function upsertEvent(
   const scrubbedInjected = certSpam
     ? injectedTags.filter((t) => !CERT_SPAM_STRIPPED_TAGS.has(t))
     : injectedTags;
-  const tags =
-    scrubbedInjected.length > 0
-      ? Array.from(new Set([...inferred, ...scrubbedInjected]))
-      : inferred;
+  /* Special-week tags (lib/special-weeks.ts): earned by title + date, and
+     sticky once a row has one. The same Luma event is scraped by several
+     calendars (the official Hard Tech Week calendar injects the tag, the
+     47G calendar does not), and each scrape rewrites tags - without the
+     carry-over the tag would flip on and off every tick. */
+  const weekTags = [
+    ...specialWeekTagsFor(item),
+    ...(existing[0]?.tags ?? []).filter((t) => SPECIAL_WEEK_SLUGS.has(t)),
+  ];
+  const extra = [...scrubbedInjected, ...weekTags];
+  const tags = extra.length > 0 ? Array.from(new Set([...inferred, ...extra])) : inferred;
 
   const baseValues = {
     title: item.title,
@@ -410,7 +435,7 @@ export async function runSourceScrape(sourceId: string): Promise<ScrapeResult> {
   try {
     const items = await adapter.scrape({
       url: source.url,
-      maxItems: 30,
+      maxItems: sourceMaxItems(source.config),
       sourceConfig: source.config ?? undefined,
     });
     let inserted = 0;

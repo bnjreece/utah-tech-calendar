@@ -2,6 +2,19 @@ import { and, eq, gte, lte, ilike, or, inArray, sql, desc, asc } from "drizzle-o
 import { db, events, groups, type Event, type Group } from "./db";
 import { categorizeRegion, type UtahRegion } from "./regions";
 import type { FilterState } from "./filters";
+import { getSpecialWeek } from "./special-weeks";
+
+/* A special week's tag (lib/special-weeks.ts) also matches rows whose
+   title fits the week inside its dates, so events scraped before the week
+   was defined, or by a source that does not inject the tag, are included
+   without a data fix. Postgres ~* reads the same pattern as the scraper. */
+export function specialWeekMatchSql(slug: string) {
+  const w = getSpecialWeek(slug);
+  if (!w) return null;
+  return sql`(${events.title} ~* ${w.titlePattern}
+    AND (${events.startsAt} AT TIME ZONE 'America/Denver')::date
+      BETWEEN ${w.eventFrom}::date AND ${w.eventTo}::date)`;
+}
 
 export interface EventWithGroup extends Event {
   group: Group | null;
@@ -64,12 +77,12 @@ export async function queryEvents(filters: FilterState, limit = 200): Promise<Ev
     /* Build an explicit ARRAY[…]::text[] literal because the neon-http
        driver serializes a JS array as a single text parameter, which
        Postgres can't parse as `text[]` for the `&&` overlap operator. */
-    conditions.push(
-      sql`${events.tags} && ARRAY[${sql.join(
-        filters.tags.map((t) => sql`${t}`),
-        sql`, `,
-      )}]::text[]`,
-    );
+    const overlap = sql`${events.tags} && ARRAY[${sql.join(
+      filters.tags.map((t) => sql`${t}`),
+      sql`, `,
+    )}]::text[]`;
+    const weekMatches = filters.tags.map(specialWeekMatchSql).filter((c) => c !== null);
+    conditions.push(weekMatches.length ? or(overlap, ...weekMatches)! : overlap);
   }
 
   if (filters.sources.length) {

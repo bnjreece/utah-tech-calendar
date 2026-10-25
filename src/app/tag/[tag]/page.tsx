@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, or, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
-import type { EventWithGroup } from "@/lib/queries";
+import { specialWeekMatchSql, type EventWithGroup } from "@/lib/queries";
 import { categorizeRegion } from "@/lib/regions";
 import { EditorialLinearCard } from "@/components/variant-cards";
 import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { toSlug, eventSlug } from "@/lib/slugs";
 import { getTagMeta, getAllCanonicalTags, type TagMeta } from "@/lib/tag-taxonomy";
+import { getSpecialWeek } from "@/lib/special-weeks";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ async function tagFromSlug(slug: string): Promise<{ tag: string; meta: TagMeta |
   for (const t of getAllCanonicalTags()) {
     if (toSlug(t.tag) === slug) return { tag: t.tag, meta: t };
   }
+  /* A special week's tag resolves before any row is tagged. */
+  if (getSpecialWeek(slug)) return { tag: slug, meta: null };
   const rows = await db.execute<{ tag: string }>(sql`
     SELECT DISTINCT lower(tag) AS tag
     FROM events, unnest(tags) AS tag
@@ -46,7 +49,10 @@ async function fetchTagEvents(tag: string): Promise<EventWithGroup[]> {
         eq(events.status, "approved"),
         eq(events.isOnline, false),
         gte(events.startsAt, new Date()),
-        sql`lower(${tag}) = ANY(SELECT lower(t) FROM unnest(${events.tags}) AS t)`,
+        or(
+          sql`lower(${tag}) = ANY(SELECT lower(t) FROM unnest(${events.tags}) AS t)`,
+          specialWeekMatchSql(tag) ?? sql`false`,
+        ),
       ),
     )
     .orderBy(asc(events.startsAt))

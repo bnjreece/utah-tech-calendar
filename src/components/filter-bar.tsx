@@ -12,6 +12,7 @@ import {
   type EventType,
 } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
+import { tagLabel } from "@/lib/special-weeks";
 import { MultiSelectPopover } from "@/components/multi-select-popover";
 import { ShareFilterButton } from "@/components/share-filter-button";
 import { InfoTip } from "@/components/ui/tooltip";
@@ -64,9 +65,12 @@ interface Props {
   tags: CountedOption[];
   sources: CountedOption[];
   groups: GroupOption[];
+  /* Special weeks whose call-out chip shows now (lib/special-weeks.ts).
+     Decided on the server so the chip never flips during hydration. */
+  specialWeeks?: { slug: string; label: string }[];
 }
 
-export function FilterBar({ cities, tags, sources, groups }: Props) {
+export function FilterBar({ cities, tags, sources, groups, specialWeeks = [] }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -180,7 +184,7 @@ export function FilterBar({ cities, tags, sources, groups }: Props) {
   }));
   const cityLabel = (c: string) => (c === "Unknown" ? "Location TBD" : c);
   const regionLabel = (r: string) => (r === "Unknown" ? "Location TBD" : r);
-  const tagOptions = tags.map((t) => ({ value: t.value, label: t.value, count: t.count }));
+  const tagOptions = tags.map((t) => ({ value: t.value, label: tagLabel(t.value), count: t.count }));
   const groupOptions = groups.map((g) => ({ value: g.slug, label: g.name, count: g.count }));
   const groupNameBySlug = new Map(groups.map((g) => [g.slug, g.name]));
   const groupLabel = (slug: string) => groupNameBySlug.get(slug) ?? slug;
@@ -214,6 +218,20 @@ export function FilterBar({ cities, tags, sources, groups }: Props) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {specialWeeks.map((w) => (
+            <SpecialWeekChip
+              key={w.slug}
+              label={w.label}
+              on={filters.tags.includes(w.slug)}
+              onChange={(on) =>
+                update({
+                  tags: on
+                    ? [...filters.tags.filter((t) => t !== w.slug), w.slug]
+                    : filters.tags.filter((t) => t !== w.slug),
+                })
+              }
+            />
+          ))}
           <MultiSelectPopover
             label="Region"
             options={regionOptions}
@@ -294,7 +312,7 @@ export function FilterBar({ cities, tags, sources, groups }: Props) {
             <ActiveChip key={`c-${c}`} label={cityLabel(c)} onRemove={() => clearOne("cities", c)} />
           ))}
           {filters.tags.map((t) => (
-            <ActiveChip key={`t-${t}`} label={t} onRemove={() => clearOne("tags", t)} />
+            <ActiveChip key={`t-${t}`} label={tagLabel(t)} onRemove={() => clearOne("tags", t)} />
           ))}
           {filters.groups.map((g) => (
             <ActiveChip key={`g-${g}`} label={groupLabel(g)} onRemove={() => clearOne("groups", g)} />
@@ -394,6 +412,34 @@ function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }
         </svg>
       </button>
     </span>
+  );
+}
+
+/* Call-out chip for a special week (Hard Tech Week). A toggle for that
+   week's tag, styled to stand out from the plain filter pills. */
+function SpecialWeekChip({
+  label,
+  on,
+  onChange,
+}: {
+  label: string;
+  on: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={() => onChange(!on)}
+      className={
+        on
+          ? "inline-flex items-center gap-1.5 rounded-full bg-sunset-deep px-3 py-2 sm:py-1.5 text-base sm:text-sm font-medium text-paper hover:bg-sunset-deep/90 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+          : "inline-flex items-center gap-1.5 rounded-full bg-sunset/15 px-3 py-2 sm:py-1.5 text-base sm:text-sm font-medium text-sunset-deep ring-1 ring-inset ring-sunset/40 hover:bg-sunset/25 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sunset-deep"
+      }
+    >
+      <span aria-hidden className={`size-1.5 rounded-full ${on ? "bg-paper" : "bg-sunset-deep"}`} />
+      {label}
+    </button>
   );
 }
 
