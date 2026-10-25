@@ -30,7 +30,8 @@ export const REASON_TIP: Record<string, string> = {
   spam: "Low-quality lead-generation or advertising spam.",
   duplicate: "A duplicate listing of an event already on the calendar.",
   placeholder: "An organizer placeholder, not a real public event yet.",
-  "llm-screened": "Auto-hidden by the model because it was flagged with high confidence.",
+  "llm-screened":
+    "Auto-hidden by the model: flagged as spam or not tech with high confidence, or rated tech with under 85% confidence.",
   manual: "Hidden by an admin.",
   "source-disabled": "Hidden because its source was turned off.",
   series: "Auto-hidden: an earlier instance of this recurring event was rejected or screened.",

@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
   decidePending,
+  LOWCONF_YES_BAR,
   normalizeEventTitle,
   submissionPastDated,
   type AutopilotCtx,
+  type AutopilotDecision,
   type AutopilotRow,
 } from "@/lib/autopilot";
 import type { EventVerdict } from "@/lib/verdict";
@@ -177,6 +179,66 @@ describe("decidePending: hides and holds", () => {
     expect(decidePending({ ...row, source: "manual" }, v, ctx).action).toBe("hold");
     expect(decidePending({ ...row, status: "approved" }, v, ctx).action).toBe("hold");
     expect(decidePending({ ...row, startsAt: new Date(NOW.getTime() - 1) }, v, ctx).action).toBe("hold");
+  });
+});
+
+describe("decidePending: low-confidence yes", () => {
+  const tech = (conf: number, extra: Partial<Case> = {}): Case => ({
+    title: "Tricks, Treats & Tech",
+    source: "eventbrite",
+    url: EB("ut--salt-lake-city/tech--events"),
+    v: [true, false, conf, "tech community social"],
+    venue: "Hanwha Vision Center @ WESCO",
+    city: "Murray",
+    ...extra,
+  });
+  const LOW: AutopilotDecision = { action: "hide", reason: "autopilot:lowconf-yes", hiddenReason: "llm-screened" };
+
+  test("the bar is 0.85", () => expect(LOWCONF_YES_BAR).toBe(0.85));
+
+  test("a yes under the bar is hidden (real queue rows)", () => {
+    expect(run(tech(0.75))).toEqual(LOW);
+    expect(run(tech(0.84))).toEqual(LOW);
+    expect(run(tech(0.78, { title: "Employee Experience in the Age of AI", venue: "Armanino Salt Lake City", city: "Salt Lake City" }))).toEqual(LOW);
+    expect(run(tech(0.75, { title: "EDGE OF AI: Quantum Conversations", venue: "Michael Best & Friedrich LLP", city: "Salt Lake City" }))).toEqual(LOW);
+    /* Luma rows use the same bar (the reject bar differs by source, this does not). */
+    expect(run(tech(0.8, { source: "luma", url: LUMA }))).toEqual(LOW);
+  });
+
+  test("a yes at or over the bar is untouched", () => {
+    expect(run(tech(0.85))).toEqual({ action: "hold", reason: "hold:unsure" });
+    expect(run(tech(0.89))).toEqual({ action: "hold", reason: "hold:unsure" });
+    expect(run(tech(0.9)).action).toBe("publish");
+  });
+
+  test("a no under the bar is not a yes: it still waits for a human", () => {
+    expect(run(tech(0.75, { v: [true, true, 0.75, "networking-spam"] }))).toEqual({ action: "hold", reason: "hold:unsure" });
+    expect(run(tech(0.72, { v: [false, false, 0.72, "not-tech"] }))).toEqual({ action: "hold", reason: "hold:unsure" });
+  });
+
+  test("policy holds still win", () => {
+    /* Crypto (title, category, model tags, row tags). */
+    expect(run(tech(0.75, { title: "SLC XPR Community Activation", v: [true, false, 0.75, "web3 community meetup"], source: "luma", url: "https://lu.ma/utahcrypto" }))).toEqual({ action: "hold", reason: "hold:crypto" });
+    expect(run(tech(0.75, { tags: ["blockchain"] }))).toEqual({ action: "hold", reason: "hold:crypto" });
+    /* Kids. */
+    expect(run(tech(0.7, { title: "Free Robotics Class for Kids Ages 7-14" }))).toEqual({ action: "hold", reason: "hold:kids-audience" });
+    /* Protected verticals and rural Utah, for an unsure yes too. */
+    expect(run(tech(0.7, { title: "BioUtah Member Mixer" }))).toEqual({ action: "hold", reason: "hold:protected" });
+    expect(run(tech(0.7, { title: "Satellite Builders Night" }))).toEqual({ action: "hold", reason: "hold:protected" });
+    expect(run(tech(0.7, { city: "St. George" }))).toEqual({ action: "hold", reason: "hold:rural" });
+  });
+
+  test("structural and duplicate hides keep their own reasons", () => {
+    expect(run(tech(0.7, { ctx: { duplicate: true } }))).toEqual({ action: "hide", reason: "autopilot:dup", hiddenReason: "cross-post" });
+  });
+
+  test("locked, manual, non-pending and past rows are never touched", () => {
+    const v: EventVerdict = { isTechRelevant: true, isSpam: false, isOnline: false, isPaid: false, category: "x", suggestedTags: [], confidence: 0.6, reasoning: "" };
+    const ctx: AutopilotCtx = { now: NOW, sourceUrl: LUMA, duplicate: false, seriesCount: 0, publishEnabled: true, publishedThisRun: 0 };
+    const row: AutopilotRow = { title: "Rust Night", description: "x".repeat(300), venueName: "Kiln", city: "Lehi", isOnline: false, source: "luma", status: "pending", statusLocked: false, startsAt: LATER };
+    expect(decidePending(row, v, ctx)).toEqual(LOW);
+    for (const r of [{ ...row, statusLocked: true }, { ...row, source: "manual" }, { ...row, status: "approved" }, { ...row, startsAt: new Date(NOW.getTime() - 1) }])
+      expect(decidePending(r, v, ctx)).toEqual({ action: "hold", reason: "hold:ineligible" });
   });
 });
 

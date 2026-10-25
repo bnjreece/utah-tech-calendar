@@ -4,6 +4,8 @@ import { recordEventDecision } from "./review-log";
 import { findSameDayTwins } from "./same-day-twins";
 import { appendTagsSql } from "./tag-merge";
 import { planTagCarries } from "./dedup-tag-carry";
+import { planQueueTwinHides } from "./queue-twins";
+import { applyQueueTwinHide } from "./autopilot-db";
 
 export interface DedupResult {
   clustersFound: number;
@@ -35,6 +37,11 @@ export interface DedupResult {
       refreshed by scrapes, then the oldest; locked rows are never hidden.
       The kept row inherits any special-week tag (Hard Tech Week) a hidden
       twin carried, so the event stays in that week's filtered view.
+
+   5. Queue twins (lib/queue-twins.ts): a PENDING row that duplicates an
+      upcoming approved row, or another pending row, on the same Denver
+      day. Hidden as 'cross-post' and ledgered by the autopilot
+      ('autopilot:queue-dup'); runs only while the LLM gate is on.
 
    Keeps the OLDEST event in each of clusters 1-3 as canonical; hides the rest.
    Hide-only by design - manual restore happens via /admin/hidden. */
@@ -190,9 +197,30 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
     }
   }
 
+  /* Cluster 5: queue twins. After the approved hides above, so a pending
+     row never defers to an approved row that was just hidden. Best-effort:
+     a failure leaves the rows pending for a human. */
+  let queueHidden = 0;
+  try {
+    const live = await db
+      .select()
+      .from(events)
+      .where(and(inArray(events.status, ["pending", "approved"]), gte(events.startsAt, new Date())));
+    const plan = planQueueTwinHides(live, new Date());
+    for (const h of plan) {
+      const row = live.find((r) => r.id === h.hide.id);
+      if (row && (await applyQueueTwinHide(row, h.keep.id))) {
+        queueHidden++;
+        details.push({ signature: `queue-twin:${h.match}`, source: h.keep.source, kept: h.keep.title, hiddenCount: 1 });
+      }
+    }
+  } catch (err) {
+    console.warn("[dedup] queue twin sweep failed", err);
+  }
+
   return {
-    clustersFound: clusters.length + twinClusters.length,
-    eventsHidden: toHide.size,
+    clustersFound: clusters.length + twinClusters.length + queueHidden,
+    eventsHidden: toHide.size + queueHidden,
     details,
   };
 }

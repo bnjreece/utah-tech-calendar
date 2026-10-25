@@ -15,8 +15,11 @@ import {
      2. duplicate hide (same event already approved, or pending earlier)
      3. policy holds (crypto, protected verticals, southern/rural Utah)
      4. auto-reject (a confident "no" from the model)
+     4b. low-confidence yes (a "yes" under LOWCONF_YES_BAR is hidden)
      5. auto-publish (only with AUTOPILOT_PUBLISH=on, at most 8 per run)
-     6. everything else stays pending; unreviewed rows expire hidden. */
+     6. everything else stays pending; unreviewed rows expire hidden.
+   Duplicates already sitting in the queue are hidden by the dedup sweep
+   (lib/queue-twins.ts), not here. */
 
 export type AutopilotAction = "hide" | "publish" | "hold";
 
@@ -58,6 +61,12 @@ export interface AutopilotCtx {
 
 export const MAX_PUBLISH_PER_RUN = 8;
 
+/* Rule 4b. A "yes" (tech and not spam) below this confidence is hidden
+   instead of held. From the ledger on 2026-10-25: of 17 such verdicts a
+   human kept 2 and hid 15, while 0.85 to 0.89 kept 7 of 10. Hides are
+   restorable from /admin/hidden and listed in the daily digest. */
+export const LOWCONF_YES_BAR = 0.85;
+
 /* Lowercase, drop punctuation and ticket-tier words, so two listings of one
    event ("HackerX - Employer Ticket" and "HackerX") compare equal. */
 const TIER_RE =
@@ -94,7 +103,7 @@ const RURAL_CITY_RE =
 
 /* Rule 5 publish vetoes. Employer / recruiter / vendor tiers of a real event
    are not community tickets (salvaged from the parked autoapprove branch). */
-const NOT_COMMUNITY_RE =
+export const NOT_COMMUNITY_RE =
   /\b(employer|recruiter|recruiting|sponsor|sponsorship|exhibitor|vendor|hiring[\s-]*partner)[\s-]*(ticket|tickets|pass|passes|admission|booth|table)\b/i;
 const CLOSED_EVENT_RE =
   /\b(members?[\s-]*only|orientation|invite[\s-]*only|invitation only|advisory board|participants?[\s-]*only|board meeting)\b/i;
@@ -156,6 +165,16 @@ export function decidePending(
   const route = routeVerdict(v, bar, row.title);
   if (route === "screen")
     return { action: "hide", reason: "autopilot:screen", hiddenReason: "llm-screened" };
+
+  /* 4b. Low-confidence yes. Runs after the policy holds, so crypto and
+     kids events still reach a human. The protected-vertical and rural holds
+     above only cover a "no", so they are repeated here for an unsure "yes":
+     those events go to a human rather than being hidden. */
+  if (!saysNo && conf < LOWCONF_YES_BAR) {
+    if (PROTECTED_VERTICAL_RE.test(hay) || PROTECTED_EXTRA_RE.test(hay)) return hold("protected");
+    if (row.city && RURAL_CITY_RE.test(row.city)) return hold("rural");
+    return { action: "hide", reason: "autopilot:lowconf-yes", hiddenReason: "llm-screened" };
+  }
 
   /* 5. Auto-publish. */
   if (route !== "keep" || conf < 0.9) return hold("unsure");

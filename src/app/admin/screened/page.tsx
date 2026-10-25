@@ -138,7 +138,9 @@ export default async function ScreenedEventsPage({
           ≥ the bar; everything else flagged goes to{" "}
           <a href="/admin/review" className="underline">review</a>. Off = pure
           shadow (verdicts logged, nothing hidden). Raise the bar to send more to
-          humans.
+          humans. The queue autopilot also hides a new event the model rates as
+          tech with under 85% confidence; those carry a &ldquo;rated tech, low
+          confidence&rdquo; chip.
         </p>
       </section>
 
@@ -195,6 +197,11 @@ export default async function ScreenedEventsPage({
                       <span className="inline-flex items-center rounded-full bg-sunset/[0.08] text-sunset-deep px-2 py-0.5 text-[10px] tracking-[0.14em]">
                         {v.category}
                         {conf !== null ? ` · ${conf}%` : ""}
+                      </span>
+                    )}
+                    {v.isTechRelevant && !v.isSpam && (
+                      <span className="inline-flex items-center rounded-full bg-ink/[0.06] text-ink px-2 py-0.5 text-[10px] tracking-[0.14em]">
+                        rated tech, low confidence
                       </span>
                     )}
                   </div>

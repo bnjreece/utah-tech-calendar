@@ -60,6 +60,9 @@ export interface QueueSnapshot {
   autoPublished: ScreenedEventRow[];
   autoHiddenCount: number;
   autoHiddenNearMisses: ScreenedEventRow[];
+  /* Autopilot hides of a "yes" under 85% (reason autopilot:lowconf-yes):
+     the model called these tech, so they get their own spot check. */
+  autoHiddenLowConfYes: ScreenedEventRow[];
   /* Expired pending rows in the last 7 days whose verdict said tech: good
      events nobody got to. Target 0. */
   goodLost7d: number;
@@ -109,9 +112,9 @@ export async function fetchQueueSnapshot(): Promise<QueueSnapshot> {
 
   /* Autopilot ledger rows in the digest window, with each event's current
      state. One query; split by decision below. */
-  const autoRes = await db.execute<ScreenedDbRow & { decision: string }>(sql`
+  const autoRes = await db.execute<ScreenedDbRow & { decision: string; reason: string | null }>(sql`
     SELECT DISTINCT ON (e.id, rd.decision)
-      rd.decision, e.id, e.title, e.link, e.source, e.starts_at,
+      rd.decision, rd.reason, e.id, e.title, e.link, e.source, e.starts_at,
       rd.llm_verdict->>'category' AS category,
       rd.llm_verdict->>'confidence' AS confidence
     FROM review_decisions rd
@@ -120,11 +123,14 @@ export async function fetchQueueSnapshot(): Promise<QueueSnapshot> {
       AND rd.decided_at >= now() - interval '26 hours'
     ORDER BY e.id, rd.decision, rd.decided_at DESC
   `);
-  const autoRows = rowsOf<ScreenedDbRow & { decision: string }>(autoRes);
+  const autoRows = rowsOf<ScreenedDbRow & { decision: string; reason: string | null }>(autoRes);
   const autoPublished = toScreenedRows(autoRows.filter((r) => r.decision === "approve"));
   const autoHidden = toScreenedRows(autoRows.filter((r) => r.decision === "hide"));
   const autoHiddenNearMisses = autoHidden.filter(
     (r) => r.confidence != null && r.confidence >= 0.85 && r.confidence < 0.9,
+  );
+  const autoHiddenLowConfYes = toScreenedRows(
+    autoRows.filter((r) => r.decision === "hide" && r.reason === "autopilot:lowconf-yes"),
   );
 
   const lostRes = await db.execute<{ n: number }>(sql`
@@ -166,6 +172,7 @@ export async function fetchQueueSnapshot(): Promise<QueueSnapshot> {
     autoPublished,
     autoHiddenCount: autoHidden.length,
     autoHiddenNearMisses,
+    autoHiddenLowConfYes,
     goodLost7d,
   };
 }
@@ -338,6 +345,10 @@ export function buildQueueDigestEmail(
       textLines.push("Near misses (85 to 89% sure):");
       snapshot.autoHiddenNearMisses.forEach(pushScreened);
     }
+    if (snapshot.autoHiddenLowConfYes.length > 0) {
+      textLines.push("Rated tech, but under 85% sure:");
+      snapshot.autoHiddenLowConfYes.forEach(pushScreened);
+    }
     textLines.push(`Restore any of them: ${SITE_URL}/admin/hidden`);
     textLines.push("");
   }
@@ -453,6 +464,10 @@ export function buildQueueDigestEmail(
         (snapshot.autoHiddenNearMisses.length > 0
           ? noteRow("Near misses, 85 to 89% sure:") +
             snapshot.autoHiddenNearMisses.map(renderScreenedRow).join("")
+          : "") +
+        (snapshot.autoHiddenLowConfYes.length > 0
+          ? noteRow("Rated tech, but under 85% sure:") +
+            snapshot.autoHiddenLowConfYes.map(renderScreenedRow).join("")
           : "") +
         noteRow(`<a href="${hiddenUrl}" style="color:${INK};text-decoration:underline;">Restore from hidden</a>`)
       : "";
