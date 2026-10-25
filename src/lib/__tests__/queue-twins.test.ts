@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { listingKey, matchTitles, planQueueTwinHides, type QueueTwinRow } from "@/lib/queue-twins";
+import { listingKey, matchTitles, placeRelation, planQueueTwinHides, type QueueTwinRow } from "@/lib/queue-twins";
 
 /* Real pending pairs from the production queue (2026-10-25), plus the
    events that must never merge. */
@@ -126,6 +126,76 @@ describe("planQueueTwinHides: distinct events stay", () => {
     const d = new Date("2026-11-12T01:00:00Z");
     expect(hides([row({ title: "Utah Life Sciences Summit 2026", startsAt: d, venueName: "Salt Palace" }), row({ title: "BioUtah's Utah Life Sciences Summit 2026", startsAt: d, venueName: "Grand America" })])).toEqual([]);
     expect(hides([row({ title: "Utah Life Sciences Summit 2026", startsAt: d, venueName: "Salt Palace" }), row({ title: "Women of BioUtah Mentoring Circle at Utah Life Sciences Summit 2026", startsAt: d, venueName: "Salt Palace" })])).toEqual([]);
+  });
+});
+
+describe("planQueueTwinHides: places must be compatible (Astra round 1)", () => {
+  const d = new Date("2026-11-12T01:00:00Z");
+  test("one source, one title, one minute, city-only venues in two cities", () => {
+    expect(hides([
+      row({ title: "Rust Builders Night", startsAt: d, venueName: "Provo", city: "Provo" }),
+      row({ title: "Rust Builders Night", startsAt: d, venueName: "Ogden", city: "Ogden" }),
+    ])).toEqual([]);
+    expect(hides([
+      row({ title: "Rust Builders Night", startsAt: d, city: "Provo" }),
+      row({ title: "Rust Builders Night", startsAt: d, city: "Ogden" }),
+    ])).toEqual([]);
+  });
+  test("a shared named venue in two different cities", () => {
+    expect(hides([
+      row({ title: "Rust Builders Night", startsAt: d, venueName: "Kiln", city: "Salt Lake City" }),
+      row({ title: "Rust Builders Night", startsAt: d, venueName: "Kiln", city: "Lehi" }),
+    ])).toEqual([]);
+  });
+  test("a county only contains its own cities", () => {
+    expect(hides([
+      row({ title: "HackerX - Weber - Employer Ticket", startsAt: d, venueName: "Utah County", city: "Utah County" }),
+      row({ title: "HackerX - Weber - Employer Ticket", startsAt: d, venueName: "Ogden", city: "Ogden" }),
+    ])).toEqual([]);
+    expect(hides([
+      row({ title: "HackerX - Weber - Employer Ticket", startsAt: d, venueName: "Weber County", city: "Weber County" }),
+      row({ title: "HackerX - Weber - Employer Ticket", startsAt: d, venueName: "Ogden", city: "Ogden" }),
+    ])).toEqual([]);
+  });
+  test("a county and a city in it need the same source", () => {
+    expect(hides([
+      row({ title: "HackerX - Utah County - Employer Ticket - 12/14", startsAt: DEC14, venueName: "Provo", city: "Provo" }),
+      row({ title: "HackerX - Utah County - Employer Ticket - 12/14", startsAt: DEC14, venueName: "Utah County", city: "Utah County", source: "meetup" }),
+    ])).toEqual([]);
+  });
+  test("placeRelation", () => {
+    const at = (city: string | null) => row({ title: "x", startsAt: d, city });
+    expect(placeRelation(at("Provo"), at("provo"))).toBe("same");
+    expect(placeRelation(at("Utah County"), at("Provo"))).toBe("county");
+    expect(placeRelation(at("Salt Lake County"), at("Provo"))).toBe("conflict");
+    expect(placeRelation(at("Provo"), at("Ogden"))).toBe("conflict");
+    expect(placeRelation(at(null), at("Ogden"))).toBe("unknown");
+  });
+});
+
+describe("planQueueTwinHides: placeholder venues are not evidence (Astra round 1)", () => {
+  const d = new Date("2026-11-12T01:00:00Z");
+  test.each(["TBD", "Online", "Zoom", "To be announced"])("venue %s", (venue) => {
+    /* Different sources, cities and links. */
+    expect(hides([
+      row({ title: "Monthly Meetup", startsAt: d, venueName: venue, city: "Provo" }),
+      row({ title: "Monthly Meetup", startsAt: d, venueName: venue, city: "Ogden", source: "meetup" }),
+    ])).toEqual([]);
+    /* No cities at all: the placeholder still proves nothing. */
+    expect(hides([
+      row({ title: "Utah Product Leaders Monthly Meetup", startsAt: d, venueName: venue }),
+      row({ title: "Utah Product Leaders Monthly Meetup", startsAt: d, venueName: venue, source: "meetup" }),
+    ])).toEqual([]);
+    expect(hides([
+      row({ title: "Utah Product Leaders Meetup", startsAt: d, venueName: venue }),
+      row({ title: "SLC Utah Product Leaders Meetup", startsAt: d, venueName: venue, source: "meetup" }),
+    ])).toEqual([]);
+  });
+  test("an exact title at a placeholder venue in one county is not a county match", () => {
+    expect(hides([
+      row({ title: "Utah Product Leaders Meetup", startsAt: d, venueName: "TBD", city: "Utah County" }),
+      row({ title: "Utah Product Leaders Meetup", startsAt: d, venueName: "TBD", city: "Provo" }),
+    ])).toEqual([]);
   });
 });
 

@@ -209,9 +209,17 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
     const plan = planQueueTwinHides(live, new Date());
     for (const h of plan) {
       const row = live.find((r) => r.id === h.hide.id);
-      if (row && (await applyQueueTwinHide(row, h.keep.id))) {
-        queueHidden++;
-        details.push({ signature: `queue-twin:${h.match}`, source: h.keep.source, kept: h.keep.title, hiddenCount: 1 });
+      const keep = live.find((r) => r.id === h.keep.id);
+      if (!row || !keep) continue;
+      /* One failed hide (a lock timeout, say) leaves that row pending and
+         does not stop the rest of the plan. */
+      try {
+        if (await applyQueueTwinHide(row, keep)) {
+          queueHidden++;
+          details.push({ signature: `queue-twin:${h.match}`, source: h.keep.source, kept: h.keep.title, hiddenCount: 1 });
+        }
+      } catch (err) {
+        console.warn("[dedup] queue twin hide failed", row.id, err);
       }
     }
   } catch (err) {

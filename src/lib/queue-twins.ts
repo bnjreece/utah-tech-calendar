@@ -2,11 +2,13 @@ import { NOT_COMMUNITY_RE, normalizeEventTitle } from "./autopilot";
 import {
   locationsConflict,
   normalizeLink,
+  PLACEHOLDER_VENUE_RE,
   sameEventEvidence,
   STALE_AFTER_MS,
   TWIN_WINDOW_MS,
   type TwinRow,
 } from "./same-day-twins";
+import { categorizeRegion } from "./regions";
 import { mtDayKey } from "./time";
 
 /* Queue twins: duplicates sitting in the PENDING review queue. The autopilot
@@ -25,13 +27,19 @@ import { mtDayKey } from "./time";
      ("VIP Section", "After Party", "Day 2", "Part 8", a number); AND
    - there is IDENTITY evidence:
      . the same listing (same link, or the same Eventbrite event id under a
-       renamed slug), within 90 minutes; or, at the same start minute,
+       renamed slug), within 90 minutes; or, at the same start minute and
+       with compatible places (below),
      . same venue name or map pins within 250 m (exact or contained title),
-       when the locations do not conflict (lib/same-day-twins.ts); or
-     . exact title only: the same city, or the same source with neither row
-       giving more than a city or county as its venue ("HackerX - Utah
-       County" listed at "Provo" and at "Utah County"), and a title of three
-       or more words so a generic "Monthly Meetup" never matches.
+       when the locations do not conflict (lib/same-day-twins.ts); a
+       placeholder venue ("TBD", "Online", "Zoom") is never a venue; or
+     . exact title only, with a title of three or more words so a generic
+       "Monthly Meetup" never matches: the same city, or the same source
+       with neither row giving more than a city or county as its venue and
+       one row's city inside the other's county ("HackerX - Utah County"
+       listed at "Provo" and at "Utah County").
+   Places are compatible unless both rows name a city and the two differ,
+   except a county and a city in it ("Utah County" and "Provo"). Provo and
+   Ogden never match, whatever the title or source.
    Different dates never match, so a series ("Part 7" Oct 28, "Part 8"
    Nov 11) is untouched.
 
@@ -115,10 +123,32 @@ const venueName = (v: string | null) =>
 const cityKey = (c: string | null) => (c ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 /* Venue gives no more than a place name: blank, the row's own city, or a
-   county / "Utah". */
+   county / "Utah". A placeholder ("TBD", "Online") is not a place. */
 function coarseVenue(r: QueueTwinRow): boolean {
   const v = venueName(r.venueName);
+  if (PLACEHOLDER_VENUE_RE.test(v)) return false;
   return !v || v === cityKey(r.city) || /\b(county|utah)$/.test(v);
+}
+
+const COUNTY_RE = /^(.+) county$/;
+
+/* "Utah County" contains "Provo" (lib/regions.ts knows Salt Lake and Utah
+   counties only, so any other county never contains a city). */
+function countyContains(county: string, city: string): boolean {
+  const m = COUNTY_RE.exec(county);
+  if (!m || !city || COUNTY_RE.test(city)) return false;
+  return categorizeRegion({ city }).toLowerCase() === county;
+}
+
+/* How the two rows' cities relate: "same" (equal), "county" (a county and
+   a city inside it), "unknown" (one or both blank) or "conflict". */
+export function placeRelation(a: QueueTwinRow, b: QueueTwinRow): "same" | "county" | "unknown" | "conflict" {
+  const ca = cityKey(a.city);
+  const cb = cityKey(b.city);
+  if (!ca || !cb) return "unknown";
+  if (ca === cb) return "same";
+  if (countyContains(ca, cb) || countyContains(cb, ca)) return "county";
+  return "conflict";
 }
 const hasPin = (r: QueueTwinRow) => r.latitude != null && r.longitude != null;
 
@@ -129,6 +159,8 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
   const la = listingKey(a.link);
   if (la && la === listingKey(b.link)) return true;
   if (apart !== 0) return false;
+  const place = placeRelation(a, b);
+  if (place === "conflict") return false;
   if (locationsConflict(a, b)) return false;
   if (venueEvidence(a, b)) return true;
   if (match !== "exact") return false;
@@ -136,9 +168,15 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
      elsewhere (same rule as same-day-twins.ts). */
   if (isCalendarPointer(a) || isCalendarPointer(b)) return true;
   if (words(normalizeEventTitle(a.title)).length < MIN_CITY_MATCH_WORDS) return false;
-  const ca = cityKey(a.city);
-  if (ca && ca === cityKey(b.city)) return true;
-  return a.source === b.source && coarseVenue(a) && coarseVenue(b) && !hasPin(a) && !hasPin(b);
+  if (place === "same") return true;
+  return (
+    place === "county" &&
+    a.source === b.source &&
+    coarseVenue(a) &&
+    coarseVenue(b) &&
+    !hasPin(a) &&
+    !hasPin(b)
+  );
 }
 
 function isCalendarPointer(r: QueueTwinRow): boolean {
@@ -148,7 +186,7 @@ function isCalendarPointer(r: QueueTwinRow): boolean {
 /* Same named venue (not just a city), or map pins within 250 m. */
 function venueEvidence(a: QueueTwinRow, b: QueueTwinRow): boolean {
   const va = venueName(a.venueName);
-  if (va && !coarseVenue(a) && !coarseVenue(b) && va === venueName(b.venueName)) return true;
+  if (va && !PLACEHOLDER_VENUE_RE.test(va) && !coarseVenue(a) && !coarseVenue(b) && va === venueName(b.venueName)) return true;
   if (!hasPin(a) || !hasPin(b)) return false;
   const strip = (r: QueueTwinRow): TwinRow => ({ ...r, link: null, externalId: null, venueName: null });
   return sameEventEvidence(strip(a), strip(b));

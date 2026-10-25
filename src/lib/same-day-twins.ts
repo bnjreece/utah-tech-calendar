@@ -61,7 +61,7 @@ export const SAME_VENUE_METERS = 250;
 export const CONFLICT_METERS = 1000;
 
 const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
-const PLACEHOLDER_VENUE_RE = /^(online|virtual|zoom|tbd|tba|to be (announced|determined)|none)$/;
+export const PLACEHOLDER_VENUE_RE = /^(online|virtual|zoom|tbd|tba|to be (announced|determined)|none)$/;
 
 export function normalizeLink(link: string | null | undefined): string | null {
   if (!link) return null;

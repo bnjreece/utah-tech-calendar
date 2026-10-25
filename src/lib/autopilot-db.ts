@@ -106,15 +106,34 @@ export async function applyPendingDecision(
 /* Hide a pending queue twin (lib/queue-twins.ts) in ONE statement, chained
    to its ledger row like applyPendingDecision. Only matches while the row
    is still pending, unlocked, scraped, upcoming and unchanged since it was
-   read, the row it defers to is still pending or approved, and the gate is
-   on. Returns true when the row changed. */
-export async function applyQueueTwinHide(r: EventRow, keepId: string): Promise<boolean> {
+   read, the gate is on, and the row it defers to (`keep`) is still pending
+   or approved with every field the twin match read unchanged (start, title,
+   venue, city, link, pin, source, external id). The keeper check takes a
+   FOR SHARE lock, so a concurrent scrape that reschedules or renames the
+   keeper either commits first (the recheck then fails and nothing is
+   hidden) or waits until this statement commits. Returns true when the row
+   changed. */
+export async function applyQueueTwinHide(r: EventRow, keep: EventRow): Promise<boolean> {
   const res = await db.execute(sql`
-    WITH upd AS (
+    WITH keeper AS (
+      SELECT k.id FROM events k
+      WHERE k.id = ${keep.id}::uuid
+        AND k.id <> ${r.id}::uuid
+        AND k.status IN ('pending', 'approved')
+        AND k.starts_at = ${keep.startsAt.toISOString()}::timestamptz
+        AND k.title IS NOT DISTINCT FROM ${keep.title}::text
+        AND k.venue_name IS NOT DISTINCT FROM ${keep.venueName}::text
+        AND k.city IS NOT DISTINCT FROM ${keep.city}::text
+        AND k.link IS NOT DISTINCT FROM ${keep.link}::text
+        AND k.latitude IS NOT DISTINCT FROM ${keep.latitude}::numeric
+        AND k.longitude IS NOT DISTINCT FROM ${keep.longitude}::numeric
+        AND k.source IS NOT DISTINCT FROM ${keep.source}::text
+        AND k.external_id IS NOT DISTINCT FROM ${keep.externalId}::text
+      FOR SHARE
+    ), upd AS (
       UPDATE events
       SET status = 'hidden', hidden_reason = 'cross-post', updated_at = now()
       WHERE id = ${r.id}
-        AND id <> ${keepId}::uuid
         AND status = 'pending'
         AND status_locked = false
         AND source <> 'manual'
@@ -124,7 +143,11 @@ export async function applyQueueTwinHide(r: EventRow, keepId: string): Promise<b
         AND venue_name IS NOT DISTINCT FROM ${r.venueName}::text
         AND city IS NOT DISTINCT FROM ${r.city}::text
         AND link IS NOT DISTINCT FROM ${r.link}::text
-        AND EXISTS (SELECT 1 FROM events k WHERE k.id = ${keepId}::uuid AND k.status IN ('pending', 'approved'))
+        AND latitude IS NOT DISTINCT FROM ${r.latitude}::numeric
+        AND longitude IS NOT DISTINCT FROM ${r.longitude}::numeric
+        AND source IS NOT DISTINCT FROM ${r.source}::text
+        AND external_id IS NOT DISTINCT FROM ${r.externalId}::text
+        AND EXISTS (SELECT 1 FROM keeper)
         AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
       RETURNING id, source_id, source, llm_verdict
     )
