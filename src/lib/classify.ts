@@ -84,6 +84,17 @@ export async function classifyEvent(input: ClassifyInput): Promise<EventVerdict 
    latency stay predictable; the backlog drains over several ticks. A null
    verdict (transient failure) leaves llm_checked_at NULL so it retries
    next time. No-ops fast without an API key. */
+/* The row the autopilot judges after classification: `r` with the tags the
+   classify UPDATE actually stored (it may have appended LLM tags). Judging
+   or compare-and-setting against the pre-append tags would make the write
+   miss on every appended tag and leave the row pending forever. */
+export function rowAfterClassify<T extends { tags: string[] | null }>(
+  r: T,
+  stored: { tags: string[] | null } | undefined,
+): T {
+  return stored ? { ...r, tags: stored.tags } : r;
+}
+
 export async function classifyUnchecked(
   limit = 25,
 ): Promise<{
@@ -186,14 +197,19 @@ export async function classifyUnchecked(
     const llmTags = llmTagsFor(verdict.suggestedTags, {
       certSpam: isCertSpam(`${r.title} ${r.description ?? ""}`),
     });
-    await db
+    /* RETURNING the stored tags: the autopilot below must judge, and
+       compare-and-set against, the tags as they are after this append,
+       not the pre-append copy in `r` (else every appended tag makes its
+       CAS miss and the row silently stays pending). */
+    const [stored] = await db
       .update(events)
       .set({
         llmVerdict: verdict,
         llmCheckedAt: new Date(),
         ...(llmTags.length > 0 ? { tags: appendTagsSql(llmTags) } : {}),
       })
-      .where(eq(events.id, r.id));
+      .where(eq(events.id, r.id))
+      .returning({ tags: events.tags });
     classified++;
 
     /* Routing (gated autonomy): only act on an auto-approved, unlocked,
@@ -239,7 +255,7 @@ export async function classifyUnchecked(
            human for it on purpose, so the autopilot leaves it alone. */
       }
     } else if (gateEnabled && r.status === "pending" && !r.statusLocked && r.source !== "manual") {
-      await autopilot(r, verdict);
+      await autopilot(rowAfterClassify(r, stored), verdict);
     }
   }
   if (screened >= SCREEN_ABORT_AT) {

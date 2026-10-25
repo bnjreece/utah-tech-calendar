@@ -132,7 +132,7 @@ export async function applyPendingDecision(
         AND link IS NOT DISTINCT FROM ${r.link}::text
         AND is_online IS NOT DISTINCT FROM ${r.isOnline}::boolean
         AND source_id IS NOT DISTINCT FROM ${r.sourceId}::uuid
-        AND to_jsonb(tags) IS NOT DISTINCT FROM ${tagsJson(r.tags)}::jsonb
+        AND to_jsonb(tags) IS NOT DISTINCT FROM ${tagsJson(r.tags)}::text::jsonb
         ${keeperGuard}
         AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
       RETURNING id, source_id, source
