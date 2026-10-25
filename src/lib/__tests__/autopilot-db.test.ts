@@ -23,7 +23,7 @@ mock.module("@/lib/db", () => ({
   reviewDecisions: {},
 }));
 
-const { applyPendingDecision, pendingFacts, tagsJson } = await import("@/lib/autopilot-db");
+const { applyPendingDecision, applyQueueTwinHide, pendingFacts, tagsJson } = await import("@/lib/autopilot-db");
 
 const dialect = new PgDialect();
 
@@ -107,22 +107,37 @@ describe("duplicate hides recheck their original (Astra round 3)", () => {
   });
 });
 
-describe("pendingFacts names the same keeper as the queue-twin sweep (Astra round 3)", () => {
+describe("pendingFacts", () => {
   const me = (title: string) => ({ ...(baseRow([]) as object), title }) as never;
-  test("an older pending employer tier is not the original of an attendee listing", async () => {
-    queued = [[{ id: "e", title: "HackerX Utah - Employer Ticket", status: "pending" }], [{ n: 0 }]];
-    const f = await pendingFacts(me("HackerX Utah"));
-    expect(f.duplicate).toBe(false);
-    expect(f.originals).toEqual([]);
-  });
-  test("an approved employer tier, or a pending attendee listing, still counts", async () => {
-    queued = [[{ id: "e", title: "HackerX Utah - Employer Ticket", status: "approved" }], [{ n: 0 }]];
-    expect((await pendingFacts(me("HackerX Utah"))).originals).toEqual([{ id: "e", title: "HackerX Utah - Employer Ticket" }]);
-    queued = [[{ id: "p", title: "HackerX Utah", status: "pending" }], [{ n: 0 }]];
-    expect((await pendingFacts(me("HackerX Utah - Employer Ticket"))).duplicate).toBe(true);
+  test("an approved or older same-link pending row with the same title is the original", async () => {
+    queued = [[{ id: "e", title: "HackerX Utah", status: "approved" }], [{ n: 0 }]];
+    expect((await pendingFacts(me("HackerX Utah"))).originals).toEqual([{ id: "e", title: "HackerX Utah" }]);
   });
   test("placeholder titles never duplicate", async () => {
     queued = [[{ id: "p", title: "TBD", status: "approved" }], [{ n: 0 }]];
     expect((await pendingFacts(me("TBD"))).duplicate).toBe(false);
+  });
+});
+
+describe("applyQueueTwinHide (Astra round 6)", () => {
+  const hide = baseRow([]);
+  const keep = { ...(baseRow([]) as object), id: "00000000-0000-0000-0000-000000000009", externalId: "evt-1" } as never;
+  test("every hide locks a live keeper, pins the hidden row and checks the gate", async () => {
+    await applyQueueTwinHide(hide, keep, "listing");
+    const q = dialect.sqlToQuery(captured!).sql;
+    expect(q).toContain("FOR SHARE");
+    expect(q).toContain("k.status IN ('pending', 'approved')");
+    expect(q).toContain("status_locked = false");
+    expect(q).toContain("source <> 'manual'");
+    expect(q).toContain("llm_gate_enabled");
+    expect(q).toContain("'autopilot:queue-dup'");
+    expect(q).not.toContain("make_interval");
+  });
+  test("a stale-relist hide rechecks that the hidden row is still stale and the keeper still seen", async () => {
+    await applyQueueTwinHide(hide, keep, "relist");
+    const { sql: q, params } = dialect.sqlToQuery(captured!);
+    expect(q).toContain("updated_at <= now() - make_interval(secs =>");
+    expect(q).toContain("k.updated_at > now() - make_interval(secs =>");
+    expect(params).toContain(2 * 24 * 60 * 60);
   });
 });

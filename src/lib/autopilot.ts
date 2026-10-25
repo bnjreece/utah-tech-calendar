@@ -103,7 +103,7 @@ const RURAL_CITY_RE =
 
 /* Rule 5 publish vetoes. Employer / recruiter / vendor tiers of a real event
    are not community tickets (salvaged from the parked autoapprove branch). */
-export const NOT_COMMUNITY_RE =
+const NOT_COMMUNITY_RE =
   /\b(employer|recruiter|recruiting|sponsor|sponsorship|exhibitor|vendor|hiring[\s-]*partner)[\s-]*(ticket|tickets|pass|passes|admission|booth|table)\b/i;
 const CLOSED_EVENT_RE =
   /\b(members?[\s-]*only|orientation|invite[\s-]*only|invitation only|advisory board|participants?[\s-]*only|board meeting)\b/i;

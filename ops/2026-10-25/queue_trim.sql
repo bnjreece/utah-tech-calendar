@@ -20,12 +20,15 @@
 -- Check the outcome with scripts/replay-queue-trim.ts or the daily digest.
 --
 -- Part 1 (queue twins) needs no SQL: the dedup sweep hides them on the first
--- scrape after the deploy (lib/queue-twins.ts). Dry run on 2026-10-25, 3 rows
--- (re-run after Astra rounds 2 and 3: same 3 hides, now keeping the oldest
--- TECHSPO row, and the same 3 targets below):
---   eb38b6cd UVU 2026 Bitcoin Conference: ... (keeps a66e6c84 2026 Bitcoin Conference: ...)
---   2d5c4459 HackerX - Utah County - Employer Ticket - 12/14 (keeps 4d4ecb91)
---   7a2cbc48 TECHSPO ... (AI ~ SaaS ~ AdTech ~ MarTech) (keeps the older 7a0d8b29 TECHSPO ... (Internet ~ AdTech ~ MarTech))
+-- scrape after the deploy (lib/queue-twins.ts, strict evidence only since
+-- Astra round 6: same upstream listing id, or a stale relist). Dry run on
+-- 2026-10-25 over all 227 upcoming pending + approved rows, 2 hides:
+--   7a0d8b29 TECHSPO ... (Internet ~ AdTech ~ MarTech), stale since 10/12
+--            (keeps 7a2cbc48 TECHSPO ... (AI ~ SaaS ...), same Eventbrite id 1996064919908)
+--   2d5c4459 HackerX - Utah County - Employer Ticket - 12/14, id 1980426340496, stale since 9/28
+--            (keeps 4d4ecb91, id 1982701719215, same title and start, still scraped)
+-- The two Bitcoin Conference listings (different ids and titles) are left
+-- for a human.
 --
 -- Targets: of the 22 upcoming pending rows on 2026-10-25, 4 have a stored
 -- "yes" under 0.85. Running the real decidePending over the stored verdicts

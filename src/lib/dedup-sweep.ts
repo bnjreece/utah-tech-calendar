@@ -40,8 +40,11 @@ export interface DedupResult {
 
    5. Queue twins (lib/queue-twins.ts): a PENDING row that duplicates an
       upcoming approved row, or another pending row, on the same Denver
-      day. Hidden as 'cross-post' and ledgered by the autopilot
-      ('autopilot:queue-dup'); runs only while the LLM gate is on.
+      day, by strict evidence only: the same upstream listing id from one
+      source, or a stale relist (same source, title and start minute, no
+      longer scraped while its twin still is). Hidden as 'cross-post' and
+      ledgered by the autopilot ('autopilot:queue-dup'); runs only while
+      the LLM gate is on.
 
    Keeps the OLDEST event in each of clusters 1-3 as canonical; hides the rest.
    Hide-only by design - manual restore happens via /admin/hidden. */
@@ -202,11 +205,12 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
      a failure leaves the rows pending for a human. */
   let queueHidden = 0;
   try {
+    const sweptAt = new Date();
     const live = await db
       .select()
       .from(events)
-      .where(and(inArray(events.status, ["pending", "approved"]), gte(events.startsAt, new Date())));
-    const plan = planQueueTwinHides(live);
+      .where(and(inArray(events.status, ["pending", "approved"]), gte(events.startsAt, sweptAt)));
+    const plan = planQueueTwinHides(live, sweptAt);
     for (const h of plan) {
       const row = live.find((r) => r.id === h.hide.id);
       const keep = live.find((r) => r.id === h.keep.id);
@@ -214,9 +218,9 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
       /* One failed hide (a lock timeout, say) leaves that row pending and
          does not stop the rest of the plan. */
       try {
-        if (await applyQueueTwinHide(row, keep)) {
+        if (await applyQueueTwinHide(row, keep, h.evidence)) {
           queueHidden++;
-          details.push({ signature: `queue-twin:${h.match}`, source: h.keep.source, kept: h.keep.title, hiddenCount: 1 });
+          details.push({ signature: `queue-twin:${h.evidence}`, source: h.keep.source, kept: h.keep.title, hiddenCount: 1 });
         }
       } catch (err) {
         console.warn("[dedup] queue twin hide failed", row.id, err);

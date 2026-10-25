@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import { db, events, sources } from "@/lib/db";
 import { eventSnapshot } from "@/lib/review-log";
-import { NOT_COMMUNITY_RE, normalizeEventTitle, type AutopilotDecision } from "@/lib/autopilot";
+import { normalizeEventTitle, type AutopilotDecision } from "@/lib/autopilot";
+import { STALE_AFTER_MS } from "@/lib/same-day-twins";
+import type { TwinEvidence } from "@/lib/queue-twins";
 import type { EventVerdict } from "@/lib/verdict";
 
 /* DB side of the queue autopilot (lib/autopilot.ts holds the pure rules).
@@ -48,18 +50,11 @@ export async function pendingFacts(
     `),
   );
   const key = normalizeEventTitle(r.title);
-  /* Placeholder titles ("TBD") from different groups are not cross-posts.
-     An older pending employer / vendor tier never outranks an attendee
-     listing: the queue-twin sweep keeps the attendee row (lib/queue-twins.ts),
-     and the two must agree on the keeper. */
-  const attendee = !NOT_COMMUNITY_RE.test(r.title);
+  /* Placeholder titles ("TBD") from different groups are not cross-posts. */
   const originals =
     key === "" || PLACEHOLDER_TITLE_RE.test(key)
       ? []
-      : sameDay
-          .filter((o) => normalizeEventTitle(o.title) === key)
-          .filter((o) => o.status === "approved" || !(attendee && NOT_COMMUNITY_RE.test(o.title)))
-          .map((o) => ({ id: o.id, title: o.title }));
+      : sameDay.filter((o) => normalizeEventTitle(o.title) === key).map((o) => ({ id: o.id, title: o.title }));
   const duplicate = originals.length > 0;
 
   const [series] = rowsOf<{ n: number }>(
@@ -160,13 +155,21 @@ export async function applyPendingDecision(
    to its ledger row like applyPendingDecision. Only matches while the row
    is still pending, unlocked, scraped, upcoming and unchanged since it was
    read, the gate is on, and the row it defers to (`keep`) is still pending
-   or approved with every field the twin match read unchanged (start, title,
-   venue, city, link, pin, source, external id). The keeper check takes a
-   FOR SHARE lock, so a concurrent scrape that reschedules or renames the
-   keeper either commits first (the recheck then fails and nothing is
-   hidden) or waits until this statement commits. Returns true when the row
-   changed. */
-export async function applyQueueTwinHide(r: EventRow, keep: EventRow): Promise<boolean> {
+   or approved with its start, title, link, source and external id
+   unchanged. A stale-relist hide (evidence "relist") also needs the hidden
+   row still unseen by the scraper and the keeper still seen, so a re-scrape
+   that refreshes the hidden row in between makes it a no-op. The keeper
+   check takes a FOR SHARE lock, so a concurrent scrape that reschedules or
+   renames the keeper either commits first (the recheck then fails and
+   nothing is hidden) or waits until this statement commits. Returns true
+   when the row changed. */
+export async function applyQueueTwinHide(r: EventRow, keep: EventRow, evidence: TwinEvidence): Promise<boolean> {
+  const staleSecs = Math.floor(STALE_AFTER_MS / 1000);
+  const relist = evidence === "relist";
+  const keeperSeen = relist
+    ? sql`AND (k.source = 'manual' OR k.updated_at > now() - make_interval(secs => ${staleSecs}))`
+    : sql``;
+  const rowStale = relist ? sql`AND updated_at <= now() - make_interval(secs => ${staleSecs})` : sql``;
   const res = await db.execute(sql`
     WITH keeper AS (
       SELECT k.id FROM events k
@@ -175,13 +178,10 @@ export async function applyQueueTwinHide(r: EventRow, keep: EventRow): Promise<b
         AND k.status IN ('pending', 'approved')
         AND k.starts_at = ${keep.startsAt.toISOString()}::timestamptz
         AND k.title IS NOT DISTINCT FROM ${keep.title}::text
-        AND k.venue_name IS NOT DISTINCT FROM ${keep.venueName}::text
-        AND k.city IS NOT DISTINCT FROM ${keep.city}::text
         AND k.link IS NOT DISTINCT FROM ${keep.link}::text
-        AND k.latitude IS NOT DISTINCT FROM ${keep.latitude}::numeric
-        AND k.longitude IS NOT DISTINCT FROM ${keep.longitude}::numeric
         AND k.source IS NOT DISTINCT FROM ${keep.source}::text
         AND k.external_id IS NOT DISTINCT FROM ${keep.externalId}::text
+        ${keeperSeen}
       FOR SHARE
     ), upd AS (
       UPDATE events
@@ -193,13 +193,10 @@ export async function applyQueueTwinHide(r: EventRow, keep: EventRow): Promise<b
         AND starts_at > now()
         AND starts_at = ${r.startsAt.toISOString()}::timestamptz
         AND title IS NOT DISTINCT FROM ${r.title}::text
-        AND venue_name IS NOT DISTINCT FROM ${r.venueName}::text
-        AND city IS NOT DISTINCT FROM ${r.city}::text
         AND link IS NOT DISTINCT FROM ${r.link}::text
-        AND latitude IS NOT DISTINCT FROM ${r.latitude}::numeric
-        AND longitude IS NOT DISTINCT FROM ${r.longitude}::numeric
         AND source IS NOT DISTINCT FROM ${r.source}::text
         AND external_id IS NOT DISTINCT FROM ${r.externalId}::text
+        ${rowStale}
         AND EXISTS (SELECT 1 FROM keeper)
         AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
       RETURNING id, source_id, source, llm_verdict

@@ -63,7 +63,7 @@ export const SAME_VENUE_METERS = 250;
 export const CONFLICT_METERS = 1000;
 
 const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
-export const PLACEHOLDER_VENUE_RE = /^(online|virtual|zoom|tbd|tba|to be (announced|determined)|none)$/;
+const PLACEHOLDER_VENUE_RE = /^(online|virtual|zoom|tbd|tba|to be (announced|determined)|none)$/;
 
 /* Query keys that only say where a click came from, never which event it
    is (utm_source=luma, Eventbrite's aff=..., GrowthZone's

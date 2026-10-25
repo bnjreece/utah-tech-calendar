@@ -1,250 +1,119 @@
-import { NOT_COMMUNITY_RE, normalizeEventTitle } from "./autopilot";
-import {
-  locationsConflict,
-  normalizeLink,
-  PLACEHOLDER_VENUE_RE,
-  sameEventEvidence,
-  TWIN_WINDOW_MS,
-  type TwinRow,
-} from "./same-day-twins";
-import { categorizeRegion } from "./regions";
+import { normalizeLink, STALE_AFTER_MS, type TwinRow } from "./same-day-twins";
 import { mtDayKey } from "./time";
 
 /* Queue twins: duplicates sitting in the PENDING review queue. The autopilot
-   checks for a duplicate only once, when a row is first classified, and only
-   against an exact title, so a twin that arrives later or under a slightly
-   different title waits for a human ("UVU 2026 Bitcoin Conference: ..." next
-   to "2026 Bitcoin Conference: ...", or two TECHSPO listings that differ only
-   in a parenthetical). The dedup sweep runs this after every scrape.
+   checks for a duplicate only once, when a row is first classified, so a
+   twin that arrives later (an organizer renames or relists an Eventbrite
+   event) waits for a human. The dedup sweep runs this after every scrape.
 
-   A pending row is a twin of another upcoming row (pending or approved) when
-   both start on the same Denver day and
-   - the TITLES match: equal after normalization (ticket tiers and
-     punctuation dropped, see normalizeEventTitle), equal once a trailing
-     parenthetical is dropped, or one contained in the other with at most
-     three extra words, none of which names a different part of an event
-     ("VIP Section", "After Party", "Day 2", "Part 8", a number); AND
-   - there is IDENTITY evidence:
-     . the same listing (same link, query keys other than click tracking
-       included, or the same Eventbrite event id under a renamed slug): at
-       the same start minute, or within 90 minutes from two different
-       sources (one source listing a title at two times is two sessions,
-       even under one registration link); or, at the same start minute,
-     . same venue name or map pins within 250 m (exact or contained title;
-       never when the trailing parentheticals differ, which only the same
-       listing can bridge: "Workshop (Beginner)" vs "(Advanced)"),
-       when the locations do not conflict (lib/same-day-twins.ts) and the
-       rows do not name two different specific venues; a
-       placeholder venue ("TBD", "Online", "Zoom") is never a venue; or
-     . exact title only, with a title of three or more words so a generic
-       "Monthly Meetup" never matches, and never when the two rows name
-       two different specific venues: the same city, or the same source
-       with neither row giving more than a city or county as its venue and
-       one row's city inside the other's county ("HackerX - Utah County"
-       listed at "Provo" and at "Utah County").
-   Whatever the evidence, never when the places conflict: two different
-   cities, conflicting pins or streets, or two different specific venues.
-   Places are compatible unless both rows name a city and the two differ,
-   except a county and a city in it ("Utah County" and "Provo"). Provo and
-   Ogden never match, whatever the title or source.
-   Different dates never match, so a series ("Part 7" Oct 28, "Part 8"
-   Nov 11) is untouched.
+   Only two kinds of evidence count, both strict. There is no fuzzy title
+   matching and no venue or place heuristic: a missed duplicate is a
+   nuisance, a hidden event is a loss.
 
-   Which row stays: a pending row with an approved twin is hidden (the
-   approved row is already public). Among pending twins the kept row is a
-   locked one, then an attendee listing over an employer / vendor tier, then
-   the oldest. Locked and manual rows
-   are never hidden. Pure: the sweep loads rows and applies the result. */
+   A. SAME LISTING. Same source, and both links name the same upstream
+      listing id: an Eventbrite event id (/e/<slug>-tickets-<id> or
+      /e/<id>; a renamed slug keeps the id), a Meetup event id
+      (/<group>/events/<id>) or a Luma event slug (lu.ma/<slug>, counted
+      only on Luma rows with an event id, evt-..., since a lu.ma path can
+      also be a calendar, and never on a Luma calendar's external listing,
+      calev-..., which only points elsewhere). Any other link (an organizer
+      homepage, a recurrence source's one shared URL) is never identity.
+      Titles may differ.
+   B. STALE RELIST. Same source, the same title after case, whitespace and
+      punctuation are normalized (nothing else: no containment, no
+      qualifier stripping), the same start minute, and the row to hide is
+      no longer seen by the scraper while its twin is. Two rows the scraper
+      still sees are never merged, whatever their titles (two chapters can
+      run one event at one time), nor are two stale rows.
+
+   "Seen by the scraper": every re-scrape upserts the row and refreshes
+   updated_at (lib/scrape-runner.ts), and scrapes run every few hours, so a
+   row not refreshed for STALE_AFTER_MS (2 days) has dropped off its source.
+   Manual rows are never re-scraped and always count as seen.
+
+   Both rows start on the same Denver day. Which row stays: a pending row
+   with an approved twin is hidden (the approved row is already public).
+   Among pending twins the kept row is a locked one, then one still seen by
+   the scraper, then the oldest (created_at, id). Locked and manual rows are
+   never hidden. Pure: the sweep loads rows and applies the result. */
 
 export interface QueueTwinRow extends TwinRow {
   status: string;
-  city: string | null;
 }
+
+export type TwinEvidence = "listing" | "relist";
 
 export interface QueueTwinHide {
   hide: QueueTwinRow;
   keep: QueueTwinRow;
-  /* How the titles matched, for the dry run. */
-  match: TitleMatch;
+  evidence: TwinEvidence;
 }
 
-export type TitleMatch = "exact" | "core" | "contained";
-
-const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
-/* Extra words that name a different part of an event, not a different
-   listing of the same one. */
-const DISTINCT_EXTRA_RE =
-  /^(vip|section|after|afterparty|pre|post|part|day|night|session|track|workshop|panel|dinner|lunch|luncheon|breakfast|brunch|reception|mixer|happy|hour|kickoff|keynote|demo|office|hours|social|party|meetup|hackathon|training|class|course|webinar|tour|livestream|stream|virtual|online|round|final|finals|\d+)$/;
-const MAX_EXTRA_WORDS = 3;
-/* The shorter title in a containment match needs this much substance. */
-const MIN_CONTAINED_WORDS = 4;
-/* An exact title matched on city alone needs this many words. */
-const MIN_CITY_MATCH_WORDS = 3;
-
-const PAREN_SUFFIX_RE = /\s*[([]([^)\]]*)[)\]]\s*$/;
-
-/* Title without a trailing (...) or [...] suffix, then normalized. */
-export function coreTitle(title: string): string {
-  return normalizeEventTitle(title.replace(PAREN_SUFFIX_RE, ""));
-}
-
-const words = (s: string) => (s ? s.split(" ") : []);
-const parenText = (title: string) => normalizeEventTitle(PAREN_SUFFIX_RE.exec(title)?.[1] ?? "");
-const parenWords = (title: string) => words(parenText(title));
-
-/* The two titles carry different trailing parentheticals (one may have
-   none). A parenthetical can name a class level, audience or track
-   ("Workshop (Beginner)" vs "(Advanced)") that no word list can know, so a
-   non-exact match across differing parentheticals needs the same listing. */
-export function parentheticalsDiffer(a: string, b: string): boolean {
-  return parenText(a) !== parenText(b);
-}
-const VIP_RE = /\bvip\b/i;
-
-export function matchTitles(a: string, b: string): TitleMatch | null {
-  const fa = normalizeEventTitle(a);
-  const fb = normalizeEventTitle(b);
-  if (!fa || !fb || PLACEHOLDER_TITLE_RE.test(fa) || PLACEHOLDER_TITLE_RE.test(fb)) return null;
-  /* normalizeEventTitle drops "VIP" as a ticket tier, but a VIP section or
-     VIP reception is its own event. */
-  if (VIP_RE.test(a) !== VIP_RE.test(b)) return null;
-  if (fa === fb) return "exact";
-  const ca = coreTitle(a);
-  const cb = coreTitle(b);
-  /* The dropped parentheticals must not name a part of an event either
-     ("Summit (Day 2)", "Party (After Party)"). */
-  const parens = [...parenWords(a), ...parenWords(b)];
-  if (parens.some((w) => DISTINCT_EXTRA_RE.test(w))) return null;
-  if (ca && ca === cb && words(ca).length >= MIN_CITY_MATCH_WORDS) return "core";
-  const [short, long] = ca.length <= cb.length ? [ca, cb] : [cb, ca];
-  if (words(short).length < MIN_CONTAINED_WORDS) return null;
-  const at = ` ${long} `.indexOf(` ${short} `);
-  if (at < 0) return null;
-  const extra = words(`${long.slice(0, at)} ${long.slice(at + short.length)}`.trim().replace(/\s+/g, " "));
-  if (extra.length > MAX_EXTRA_WORDS || extra.some((w) => DISTINCT_EXTRA_RE.test(w))) return null;
-  return "contained";
-}
-
-/* Eventbrite keeps the numeric event id when an organizer renames the
-   listing, so two slugs with one id are one listing. */
+/* The upstream listing a link names, or null when the link is not a known
+   per-event listing URL. */
 export function listingKey(link: string | null | undefined): string | null {
   const n = normalizeLink(link);
   if (!n) return null;
-  const eb = /^eventbrite\.[a-z.]+\/e\/(?:.*-)?(\d{9,})(?:\?.*)?$/.exec(n);
-  return eb ? `eventbrite:${eb[1]}` : n;
+  const path = n.split("?")[0];
+  const eb = /^eventbrite\.[a-z.]+\/e\/(?:[^/]*-)?(\d{9,})$/.exec(path);
+  if (eb) return `eventbrite:${eb[1]}`;
+  const mu = /^meetup\.com\/[^/]+\/events\/([a-z0-9]+)$/.exec(path);
+  if (mu) return `meetup:${mu[1]}`;
+  const lu = /^lu\.ma\/([a-z0-9][a-z0-9-]*)$/.exec(path);
+  if (lu) return `luma:${lu[1]}`;
+  return null;
 }
 
-const venueName = (v: string | null) =>
-  (v ?? "").split(",")[0].toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-const cityKey = (c: string | null) => (c ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-/* Venue gives no more than a place name: blank, the row's own city, or a
-   county / "Utah". A placeholder ("TBD", "Online") is not a place. */
-function coarseVenue(r: QueueTwinRow): boolean {
-  const v = venueName(r.venueName);
-  if (PLACEHOLDER_VENUE_RE.test(v)) return false;
-  return !v || v === cityKey(r.city) || /\b(county|utah)$/.test(v);
+/* Case, whitespace and punctuation only. */
+export function plainTitle(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-const COUNTY_RE = /^(.+) county$/;
+const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
 
-/* "Utah County" contains "Provo" (lib/regions.ts knows Salt Lake and Utah
-   counties only, so any other county never contains a city). */
-function countyContains(county: string, city: string): boolean {
-  const m = COUNTY_RE.exec(county);
-  if (!m || !city || COUNTY_RE.test(city)) return false;
-  return categorizeRegion({ city }).toLowerCase() === county;
+/* Still being refreshed by its scraper. */
+export function seenByScraper(r: QueueTwinRow, now: Date): boolean {
+  return r.source === "manual" || now.getTime() - r.updatedAt.getTime() < STALE_AFTER_MS;
 }
 
-/* How the two rows' cities relate: "same" (equal), "county" (a county and
-   a city inside it), "unknown" (one or both blank) or "conflict". */
-export function placeRelation(a: QueueTwinRow, b: QueueTwinRow): "same" | "county" | "unknown" | "conflict" {
-  const ca = cityKey(a.city);
-  const cb = cityKey(b.city);
-  if (!ca || !cb) return "unknown";
-  if (ca === cb) return "same";
-  if (countyContains(ca, cb) || countyContains(cb, ca)) return "county";
-  return "conflict";
-}
-const hasPin = (r: QueueTwinRow) => r.latitude != null && r.longitude != null;
+/* A lu.ma link names one event only on a Luma event row (evt-...). */
+const lumaEvent = (r: QueueTwinRow) => r.source === "luma" && Boolean(r.externalId?.startsWith("evt-"));
 
-export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: TitleMatch): boolean {
-  if (mtDayKey(a.startsAt) !== mtDayKey(b.startsAt)) return false;
-  const apart = Math.abs(a.startsAt.getTime() - b.startsAt.getTime());
-  if (apart > TWIN_WINDOW_MS) return false;
-  /* Known different places are two events, whatever the title, the link,
-     the map pins or the source ("Rust Builders Night" at Kiln in Salt Lake
-     City and at the Provo library, even under one shared registration URL,
-     with pins a block apart or one row a Luma pointer). These vetoes run
-     before every positive match, the shared link included. */
-  const place = placeRelation(a, b);
-  if (place === "conflict") return false;
-  if (locationsConflict(a, b)) return false;
-  if (distinctVenues(a, b)) return false;
-  const la = listingKey(a.link);
-  const sameListing = Boolean(la && la === listingKey(b.link));
-  /* Different start minutes: the same listing only across two sources. One
-     source listing a title twice at two times is two sessions, even when
-     both share one registration link (same rule as same-day-twins.ts). */
-  if (apart !== 0) return sameListing && a.source !== b.source;
-  if (sameListing) return true;
-  /* Titles that differ in a parenthetical ("Python Workshop (Beginner)" and
-     "(Advanced)" at one college, one minute) are two classes unless they
-     are one listing, checked above. */
-  if (match !== "exact" && parentheticalsDiffer(a.title, b.title)) return false;
-  if (venueEvidence(a, b)) return true;
-  if (match !== "exact") return false;
-  /* A Luma calendar's external listing only points at an event hosted
-     elsewhere (same rule as same-day-twins.ts). */
-  if (isCalendarPointer(a) || isCalendarPointer(b)) return true;
-  if (words(normalizeEventTitle(a.title)).length < MIN_CITY_MATCH_WORDS) return false;
-  if (place === "same") return true;
-  return (
-    place === "county" &&
-    a.source === b.source &&
-    coarseVenue(a) &&
-    coarseVenue(b) &&
-    !hasPin(a) &&
-    !hasPin(b)
-  );
+/* A: same source, same upstream listing id. */
+export function sameListing(a: QueueTwinRow, b: QueueTwinRow): boolean {
+  if (a.source !== b.source) return false;
+  const ka = listingKey(a.link);
+  if (ka === null || ka !== listingKey(b.link)) return false;
+  return !ka.startsWith("luma:") || (lumaEvent(a) && lumaEvent(b));
 }
 
-function isCalendarPointer(r: QueueTwinRow): boolean {
-  return r.source === "luma" && Boolean(r.externalId?.startsWith("calev-"));
+/* B: `stale` is a relist of `fresh`: same source, title and start minute,
+   `stale` no longer seen by the scraper, `fresh` still seen. */
+export function staleRelist(stale: QueueTwinRow, fresh: QueueTwinRow, now: Date): boolean {
+  if (stale.source !== fresh.source) return false;
+  if (stale.startsAt.getTime() !== fresh.startsAt.getTime()) return false;
+  const t = plainTitle(stale.title);
+  if (!t || PLACEHOLDER_TITLE_RE.test(t) || t !== plainTitle(fresh.title)) return false;
+  return !seenByScraper(stale, now) && seenByScraper(fresh, now);
 }
 
-/* A real venue: named, not a placeholder, more than a city or county. */
-const specificVenue = (r: QueueTwinRow) => {
-  const v = venueName(r.venueName);
-  return Boolean(v) && !PLACEHOLDER_VENUE_RE.test(v) && !coarseVenue(r);
-};
-
-/* Both rows name a specific venue and the names differ. */
-function distinctVenues(a: QueueTwinRow, b: QueueTwinRow): boolean {
-  return specificVenue(a) && specificVenue(b) && venueName(a.venueName) !== venueName(b.venueName);
+/* Evidence that `hide` duplicates `keep`, or null. Same Denver day always. */
+export function twinEvidence(hide: QueueTwinRow, keep: QueueTwinRow, now: Date): TwinEvidence | null {
+  if (hide.id === keep.id || mtDayKey(hide.startsAt) !== mtDayKey(keep.startsAt)) return null;
+  if (sameListing(hide, keep)) return "listing";
+  if (staleRelist(hide, keep, now)) return "relist";
+  return null;
 }
 
-/* Same named venue (not just a city), or map pins within 250 m. */
-function venueEvidence(a: QueueTwinRow, b: QueueTwinRow): boolean {
-  const va = venueName(a.venueName);
-  if (va && !PLACEHOLDER_VENUE_RE.test(va) && !coarseVenue(a) && !coarseVenue(b) && va === venueName(b.venueName)) return true;
-  if (!hasPin(a) || !hasPin(b)) return false;
-  const strip = (r: QueueTwinRow): TwinRow => ({ ...r, link: null, externalId: null, venueName: null });
-  return sameEventEvidence(strip(a), strip(b));
+/* Lower sorts first = kept. */
+function rank(r: QueueTwinRow, now: Date): number[] {
+  return [r.statusLocked ? 0 : 1, seenByScraper(r, now) ? 0 : 1, r.createdAt.getTime()];
 }
 
-/* Lower sorts first = kept. No freshness term: the classifier's duplicate
-   check (pendingFacts) treats the OLDER same-link pending row as the
-   original, and the two must name the same keeper. */
-function rank(r: QueueTwinRow): number[] {
-  return [r.statusLocked ? 0 : 1, NOT_COMMUNITY_RE.test(r.title) ? 1 : 0, r.createdAt.getTime()];
-}
-
-/* Ties on created_at break on id, matching (created_at, id) in SQL
-   (uuid order is the order of its lowercase hex text). */
-function compare(a: QueueTwinRow, b: QueueTwinRow): number {
-  const ra = rank(a);
-  const rb = rank(b);
+/* Ties on created_at break on id, matching (created_at, id) in SQL. */
+function compare(a: QueueTwinRow, b: QueueTwinRow, now: Date): number {
+  const ra = rank(a, now);
+  const rb = rank(b, now);
   for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
@@ -253,7 +122,7 @@ const hideable = (r: QueueTwinRow) => r.status === "pending" && !r.statusLocked 
 
 /* Plan the hides over upcoming pending + approved rows. Approved rows are
    only ever kept (the approved-vs-approved sweep is same-day-twins.ts). */
-export function planQueueTwinHides(rows: QueueTwinRow[]): QueueTwinHide[] {
+export function planQueueTwinHides(rows: QueueTwinRow[], now: Date): QueueTwinHide[] {
   const byDay = new Map<string, QueueTwinRow[]>();
   for (const r of rows) {
     if (r.status !== "pending" && r.status !== "approved") continue;
@@ -262,18 +131,14 @@ export function planQueueTwinHides(rows: QueueTwinRow[]): QueueTwinHide[] {
   }
   const out: QueueTwinHide[] = [];
   for (const day of byDay.values()) {
-    const twin = (a: QueueTwinRow, b: QueueTwinRow): TitleMatch | null => {
-      const m = matchTitles(a.title, b.title);
-      return m && queueTwinEvidence(a, b, m) ? m : null;
-    };
     const hidden = new Set<string>();
     /* 1. A pending row with an approved twin goes. */
-    const approved = day.filter((r) => r.status === "approved").sort((a, b) => compare(a, b));
+    const approved = day.filter((r) => r.status === "approved").sort((a, b) => compare(a, b, now));
     for (const p of day.filter(hideable)) {
       for (const a of approved) {
-        const m = twin(a, p);
-        if (m) {
-          out.push({ hide: p, keep: a, match: m });
+        const ev = twinEvidence(p, a, now);
+        if (ev) {
+          out.push({ hide: p, keep: a, evidence: ev });
           hidden.add(p.id);
           break;
         }
@@ -282,13 +147,13 @@ export function planQueueTwinHides(rows: QueueTwinRow[]): QueueTwinHide[] {
     /* 2. Pending twins: keep the best, drop rows twinned with it, repeat. */
     let rest = day
       .filter((r) => r.status === "pending" && !hidden.has(r.id))
-      .sort((a, b) => compare(a, b));
+      .sort((a, b) => compare(a, b, now));
     while (rest.length >= 2) {
       const [keep, ...others] = rest;
       const drop: QueueTwinHide[] = [];
       for (const r of others) {
-        const m = hideable(r) ? twin(keep, r) : null;
-        if (m) drop.push({ hide: r, keep, match: m });
+        const ev = hideable(r) ? twinEvidence(r, keep, now) : null;
+        if (ev) drop.push({ hide: r, keep, evidence: ev });
       }
       out.push(...drop);
       rest = others.filter((r) => !drop.some((d) => d.hide.id === r.id));

@@ -2,15 +2,16 @@
    (SELECTs only; never writes).
      op run --env-file=.env.local -- bun scripts/replay-queue-trim.ts
    1. Queue twins (lib/queue-twins.ts): the hides the dedup sweep would make,
-      and, as an audit, every same-day title match across ALL upcoming
-      pending + approved rows with whether it had identity evidence.
+      and, as an audit, every same-day pair across ALL upcoming pending +
+      approved rows that shares a listing id or a normalized title + start
+      minute, any source, with each row's scraper freshness.
    2. Low-confidence yes: pending rows whose STORED verdict decidePending
       now hides as autopilot:lowconf-yes. */
 import { and, asc, gt, inArray } from "drizzle-orm";
 import { db, events } from "../src/lib/db";
 import { decidePending } from "../src/lib/autopilot";
 import { loadSourceUrls, pendingFacts } from "../src/lib/autopilot-db";
-import { matchTitles, planQueueTwinHides, queueTwinEvidence } from "../src/lib/queue-twins";
+import { listingKey, plainTitle, planQueueTwinHides, seenByScraper, type QueueTwinRow } from "../src/lib/queue-twins";
 import { mtDayKey } from "../src/lib/time";
 import type { EventVerdict } from "../src/lib/verdict";
 
@@ -24,22 +25,26 @@ async function main() {
   const pending = rows.filter((r) => r.status === "pending");
   console.log(`${rows.length} upcoming rows (${pending.length} pending)`);
 
-  const short = (r: { id: string; status: string; title: string }) => `${r.id.slice(0, 8)} [${r.status}] ${r.title}`;
+  const short = (r: QueueTwinRow) =>
+    `${r.id.slice(0, 8)} [${r.status}] ${r.source} ${seenByScraper(r, now) ? "seen " : "STALE"} ${r.title}`;
   console.log("\n=== 1. Queue twins: planned hides");
-  const plan = planQueueTwinHides(rows);
-  for (const h of plan) console.log(`  HIDE ${short(h.hide)}\n    keep ${short(h.keep)}  (${h.match})`);
+  const plan = planQueueTwinHides(rows, now);
+  for (const h of plan) console.log(`  HIDE ${short(h.hide)}\n    keep ${short(h.keep)}  (${h.evidence})`);
   console.log(`  total ${plan.length}`);
 
-  console.log("\n=== 1b. Audit: every same-day title match, any status");
+  console.log("\n=== 1b. Audit: same-day pairs sharing a listing id, or a title + start minute");
+  const planned = new Set(plan.map((h) => h.hide.id));
   for (let i = 0; i < rows.length; i++)
     for (let j = i + 1; j < rows.length; j++) {
       const a = rows[i];
       const b = rows[j];
       if (mtDayKey(a.startsAt) !== mtDayKey(b.startsAt)) continue;
-      const m = matchTitles(a.title, b.title);
-      if (!m) continue;
-      const ev = queueTwinEvidence(a, b, m);
-      console.log(`  ${ev ? "TWIN " : "no-ev"} ${m.padEnd(9)} ${short(a)}\n                  ${short(b)}`);
+      const k = listingKey(a.link);
+      const sameId = k !== null && k === listingKey(b.link);
+      const sameTitle = a.startsAt.getTime() === b.startsAt.getTime() && plainTitle(a.title) === plainTitle(b.title);
+      if (!sameId && !sameTitle) continue;
+      const hit = planned.has(a.id) || planned.has(b.id) ? "HIDE " : "keep ";
+      console.log(`  ${hit} ${sameId ? `id ${k}` : "title+start"}\n      ${short(a)}\n      ${short(b)}`);
     }
 
   console.log("\n=== 2. Low-confidence yes (stored verdicts)");
