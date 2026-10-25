@@ -1,6 +1,7 @@
 import { db, events } from "./db";
-import { sql, inArray } from "drizzle-orm";
+import { sql, inArray, and, eq, gte } from "drizzle-orm";
 import { recordEventDecision } from "./review-log";
+import { findSameDayTwins } from "./same-day-twins";
 
 export interface DedupResult {
   clustersFound: number;
@@ -24,7 +25,13 @@ export interface DedupResult {
       "Real Estate and Business Networking - SLC", etc). Threshold of 4
       avoids eating 3-track conferences at one room.
 
-   Keeps the OLDEST event in each cluster as canonical; hides the rest.
+   4. Same-day twins (lib/same-day-twins.ts): same normalized title, same
+      Denver day, starts within 90 minutes, across sources. Catches a stale
+      deleted-and-reposted listing and one event listed on two calendars.
+      Keeps a locked row, then a row still being refreshed by scrapes, then
+      the oldest; locked rows are never hidden.
+
+   Keeps the OLDEST event in each of clusters 1-3 as canonical; hides the rest.
    Hide-only by design - manual restore happens via /admin/hidden. */
 export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
   /* Cluster A: identical title, threshold 2. Strictest signal - almost
@@ -103,6 +110,37 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
     });
   }
 
+  /* Cluster 4: same-day twins. Upcoming approved rows only - a past twin
+     no longer shows anywhere that matters. */
+  const now = new Date();
+  const upcoming = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      source: events.source,
+      startsAt: events.startsAt,
+      createdAt: events.createdAt,
+      updatedAt: events.updatedAt,
+      statusLocked: events.statusLocked,
+    })
+    .from(events)
+    .where(and(eq(events.status, "approved"), gte(events.startsAt, now)));
+  /* Run on what clusters 1-3 left visible, so a twin is never kept that
+     one of them is about to hide. */
+  const twinClusters = findSameDayTwins(
+    upcoming.filter((r) => !toHide.has(r.id)),
+    now,
+  );
+  for (const c of twinClusters) {
+    for (const r of c.drop) toHide.add(r.id);
+    details.push({
+      signature: `twin:${c.key}`,
+      source: c.keep.source,
+      kept: c.keep.title,
+      hiddenCount: c.drop.length,
+    });
+  }
+
   if (toHide.size > 0) {
     const ids = [...toHide];
     /* Snapshot the rows BEFORE hiding (all are status='approved' here, since
@@ -128,7 +166,7 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
   }
 
   return {
-    clustersFound: clusters.length,
+    clustersFound: clusters.length + twinClusters.length,
     eventsHidden: toHide.size,
     details,
   };
