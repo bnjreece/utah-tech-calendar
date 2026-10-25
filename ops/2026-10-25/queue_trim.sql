@@ -20,7 +20,8 @@
 -- Check the outcome with scripts/replay-queue-trim.ts or the daily digest.
 --
 -- Part 1 (queue twins) needs no SQL: the dedup sweep hides them on the first
--- scrape after the deploy (lib/queue-twins.ts). Dry run on 2026-10-25, 3 rows:
+-- scrape after the deploy (lib/queue-twins.ts). Dry run on 2026-10-25, 3 rows
+-- (re-run after Astra round 2, same 3 hides and the same 3 targets below):
 --   eb38b6cd UVU 2026 Bitcoin Conference: ... (keeps a66e6c84 2026 Bitcoin Conference: ...)
 --   2d5c4459 HackerX - Utah County - Employer Ticket - 12/14 (keeps 4d4ecb91)
 --   7a0d8b29 TECHSPO ... (Internet ~ AdTech ~ MarTech) (keeps 7a2cbc48 TECHSPO ... (AI ~ SaaS ~ AdTech ~ MarTech))

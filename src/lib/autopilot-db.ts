@@ -57,10 +57,18 @@ export async function pendingFacts(
   return { duplicate, seriesCount: Number(series?.n ?? 0) };
 }
 
+/* Tags as a jsonb parameter (SQL NULL for no array), so the guard compares
+   the whole array in order. A bare JS array in a drizzle sql template
+   renders as a parameter list, not an array. */
+export function tagsJson(tags: string[] | null | undefined): string | null {
+  return tags == null ? null : JSON.stringify(tags);
+}
+
 /* Apply a hide or publish as ONE statement: the UPDATE only matches while the
    row is still pending, unlocked, scraped, upcoming, the gate is still on and
-   every column the classifier read is unchanged (so a human click or a
-   re-scrape since classification makes it a no-op). The ledger row is
+   every column the classifier read is unchanged, tags included (they drive
+   the crypto hold), so a human click or a re-scrape since classification
+   makes it a no-op. The ledger row is
    inserted from the UPDATE's RETURNING, so both happen or neither does.
    Returns true when the row changed. */
 export async function applyPendingDecision(
@@ -88,6 +96,7 @@ export async function applyPendingDecision(
         AND link IS NOT DISTINCT FROM ${r.link}::text
         AND is_online IS NOT DISTINCT FROM ${r.isOnline}::boolean
         AND source_id IS NOT DISTINCT FROM ${r.sourceId}::uuid
+        AND to_jsonb(tags) IS NOT DISTINCT FROM ${tagsJson(r.tags)}::jsonb
         AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
       RETURNING id, source_id, source
     )

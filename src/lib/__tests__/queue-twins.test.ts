@@ -199,6 +199,41 @@ describe("planQueueTwinHides: placeholder venues are not evidence (Astra round 1
   });
 });
 
+describe("planQueueTwinHides: venues and sessions (Astra round 2)", () => {
+  const d = new Date("2026-11-12T01:00:00Z");
+  test("one city, two different named venues, no pins: two events", () => {
+    expect(hides([
+      row({ title: "Rust Builders Night", startsAt: d, venueName: "Kiln", city: "Salt Lake City" }),
+      row({ title: "Rust Builders Night", startsAt: d, venueName: "Salt Lake City Public Library", city: "Salt Lake City", createdAt: new Date("2026-09-10T00:00:00Z") }),
+    ])).toEqual([]);
+  });
+  test("one city, one named venue and one city-only venue still match", () => {
+    const a = row({ title: "Rust Builders Night", startsAt: d, venueName: "Kiln", city: "Salt Lake City" });
+    const b = row({ title: "Rust Builders Night", startsAt: d, venueName: "Salt Lake City", city: "Salt Lake City", createdAt: new Date("2026-09-10T00:00:00Z") });
+    expect(hides([a, b])).toEqual([[b.title, a.title]]);
+  });
+  test("one source, one registration link, two start times: two sessions", () => {
+    const link = "https://example.org/register/makerspace-tour";
+    const at = (h: number) => new Date(Date.UTC(2026, 10, 12, h));
+    expect(hides([
+      row({ title: "Community Makerspace Tour", source: "html-calendar", externalId: "tour-1600", link, startsAt: at(16), venueName: "Lehi Makerspace", city: "Lehi" }),
+      row({ title: "Community Makerspace Tour", source: "html-calendar", externalId: "tour-1700", link, startsAt: at(17), venueName: "Lehi Makerspace", city: "Lehi" }),
+    ])).toEqual([]);
+  });
+  test("the same link at two start times from two sources is still one listing", () => {
+    const link = "https://example.org/register/makerspace-tour";
+    const a = row({ title: "Community Makerspace Tour", source: "html-calendar", link, startsAt: new Date("2026-11-12T16:00:00Z"), city: "Lehi" });
+    const b = row({ title: "Community Makerspace Tour", source: "luma", link, startsAt: new Date("2026-11-12T16:30:00Z"), city: "Lehi", createdAt: new Date("2026-09-10T00:00:00Z") });
+    expect(hides([a, b])).toEqual([[b.title, a.title]]);
+  });
+  test("an approved session never hides a pending session of the same source at another time", () => {
+    const link = "https://example.org/register/makerspace-tour";
+    const approved = row({ title: "Community Makerspace Tour", source: "html-calendar", link, startsAt: new Date("2026-11-12T16:00:00Z"), status: "approved" });
+    const pending = row({ title: "Community Makerspace Tour", source: "html-calendar", link, startsAt: new Date("2026-11-12T17:00:00Z") });
+    expect(hides([approved, pending])).toEqual([]);
+  });
+});
+
 describe("matchTitles and listingKey", () => {
   test("title matches", () => {
     expect(matchTitles("HackerX - Employer Ticket", "HackerX - Employer Ticket")).toBe("exact");

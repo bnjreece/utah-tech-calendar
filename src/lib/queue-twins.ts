@@ -27,13 +27,16 @@ import { mtDayKey } from "./time";
      ("VIP Section", "After Party", "Day 2", "Part 8", a number); AND
    - there is IDENTITY evidence:
      . the same listing (same link, or the same Eventbrite event id under a
-       renamed slug), within 90 minutes; or, at the same start minute and
-       with compatible places (below),
+       renamed slug): at the same start minute, or within 90 minutes from
+       two different sources (one source listing a title at two times is two
+       sessions, even under one registration link); or, at the same start
+       minute and with compatible places (below),
      . same venue name or map pins within 250 m (exact or contained title),
        when the locations do not conflict (lib/same-day-twins.ts); a
        placeholder venue ("TBD", "Online", "Zoom") is never a venue; or
      . exact title only, with a title of three or more words so a generic
-       "Monthly Meetup" never matches: the same city, or the same source
+       "Monthly Meetup" never matches, and never when the two rows name
+       two different specific venues: the same city, or the same source
        with neither row giving more than a city or county as its venue and
        one row's city inside the other's county ("HackerX - Utah County"
        listed at "Provo" and at "Utah County").
@@ -157,8 +160,12 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
   const apart = Math.abs(a.startsAt.getTime() - b.startsAt.getTime());
   if (apart > TWIN_WINDOW_MS) return false;
   const la = listingKey(a.link);
-  if (la && la === listingKey(b.link)) return true;
-  if (apart !== 0) return false;
+  const sameListing = Boolean(la && la === listingKey(b.link));
+  /* Different start minutes: the same listing only across two sources. One
+     source listing a title twice at two times is two sessions, even when
+     both share one registration link (same rule as same-day-twins.ts). */
+  if (apart !== 0) return sameListing && a.source !== b.source;
+  if (sameListing) return true;
   const place = placeRelation(a, b);
   if (place === "conflict") return false;
   if (locationsConflict(a, b)) return false;
@@ -168,6 +175,9 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
      elsewhere (same rule as same-day-twins.ts). */
   if (isCalendarPointer(a) || isCalendarPointer(b)) return true;
   if (words(normalizeEventTitle(a.title)).length < MIN_CITY_MATCH_WORDS) return false;
+  /* Two different named venues in one city are two events, whatever the
+     title ("Rust Builders Night" at Kiln and at the library). */
+  if (distinctVenues(a, b)) return false;
   if (place === "same") return true;
   return (
     place === "county" &&
@@ -181,6 +191,17 @@ export function queueTwinEvidence(a: QueueTwinRow, b: QueueTwinRow, match: Title
 
 function isCalendarPointer(r: QueueTwinRow): boolean {
   return r.source === "luma" && Boolean(r.externalId?.startsWith("calev-"));
+}
+
+/* A real venue: named, not a placeholder, more than a city or county. */
+const specificVenue = (r: QueueTwinRow) => {
+  const v = venueName(r.venueName);
+  return Boolean(v) && !PLACEHOLDER_VENUE_RE.test(v) && !coarseVenue(r);
+};
+
+/* Both rows name a specific venue and the names differ. */
+function distinctVenues(a: QueueTwinRow, b: QueueTwinRow): boolean {
+  return specificVenue(a) && specificVenue(b) && venueName(a.venueName) !== venueName(b.venueName);
 }
 
 /* Same named venue (not just a city), or map pins within 250 m. */
