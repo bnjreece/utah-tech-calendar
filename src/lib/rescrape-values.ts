@@ -9,8 +9,10 @@ import { rescrapeTagsSql } from "./tag-merge";
    - partial: the adapter's detail fetch failed (e.g. rate-limited), so the
      item carries list-level stand-ins: a "Hosted by ..." line for a body, an
      address for a venue, no cover. Refresh its title and times, keep the
-     body, link, venue, map pin and cover a full scrape stored earlier, and
-     keep every stored tag.
+     body, link, venue, map pin and cover a full scrape stored earlier.
+     Its tags are recomputed like a full scrape's, from the STORED body
+     (see tagDescription), so a partial rescrape canonicalizes the row and
+     drops tags from retired rules instead of keeping them forever.
    - tags are merged inside the UPDATE from the row's current tags
      (lib/tag-merge.ts), never written from a value read earlier: the same
      Luma event is scraped by several calendars (the official Hard Tech Week
@@ -46,10 +48,21 @@ export function rescrapeUpdateValues<
   const { groupId, isOnline, tags, ...rest } = base;
   const out: Record<string, unknown> = {
     ...rest,
-    tags: rescrapeTagsSql(tags, { slugs: SPECIAL_WEEK_SLUGS, keepAll: opts.partial }, opts.llmPairs),
+    tags: rescrapeTagsSql(tags, { slugs: SPECIAL_WEEK_SLUGS }, opts.llmPairs),
   };
   if (!opts.groupLocked) out.groupId = groupId;
   if (!opts.onlineLocked && !opts.partial) out.isOnline = isOnline;
   if (opts.partial) for (const k of KEPT_ON_PARTIAL) delete out[k];
   return out as Partial<Omit<T, "tags">> & { tags: SQL };
+}
+
+/* The description a rescrape infers tags from. A partial item's body is
+   a list-level stand-in ("Hosted by ..."), and the stored body is kept
+   (KEPT_ON_PARTIAL), so its tags come from the stored body. */
+export function tagDescription(
+  item: { description?: string | null; partial?: boolean },
+  stored: string | null | undefined,
+): string | null | undefined {
+  if (item.partial === true && stored) return stored;
+  return item.description;
 }

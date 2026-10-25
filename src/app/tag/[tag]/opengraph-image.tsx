@@ -11,7 +11,7 @@
 import { ImageResponse } from "next/og";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db, events } from "@/lib/db";
-import { getTagMeta } from "@/lib/tag-taxonomy";
+import { getTagMeta, tagDisplayName } from "@/lib/tag-taxonomy";
 import { canonicalTag, tagQueryVariants } from "@/lib/auto-tag";
 import { toSlug } from "@/lib/slugs";
 
@@ -73,7 +73,7 @@ export default async function TagOgImage({
   /* Resolve to the canonical tag string via the taxonomy first; if
      it's not curated, fall back to the slug itself capitalized. */
   const meta = getTagMeta(canonicalTag(slug) ?? slug);
-  const display = meta?.display ?? slug.charAt(0).toUpperCase() + slug.slice(1);
+  const display = meta?.display ?? tagDisplayName(canonicalTag(slug) ?? slug);
   const intro =
     meta?.intro ??
     `Every upcoming in-person Utah ${display} event we can find. Curated, tagged, scannable.`;

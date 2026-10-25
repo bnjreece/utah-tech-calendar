@@ -9,7 +9,7 @@ import { EditorialLinearCard } from "@/components/variant-cards";
 import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { toSlug, eventSlug } from "@/lib/slugs";
-import { getTagMeta, getAllCanonicalTags, type TagMeta } from "@/lib/tag-taxonomy";
+import { getTagMeta, getAllCanonicalTags, tagDisplayName, type TagMeta } from "@/lib/tag-taxonomy";
 import { getSpecialWeek } from "@/lib/special-weeks";
 import { canonicalTag, RETIRED_TAG_SEARCH, TAG_ALIASES, tagQueryVariants } from "@/lib/auto-tag";
 
@@ -88,13 +88,6 @@ async function fetchTagEvents(tag: string): Promise<EventWithGroup[]> {
   }));
 }
 
-function tagTitle(tag: string): string {
-  return tag
-    .split(/[\s-]+/)
-    .map((w) => (w.length <= 3 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1).toLowerCase()))
-    .join(" ");
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -103,7 +96,7 @@ export async function generateMetadata({
   const { tag: slug } = await params;
   const { tag, meta } = await tagFromSlug(slug);
   if (!tag) return { title: "Tag not found" };
-  const display = meta?.display ?? tagTitle(tag);
+  const display = meta?.display ?? tagDisplayName(tag);
   const title = meta?.seoTitle ?? `Utah ${display} Events`;
   const description =
     meta?.seoDescription ??
@@ -130,7 +123,7 @@ export default async function TagPage({
   const { tag, meta } = await tagFromSlug(slug);
   if (!tag) notFound();
   const evts = await fetchTagEvents(tag);
-  const display = meta?.display ?? tagTitle(tag);
+  const display = meta?.display ?? tagDisplayName(tag);
 
   /* Only emit ItemList JSON-LD when we have content - Google treats an
      empty ItemList as a soft-quality signal, so a dry-week vertical
@@ -167,8 +160,8 @@ export default async function TagPage({
       <p className="mt-4 max-w-[62ch] text-pretty text-base sm:text-lg text-ink-soft leading-relaxed">
         {meta?.intro ??
           (evts.length > 0
-            ? `${evts.length} upcoming in-person Utah ${display} ${evts.length === 1 ? "event" : "events"}. Meetups, conferences, workshops, and developer talks tagged ${tag}. Curated from ${SITE_NAME}.`
-            : `Nothing on the schedule with the ${tag} tag right now. Check back soon, or submit one below.`)}
+            ? `${evts.length} upcoming in-person Utah ${display} ${evts.length === 1 ? "event" : "events"}. Meetups, conferences, workshops, and developer talks tagged ${display}. Curated from ${SITE_NAME}.`
+            : `Nothing on the schedule with the ${display} tag right now. Check back soon, or submit one below.`)}
       </p>
       {(() => {
         const anchors = meta?.anchors;

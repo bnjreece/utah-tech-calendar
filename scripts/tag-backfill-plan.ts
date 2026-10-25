@@ -8,7 +8,8 @@
      adapter's own tags (recurrence config, Utah Geek Events), the source's
      defaultTags and special-week tags, then the row's stored classifier
      suggestions through the alias map + allowlist, then the special-week
-     tags already on the row (they always survive).
+     tags already on the row (they always survive), then implications
+     (hard-tech) over the whole result.
    - a manual row (never rescraped): its own tags through the alias map,
      plus the classifier suggestions (what classification now merges).
 
@@ -74,9 +75,9 @@ export function newTagsFor(r: Row): string[] {
     specialWeek: specialWeekTagsFor({ title: r.title, startsAt: new Date(r.starts_at) }),
   });
   const kept = current.filter((t) => SPECIAL_WEEK_SLUGS.has(t));
-  const out: string[] = [];
-  for (const t of [...next, ...llm, ...kept]) if (!out.includes(t)) out.push(t);
-  return out;
+  /* Implications over the whole merge, as lib/tag-merge.ts does: a kept
+     week tag still brings hard-tech. */
+  return finalizeTags([...next, ...llm, ...kept]);
 }
 
 const same = (a: string[] | null, b: string[]) => {
@@ -269,7 +270,10 @@ COMMIT;
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+/* Run only as a script, so tests can import newTagsFor. */
+if (process.argv[1]?.endsWith("tag-backfill-plan.ts")) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

@@ -1,5 +1,5 @@
 -- ROLLBACK of tag_cleanup_past.sql: restores the tags it replaced.
--- Generated 2026-10-25T16:07:58.253Z by scripts/tag-backfill-plan.ts from a read-only SELECT.
+-- Generated 2026-10-25T16:20:49.492Z by scripts/tag-backfill-plan.ts from a read-only SELECT.
 -- Scope: approved events with starts_at < now() whose tags differ from what the
 -- new tag pipeline produces (2026-10-25 tag cleanup: alias map, title-first topic
 -- rules, hard-tech umbrella, classifier suggestedTags merged). Upcoming rows are

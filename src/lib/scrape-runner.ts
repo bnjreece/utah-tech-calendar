@@ -4,7 +4,7 @@ import { eventAdapters, type EventItem } from "./scrapers";
 import { buildEventTags, isCertSpam, llmTagPairs } from "./auto-tag";
 import { recordEventDecision } from "./review-log";
 import { specialWeekTagsFor } from "./special-weeks";
-import { rescrapeUpdateValues } from "./rescrape-values";
+import { rescrapeUpdateValues, tagDescription } from "./rescrape-values";
 
 export interface ScrapeResult {
   sourceId: string;
@@ -157,6 +157,7 @@ async function upsertEvent(
       id: events.id,
       groupLocked: events.groupLocked,
       onlineLocked: events.onlineLocked,
+      description: events.description,
     })
     .from(events)
     .where(sql`${events.source} = ${item.source} AND ${events.externalId} = ${item.externalId}`)
@@ -178,10 +179,13 @@ async function upsertEvent(
      suggestedTags are merged inside the rescrape UPDATE (lib/tag-merge.ts)
      and right after classification (lib/classify.ts), with the same
      scrub. */
-  const certSpam = isCertSpam(`${item.title} ${item.description ?? ""}`);
+  /* A partial rescrape keeps the stored body, so it tags from that body
+     (lib/rescrape-values.ts tagDescription). */
+  const tagDesc = tagDescription(item, existing[0]?.description);
+  const certSpam = isCertSpam(`${item.title} ${tagDesc ?? ""}`);
   const tags = buildEventTags({
     title: item.title,
-    description: item.description,
+    description: tagDesc,
     supplied: item.tags,
     injected: injectedTags,
     specialWeek: specialWeekTagsFor(item),

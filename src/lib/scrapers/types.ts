@@ -19,7 +19,8 @@ export interface EventItem {
   groupExternalId?: string;
   /* Set when the adapter could only build this item from list data (its
      detail fetch failed). The scrape runner then refreshes the stored row's
-     title and times only, keeping its description, venue, cover and tags. */
+     title and times only, keeping its description, venue and cover, and
+     recomputes its tags from the stored description. */
   partial?: boolean;
 }
 

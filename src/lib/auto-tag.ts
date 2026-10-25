@@ -212,6 +212,15 @@ const TAG_IMPLIES: Readonly<Record<string, readonly string[]>> = {
   "hard-tech-week": ["hard-tech"],
 };
 
+/* Every (tag, implied tag) pair, so a SQL merge (lib/tag-merge.ts) can
+   apply implications to the final array, including tags it retained from
+   the row. */
+export function tagImplicationPairs(): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  for (const [from, tos] of Object.entries(TAG_IMPLIES)) for (const to of tos) out.push([from, to]);
+  return out;
+}
+
 /* Lowercased, trimmed, aliased. null = drop it. */
 export function canonicalTag(tag: string): string | null {
   const t = tag.trim().toLowerCase();
