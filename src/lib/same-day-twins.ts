@@ -1,6 +1,5 @@
 import { normalizeEventTitle } from "./autopilot";
 import { mtDayKey } from "./time";
-import { SPECIAL_WEEK_SLUGS } from "./special-weeks";
 
 /* Same-day twins: one event listed more than once, under the same title on
    the same Denver day at start times close together. The cross-post sweep
@@ -10,15 +9,23 @@ import { SPECIAL_WEEK_SLUGS } from "./special-weeks";
    or a Silicon Slopes listing the calendar repeats.
 
    Title + day + time alone is not identity: two groups can each run a
-   "Monthly Meetup" the same evening in different cities. So a pair is only
-   a twin when it ALSO has one piece of identity evidence:
-   - the same link (lu.ma and luma.com count as one host; query and
-     fragment ignored);
-   - the same venue: the same venue name, or map pins within 250 m;
-   - one row is a Luma calendar's external listing (externalId calev-...),
-     which is only a pointer to an event hosted elsewhere, and both start at
-     the same minute.
-   A row with none of these stays visible even when the title matches.
+   "Monthly Meetup" the same evening in different cities, and one host can
+   run the same tour twice an hour apart. So a pair is only a twin when it
+   ALSO has identity evidence, and the evidence needed depends on time:
+   - Different start minutes: only the same link (lu.ma and luma.com count
+     as one host; query and fragment ignored), and only across two sources.
+     One source listing a title twice at two times is two sessions.
+   - The same start minute: the same link, or, when the two locations do
+     not conflict, the same venue (same venue name, or map pins within
+     250 m), or one row being a Luma
+     calendar's external listing (externalId calev-...), which is only a
+     pointer to an event hosted elsewhere.
+   Locations conflict when both rows have map pins more than 1 km apart,
+   or both venues go on past the name (a street or a city) and that next
+   part differs ("Kiln, 26 S Rio Grande St, Salt Lake City" vs "Kiln, 2701
+   N Thanksgiving Way, Lehi", or "Kiln, Salt Lake City" vs "Kiln, Lehi").
+   A row with none of this evidence stays visible even when the title
+   matches: a missed duplicate is a nuisance, a hidden event is a loss.
 
    A deleted-and-reposted Luma listing (the July Hard Tech Week Opening
    Party at Clark Planetarium) has a different venue, link and time from its
@@ -40,7 +47,6 @@ export interface TwinRow {
   createdAt: Date;
   updatedAt: Date;
   statusLocked: boolean;
-  tags: string[] | null;
 }
 
 /* Starts further apart than this are treated as separate sessions. */
@@ -50,6 +56,9 @@ export const TWIN_WINDOW_MS = 90 * 60 * 1000;
 export const STALE_AFTER_MS = 2 * 24 * 60 * 60 * 1000;
 /* Two map pins this close are one venue. */
 export const SAME_VENUE_METERS = 250;
+/* Two map pins further apart than this are two places, whatever the venue
+   names say (geocoders can put one building a few hundred meters apart). */
+export const CONFLICT_METERS = 1000;
 
 const PLACEHOLDER_TITLE_RE = /^(tbd|tba|to be (announced|determined)|untitled( event)?|event)$/;
 const PLACEHOLDER_VENUE_RE = /^(online|virtual|zoom|tbd|tba|to be (announced|determined)|none)$/;
@@ -66,11 +75,23 @@ export function normalizeLink(link: string | null | undefined): string | null {
   }
 }
 
+function venueParts(v: string | null): string[] {
+  if (!v) return [];
+  return v
+    .split(",")
+    .map((p) => p.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim())
+    .filter(Boolean);
+}
+
 /* The venue's name (first comma segment), letters and digits only. */
 function venueKey(v: string | null): string | null {
-  if (!v) return null;
-  const k = v.split(",")[0].toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const k = venueParts(v)[0];
   return k && !PLACEHOLDER_VENUE_RE.test(k) ? k : null;
+}
+
+/* What follows the name (second comma segment: a street or a city). */
+function venueStreet(v: string | null): string | null {
+  return venueParts(v)[1] ?? null;
 }
 
 function coords(r: TwinRow): [number, number] | null {
@@ -91,18 +112,29 @@ function isCalendarPointer(r: TwinRow): boolean {
   return r.source === "luma" && Boolean(r.externalId?.startsWith("calev-"));
 }
 
+/* True when the two rows are known to be in different places. */
+export function locationsConflict(a: TwinRow, b: TwinRow): boolean {
+  const ca = coords(a);
+  const cb = coords(b);
+  if (ca && cb && metersApart(ca, cb) > CONFLICT_METERS) return true;
+  const sa = venueStreet(a.venueName);
+  const sb = venueStreet(b.venueName);
+  return Boolean(sa && sb && sa !== sb);
+}
+
 /* Identity evidence beyond title, day and time (see the header). */
 export function sameEventEvidence(a: TwinRow, b: TwinRow): boolean {
   const la = normalizeLink(a.link);
-  if (la && la === normalizeLink(b.link)) return true;
+  const sameLink = Boolean(la && la === normalizeLink(b.link));
+  if (a.startsAt.getTime() !== b.startsAt.getTime()) return sameLink && a.source !== b.source;
+  if (sameLink) return true;
+  if (locationsConflict(a, b)) return false;
   const va = venueKey(a.venueName);
   if (va && va === venueKey(b.venueName)) return true;
   const ca = coords(a);
   const cb = coords(b);
   if (ca && cb && metersApart(ca, cb) <= SAME_VENUE_METERS) return true;
-  if ((isCalendarPointer(a) || isCalendarPointer(b)) && a.startsAt.getTime() === b.startsAt.getTime())
-    return true;
-  return false;
+  return isCalendarPointer(a) || isCalendarPointer(b);
 }
 
 function rank(r: TwinRow, now: Date): number[] {
@@ -124,12 +156,6 @@ export interface TwinCluster {
   key: string;
   keep: TwinRow;
   drop: TwinRow[];
-  /* Special-week tags a dropped row carries and the kept row lacks. The
-     sweep adds them to the kept row so hiding a duplicate never takes the
-     event out of a week's filtered view (the official Hard Tech Week
-     calendar tags its own listing; the older Eventbrite row it duplicates
-     does not have the tag, and its title may not earn it). */
-  carryTags: string[];
 }
 
 /* Group approved rows into twin clusters. Each cluster keeps its best row
@@ -157,13 +183,7 @@ export function findSameDayTwins(rows: TwinRow[], now: Date): TwinCluster[] {
           Math.abs(r.startsAt.getTime() - keep.startsAt.getTime()) <= TWIN_WINDOW_MS &&
           sameEventEvidence(keep, r),
       );
-      if (drop.length > 0) {
-        const have = new Set(keep.tags ?? []);
-        const carry = new Set<string>();
-        for (const d of drop)
-          for (const t of d.tags ?? []) if (SPECIAL_WEEK_SLUGS.has(t) && !have.has(t)) carry.add(t);
-        out.push({ key, keep, drop, carryTags: [...carry] });
-      }
+      if (drop.length > 0) out.push({ key, keep, drop });
       rest = others.filter((r) => !drop.includes(r));
     }
   }

@@ -18,7 +18,6 @@ function row(o: Partial<TwinRow> & { id: string }): TwinRow {
     createdAt: new Date("2026-09-25T00:00:00Z"),
     updatedAt: new Date("2026-10-25T12:00:00Z"),
     statusLocked: false,
-    tags: [],
     ...o,
   };
 }
@@ -43,7 +42,6 @@ test("an external listing on the official calendar is a twin of the event it poi
     title: "Women in Tech Salt Lake City 2026",
     latitude: 40.5758504,
     longitude: -111.8920156,
-    tags: ["hard-tech-week"],
   });
   const ss = row({
     id: "ss",
@@ -54,7 +52,6 @@ test("an external listing on the official calendar is a twin of the event it poi
     venueName: "Silicon Slopes",
     startsAt: new Date("2026-10-27T17:30:00Z"),
     createdAt: new Date("2026-09-01T00:00:00Z"),
-    tags: ["ai", "founders"],
   });
   const vibe = row({
     id: "vibe",
@@ -62,18 +59,13 @@ test("an external listing on the official calendar is a twin of the event it poi
     link: "https://www.tickettailor.com/events/utahveteranbusinessresourcecenter/2327380",
     title: "Vibe Code Club for Entrepreneurs",
     startsAt: new Date("2026-10-27T17:30:00Z"),
-    tags: ["hard-tech-week"],
   });
   const clusters = findSameDayTwins([wit, eb, vibe, ss], now);
   assert.equal(clusters.length, 2);
   const w = clusters.find((c) => c.keep.id === "eb")!;
   assert.deepEqual(w.drop.map((r) => r.id), ["wit"]);
-  /* The kept row takes over the week tag, so the event stays in the
-     Hard Tech Week view. */
-  assert.deepEqual(w.carryTags, ["hard-tech-week"]);
   const v = clusters.find((c) => c.keep.id === "ss")!;
   assert.deepEqual(v.drop.map((r) => r.id), ["vibe"]);
-  assert.deepEqual(v.carryTags, ["hard-tech-week"]);
 
   /* The calendar pointer needs the same minute, not just the window. */
   const vibeLater = { ...vibe, startsAt: new Date("2026-10-27T18:00:00Z") };
@@ -101,6 +93,45 @@ test("same title, day and time with no shared link or venue are NOT twins", () =
   assert.deepEqual(findSameDayTwins([slc, provo, unknown], now), []);
 });
 
+test("one venue name in two places is NOT a twin: conflicting pins or addresses win", () => {
+  /* Astra round 2: Kiln has a Salt Lake City and a Lehi space. */
+  const slc = row({ id: "slc", title: "Monthly Meetup", source: "meetup", venueName: "Kiln, 26 S Rio Grande St, Salt Lake City", latitude: "40.766", longitude: "-111.904" });
+  const lehi = row({ id: "lehi", title: "Monthly Meetup", source: "luma", venueName: "Kiln, 2701 N Thanksgiving Way, Lehi", latitude: "40.428", longitude: "-111.893" });
+  assert.deepEqual(findSameDayTwins([slc, lehi], now), []);
+  /* Same venue text, pins about 38 km apart. */
+  const lehiNamed = { ...lehi, venueName: "Kiln" };
+  const slcNamed = { ...slc, venueName: "Kiln" };
+  assert.deepEqual(findSameDayTwins([slcNamed, lehiNamed], now), []);
+  /* No pins, but the venues name different cities or streets. */
+  const a = row({ id: "a", title: "Monthly Meetup", venueName: "Kiln, Salt Lake City" });
+  const b = row({ id: "b", title: "Monthly Meetup", source: "meetup", venueName: "Kiln, Lehi" });
+  assert.deepEqual(findSameDayTwins([a, b], now), []);
+  /* A pin conflict also defeats the calendar-pointer evidence. */
+  const ptr = row({ id: "ptr", title: "Monthly Meetup", externalId: "calev-abc", latitude: "40.428", longitude: "-111.893" });
+  assert.deepEqual(findSameDayTwins([slc, ptr], now), []);
+  /* Pins a few hundred meters apart (two geocoders, one building) with the
+     same venue name are still one event. */
+  const near = { ...lehiNamed, id: "near", latitude: "40.7695", longitude: "-111.904" };
+  assert.equal(findSameDayTwins([slcNamed, near], now).length, 1);
+});
+
+test("separate sessions need the same link from another source", () => {
+  /* Astra round 2: one source, same venue, an hour apart = two sessions. */
+  const v = "Fortem Technologies, 1064 S North County Blvd";
+  const nine = row({ id: "nine", title: "Facility Tour", venueName: v, startsAt: new Date("2026-10-30T15:00:00Z"), createdAt: new Date("2026-09-01T00:00:00Z") });
+  const ten = row({ id: "ten", title: "Facility Tour", venueName: v, startsAt: new Date("2026-10-30T16:00:00Z") });
+  assert.deepEqual(findSameDayTwins([nine, ten], now), []);
+  /* Same link, same source, different times: still two sessions. */
+  assert.deepEqual(findSameDayTwins([nine, { ...ten, link: nine.link }], now), []);
+  /* Another source, same venue, 30 minutes off: not enough. */
+  const eb = row({ id: "eb", title: "Facility Tour", source: "eventbrite", venueName: v, startsAt: new Date("2026-10-30T15:30:00Z") });
+  assert.deepEqual(findSameDayTwins([nine, eb], now), []);
+  /* Another source with the same link 30 minutes off: one event. */
+  const [c] = findSameDayTwins([nine, { ...eb, link: nine.link }], now);
+  assert.equal(c.keep.id, "nine");
+  assert.deepEqual(c.drop.map((r) => r.id), ["eb"]);
+});
+
 test("same venue or map pins within 250 m are twins; a deleted listing elsewhere is not", () => {
   const a = row({ id: "a", venueName: "Traeger Grills Headquarters, 533 S 400 W", createdAt: new Date("2026-09-01T00:00:00Z") });
   const b = row({ id: "b", source: "eventbrite", venueName: "Traeger Grills Headquarters" });
@@ -109,7 +140,6 @@ test("same venue or map pins within 250 m are twins; a deleted listing elsewhere
   const [ab] = findSameDayTwins([a, b], now);
   assert.equal(ab.keep.id, "a");
   assert.deepEqual(ab.drop.map((r) => r.id), ["b"]);
-  assert.deepEqual(ab.carryTags, []);
   assert.equal(findSameDayTwins([c, d], now).length, 1);
 
   /* The July Opening Party at Clark Planetarium (deleted on Luma, 6:30pm)

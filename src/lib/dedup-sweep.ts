@@ -3,6 +3,7 @@ import { sql, inArray, and, eq, gte } from "drizzle-orm";
 import { recordEventDecision } from "./review-log";
 import { findSameDayTwins } from "./same-day-twins";
 import { appendTagsSql } from "./tag-merge";
+import { planTagCarries } from "./dedup-tag-carry";
 
 export interface DedupResult {
   clustersFound: number;
@@ -131,7 +132,6 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
       createdAt: events.createdAt,
       updatedAt: events.updatedAt,
       statusLocked: events.statusLocked,
-      tags: events.tags,
     })
     .from(events)
     .where(and(eq(events.status, "approved"), gte(events.startsAt, now)));
@@ -151,16 +151,19 @@ export async function sweepCrossPostDuplicates(): Promise<DedupResult> {
     });
   }
 
-  /* Carry week tags to the kept row BEFORE hiding its twin, as one atomic
-     array merge (a concurrent scrape rewriting tags cannot drop it, see
-     lib/tag-merge.ts). If the hide below then fails, the tag
-     is on both rows, which is harmless. */
-  for (const c of twinClusters) {
-    if (c.carryTags.length === 0 || toHide.has(c.keep.id)) continue;
-    await db
-      .update(events)
-      .set({ tags: appendTagsSql(c.carryTags) })
-      .where(eq(events.id, c.keep.id));
+  /* Carry week tags to the surviving rows BEFORE hiding their twins, as
+     one atomic array merge each (a concurrent scrape rewriting tags cannot
+     drop it, see lib/tag-merge.ts). Covers every cluster, so a tagged row
+     hidden by an exact-title cluster hands its tag on too. If the hide
+     below then fails, the tag is on both rows, which is harmless. */
+  const clusterIds = [...clusters.map((c) => c.ids), ...twinClusters.map((c) => [c.keep.id, ...c.drop.map((r) => r.id)])];
+  if (toHide.size > 0) {
+    const involved = [...new Set(clusterIds.flat())];
+    const tagRows = await db.select({ id: events.id, tags: events.tags }).from(events).where(inArray(events.id, involved));
+    const carries = planTagCarries(clusterIds, toHide, new Map(tagRows.map((r) => [r.id, r.tags])));
+    for (const [id, add] of carries) {
+      await db.update(events).set({ tags: appendTagsSql(add) }).where(eq(events.id, id));
+    }
   }
 
   if (toHide.size > 0) {

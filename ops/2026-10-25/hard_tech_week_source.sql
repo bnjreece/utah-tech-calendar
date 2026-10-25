@@ -23,11 +23,13 @@
 --     unchecked upcoming rows per tick, so the ~44 new rows are scored over
 --     two ticks and are public in the meantime. With
 --     admin_settings.llm_gate_enabled = true (threshold 0.92 on 2026-10-25),
---     routeVerdict acts on an approved, unlocked row: crypto/web3 and
---     protected verticals always go to review ('pending'); a relevant,
---     non-spam verdict stays approved WHATEVER its confidence; confident
---     spam, or confident not-tech outside event-like categories, is hidden
---     ('llm-screened'); anything else flagged goes to review. The autopilot
+--     routeVerdict acts on an approved, unlocked row: crypto/web3 always
+--     goes to review ('pending'); otherwise a relevant, non-spam verdict
+--     stays approved WHATEVER its confidence (checked before the protected-
+--     vertical rule, so a relevant protected-vertical row stays approved);
+--     a protected-vertical row that is not relevant goes to review;
+--     confident spam, or confident not-tech outside event-like categories,
+--     is hidden ('llm-screened'); anything else flagged goes to review. The autopilot
 --     acts only on 'pending' rows, so it does not touch this source's rows.
 --     requires_review only picks the starting status; it does not bypass
 --     the gate.
@@ -44,8 +46,9 @@
 -- inserted approved (re-checked 2026-10-25: 53 upcoming feed entries, 9 of
 -- the 47 evt- ids in events under source 'luma', 8 approved + 1 pending).
 -- The sweep then hides the two external listings that duplicate an
--- existing row and moves their hard-tech-week tag onto it (simulated on
--- the live rows): Women in Tech Salt Lake City 2026 (same Eventbrite link)
+-- existing row and moves their hard-tech-week tag onto it (simulated with
+-- the round-2 twin rules on 169 live upcoming approved rows, re-read
+-- 2026-10-25; no exact/prefix/venue clusters today or with the new rows): Women in Tech Salt Lake City 2026 (same Eventbrite link)
 -- and Vibe Code Club for Entrepreneurs (calendar pointer, same minute as
 -- the Silicon Slopes row). It hides nothing on today's rows without the
 -- new source. The two other "Hard Tech Week" rows the 2026-10-25 audit
