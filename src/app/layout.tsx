@@ -154,7 +154,7 @@ export default function RootLayout({
                   compiled in cottonwood heights, utah · updated nightly
                 </p>
               </div>
-              <div className="flex items-baseline gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
+              <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em]">
                 <Link href="/discover" className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors">
                   discover
                 </Link>
