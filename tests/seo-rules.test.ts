@@ -54,7 +54,8 @@ function ev(over: Partial<EventJsonLdInput> = {}): EventJsonLdInput {
 
 test("homepage title is searchable and fits in 60 chars", () => {
   assert.ok(HOME_TITLE.length <= 60, `${HOME_TITLE.length} chars`);
-  assert.match(HOME_TITLE, /Utah Tech Events/);
+  assert.match(HOME_TITLE, /Utah Tech & Startup Events/);
+  assert.equal(HOME_TITLE.split("Utah Tech Calendar").length - 1, 1);
   assert.doesNotMatch(HOME_TITLE, /[—–]/);
 });
 

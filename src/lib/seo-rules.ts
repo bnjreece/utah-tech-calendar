@@ -36,7 +36,7 @@ export const FEED_ALTERNATE_TYPES = {
 export const TITLE_TEMPLATE = `%s · ${SITE_NAME}`;
 
 /* Homepage <title>: search words first, 60 chars or fewer. */
-export const HOME_TITLE = "Utah Tech Events Calendar: Startup, AI & Dev Meetups";
+export const HOME_TITLE = `Utah Tech & Startup Events · ${SITE_NAME}`;
 
 const BRAND_SUFFIX_RE = new RegExp(`\\s*[·|\\-–—:]\\s*${SITE_NAME}\\s*$`, "i");
 
