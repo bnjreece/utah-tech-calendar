@@ -23,8 +23,9 @@ export interface TagMeta {
   /* Display form for headlines: "Fintech", "Healthtech", "AI", etc.
      `tagTitle()` in the route is a fallback; this overrides. */
   display: string;
-  /* The `<title>` tag - hand-tuned for long-tail SEO. Keep under
-     60 chars to avoid Google truncation. */
+  /* The page part of the `<title>`, hand-tuned for long-tail SEO. Never
+     name the brand: the root layout template appends " · Utah Tech
+     Calendar". Keep it short so the brand mostly survives truncation. */
   seoTitle: string;
   /* Meta description, 130-155 chars. The first sentence is the hook
      in the SERP. */
@@ -47,7 +48,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "ai",
     display: "AI",
-    seoTitle: "Utah AI Events · Meetups, Conferences, Talks · Utah Tech Calendar",
+    seoTitle: "Utah AI Events · Meetups, Conferences, Talks",
     seoDescription:
       "Every upcoming in-person Utah AI event - meetups, conferences, workshops, hackathons. Curated from Silicon Slopes, Lehi, SLC, Provo, and BYU/U.",
     intro:
@@ -58,7 +59,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "fintech",
     display: "Fintech",
-    seoTitle: "Utah Fintech Events · Payments, Banking, Crypto · Utah Tech Calendar",
+    seoTitle: "Utah Fintech Events · Payments, Banking, Crypto",
     seoDescription:
       "Utah fintech meetups, talks, and conferences - payments, banking, lending, neobanks, wealthtech. Lehi cluster + SLC events curated weekly.",
     intro:
@@ -72,7 +73,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
        (lib/auto-tag.ts TAG_ALIASES), so /tag/healthtech redirects. */
     tag: "biotech",
     display: "Health & Life Sciences",
-    seoTitle: "Utah Health & Life Sciences Events · Biotech, Medtech · Utah Tech Calendar",
+    seoTitle: "Utah Health & Life Sciences Events · Biotech, Medtech",
     seoDescription:
       "Utah biotech, medtech and digital health events - life sciences talks, BioUtah meetups, device and pharma research. Recursion, Myriad, BD Medical, Intermountain.",
     intro:
@@ -83,7 +84,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "edtech",
     display: "Edtech",
-    seoTitle: "Utah Edtech Events · Learning Tech, LMS, K12 + Higher Ed · Utah Tech Calendar",
+    seoTitle: "Utah Edtech Events · Learning Tech, LMS, K12 + Higher Ed",
     seoDescription:
       "Utah edtech meetups and conferences - LMS, online learning, K-12 + higher ed platforms. Instructure (Canvas), Pluralsight, Civitas, BYU Continuing Ed.",
     intro:
@@ -95,7 +96,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "aerospace",
     display: "Aerospace & Defense",
-    seoTitle: "Utah Aerospace & Defense Events · Hill AFB, 47G · Utah Tech Calendar",
+    seoTitle: "Utah Aerospace & Defense Events · Hill AFB, 47G",
     seoDescription:
       "Utah aerospace and defense events - 47G meetups, Hill AFB industry days, Zero Gravity Summit. Northrop Grumman, Boeing, L3Harris, BAE.",
     intro:
@@ -108,7 +109,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
        robotics, energy, hardware. Outlives the Hard Tech Week tag. */
     tag: "hard-tech",
     display: "Hard Tech",
-    seoTitle: "Utah Hard Tech Events · Aerospace, Manufacturing, Robotics · Utah Tech Calendar",
+    seoTitle: "Utah Hard Tech Events · Aerospace, Manufacturing, Robotics",
     seoDescription:
       "Utah hard tech events - aerospace and defense, advanced manufacturing, composites, robotics, drones and energy. Facility tours, 47G roundtables, founder nights.",
     intro:
@@ -119,7 +120,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "gamedev",
     display: "Game Dev",
-    seoTitle: "Utah Game Dev Events · Unity, Unreal, Indie · Utah Tech Calendar",
+    seoTitle: "Utah Game Dev Events · Unity, Unreal, Indie",
     seoDescription:
       "Utah game development events - indie game jams, Unity meetups, BYU EAE / U of U Entertainment Arts showcases. WB Games SLC, Smart Bomb alumni.",
     intro:
@@ -131,7 +132,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "cybersecurity",
     display: "Cybersecurity",
-    seoTitle: "Utah Cybersecurity Events · Infosec, Pentest, AppSec · Utah Tech Calendar",
+    seoTitle: "Utah Cybersecurity Events · Infosec, Pentest, AppSec",
     seoDescription:
       "Utah cybersecurity meetups and conferences - infosec, pentest, AppSec, blue team, CTI. SaintCon, BSides SLC, OWASP Utah, monthly DEF CON groups.",
     intro:
@@ -142,7 +143,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "founders",
     display: "Founders",
-    seoTitle: "Utah Founder & Startup Events · Pitch Nights, Demos · Utah Tech Calendar",
+    seoTitle: "Utah Founder & Startup Events · Pitch Nights, Demos",
     seoDescription:
       "Utah startup founder events - pitch nights, founder dinners, accelerator demo days, investor meetups. Silicon Slopes, Kickstart, Pelion, Album VC.",
     intro:
@@ -153,7 +154,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "devops",
     display: "DevOps",
-    seoTitle: "Utah DevOps Events · Kubernetes, SRE, CI/CD · Utah Tech Calendar",
+    seoTitle: "Utah DevOps Events · Kubernetes, SRE, CI/CD",
     seoDescription:
       "Utah DevOps meetups - Kubernetes, SRE, CI/CD, observability, platform engineering. SLC + Lehi groups.",
     intro:
@@ -163,7 +164,7 @@ export const TAG_TAXONOMY: TagMeta[] = [
   {
     tag: "data",
     display: "Data",
-    seoTitle: "Utah Data Events · Engineering, Science, Analytics · Utah Tech Calendar",
+    seoTitle: "Utah Data Events · Engineering, Science, Analytics",
     seoDescription:
       "Utah data meetups - engineering, science, analytics, warehousing, ML pipelines. SLC + Lehi groups.",
     intro:

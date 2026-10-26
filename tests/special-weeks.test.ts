@@ -46,7 +46,7 @@ test("labels, dates and link", () => {
   const w = getSpecialWeek("hard-tech-week")!;
   assert.equal(specialWeekDates(w), "Oct 26 to 30");
   assert.equal(specialWeekDates({ ...w, eventFrom: "2026-10-30", eventTo: "2026-11-03" }), "Oct 30 to Nov 3");
-  assert.equal(specialWeekHref(w), "/?tags=hard-tech-week");
+  assert.equal(specialWeekHref(w), "/tag/hard-tech-week");
   assert.equal(tagLabel("hard-tech-week"), "Hard Tech Week");
   assert.equal(tagLabel("ai"), "ai");
   /* Copy rule: no em dashes. */

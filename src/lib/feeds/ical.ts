@@ -1,6 +1,7 @@
 import type { EventWithGroup } from "../queries";
 import { displayTitle } from "../display";
 import { displayTags, tagDisplayName } from "../tag-taxonomy";
+import { eventSlug } from "../slugs";
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -21,7 +22,10 @@ function escapeIcal(s: string): string {
     .replace(/;/g, "\\;");
 }
 
-export function eventsToIcal(events: EventWithGroup[], host: string): string {
+/* `host` only builds UIDs (kept stable so subscribers don't get duplicates);
+   `siteUrl` is where each event's URL points: our event page, with the
+   source link kept in the description as "RSVP:". */
+export function eventsToIcal(events: EventWithGroup[], host: string, siteUrl: string): string {
   const now = new Date();
   const lines: string[] = [
     "BEGIN:VCALENDAR",
@@ -51,7 +55,8 @@ export function eventsToIcal(events: EventWithGroup[], host: string): string {
       e.description ?? "",
       e.group ? `Group: ${e.group.name}` : "",
       displayTags(e.tags).length ? `Tags: ${displayTags(e.tags).map(tagDisplayName).join(", ")}` : "",
-      e.link ? `Link: ${e.link}` : "",
+      `Details: ${siteUrl}/event/${eventSlug(e.title, e.id)}`,
+      e.link ? `RSVP: ${e.link}` : "",
     ].filter(Boolean);
 
     lines.push(
@@ -64,7 +69,7 @@ export function eventsToIcal(events: EventWithGroup[], host: string): string {
       `DESCRIPTION:${escapeIcal(descriptionParts.join("\n\n"))}`,
     );
     if (location) lines.push(`LOCATION:${escapeIcal(location)}`);
-    if (e.link) lines.push(`URL:${e.link}`);
+    lines.push(`URL:${siteUrl}/event/${eventSlug(e.title, e.id)}`);
     lines.push("STATUS:CONFIRMED", "SEQUENCE:0", "END:VEVENT");
   }
 

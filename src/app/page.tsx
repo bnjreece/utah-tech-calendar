@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { unstable_cache } from "next/cache";
 import { parseFilters, filtersToSearchParams } from "@/lib/filters";
@@ -14,6 +15,8 @@ import { EditorialLinearBlock } from "@/components/variant-blocks";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/json-ld";
 import { SpecialWeekBanner } from "@/components/special-week-banner";
 import { activeSpecialWeeks, SPECIAL_WEEKS } from "@/lib/special-weeks";
+import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
+import { FEED_ALTERNATE_TYPES, HOME_TITLE, NOINDEX_FOLLOW } from "@/lib/seo-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +47,38 @@ const getCachedCounts = unstable_cache(
 );
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+/* The plain homepage canonicalizes to "/" (view, density and utm params
+   only change presentation). A filtered view (?tags=, ?q=, ?cities=...) is
+   a different list, so it is noindex,follow instead: the curated /tag and
+   /city pages are the indexable versions of those filters. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  const filtered = filtersToSearchParams(parseFilters(await searchParams)).toString() !== "";
+  return {
+    title: { absolute: HOME_TITLE },
+    alternates: filtered
+      ? { types: FEED_ALTERNATE_TYPES }
+      : { canonical: "/", types: FEED_ALTERNATE_TYPES },
+    robots: filtered ? NOINDEX_FOLLOW : undefined,
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      siteName: SITE_NAME,
+      title: HOME_TITLE,
+      description: SITE_DESCRIPTION,
+      url: absoluteUrl("/"),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: HOME_TITLE,
+      description: SITE_DESCRIPTION,
+    },
+  };
+}
 
 export default async function HomePage({
   searchParams,

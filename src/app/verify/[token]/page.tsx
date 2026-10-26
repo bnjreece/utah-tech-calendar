@@ -4,7 +4,7 @@ import { db, emailSubscriptions } from "@/lib/db";
 import { verifySubscriptionTokenDetailed } from "@/lib/subscription-token";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Confirm subscription · Utah Tech Calendar" };
+export const metadata = { title: "Confirm subscription", robots: { index: false, follow: false } };
 
 type Outcome = "ok" | "already" | "expired" | "invalid" | "error";
 

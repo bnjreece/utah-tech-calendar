@@ -15,7 +15,7 @@ import { mtDayKey } from "./time";
    inclusive. */
 
 export interface SpecialWeek {
-  /* Tag stored on events and used in URLs (?tags=<slug>). */
+  /* Tag stored on events and used in URLs (/tag/<slug>, ?tags=<slug>). */
   slug: string;
   label: string;
   /* One line for the banner. No em dashes. */
@@ -51,9 +51,12 @@ export function getSpecialWeek(slug: string): SpecialWeek | undefined {
   return SPECIAL_WEEKS.find((w) => w.slug === slug);
 }
 
-/* The filtered homepage view a banner and chip point at. */
+/* The week's landing page (/tag/<slug> resolves a special week before any
+   row is tagged), which the banner points at: an indexable page, unlike
+   the noindex filtered homepage view. The homepage chip still filters in
+   place via ?tags=. */
 export function specialWeekHref(w: SpecialWeek): string {
-  return `/?tags=${encodeURIComponent(w.slug)}`;
+  return `/tag/${encodeURIComponent(w.slug)}`;
 }
 
 function inDays(day: string, from: string, to: string): boolean {

@@ -1,9 +1,10 @@
 import { SubmitFlow } from "@/components/submit-flow";
 
 export const metadata = {
-  title: "Submit — Utah Tech Calendar",
+  title: "Submit a Utah Tech Event",
   description:
     "Paste an event URL and we'll extract it. Or suggest a whole calendar / source we should scrape on a recurring basis.",
+  alternates: { canonical: "/submit" },
 };
 
 export default function SubmitPage() {

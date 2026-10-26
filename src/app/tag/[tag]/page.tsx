@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
+import { cache } from "react";
 import { and, asc, eq, gte, or, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { specialWeekMatchSql, type EventWithGroup } from "@/lib/queries";
@@ -11,6 +12,7 @@ import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { toSlug, eventSlug } from "@/lib/slugs";
 import { getTagMeta, getAllCanonicalTags, tagDisplayName, type TagMeta } from "@/lib/tag-taxonomy";
 import { getSpecialWeek } from "@/lib/special-weeks";
+import { hubIsIndexable, NOINDEX_FOLLOW, stripBrand } from "@/lib/seo-rules";
 import { canonicalTag, RETIRED_TAG_SEARCH, TAG_ALIASES, tagQueryVariants } from "@/lib/auto-tag";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +56,8 @@ async function tagFromSlug(slug: string): Promise<{ tag: string; meta: TagMeta |
   return { tag: "", meta: null };
 }
 
-async function fetchTagEvents(tag: string): Promise<EventWithGroup[]> {
+/* cache(): generateMetadata and the page share one query per request. */
+const fetchTagEvents = cache(async (tag: string): Promise<EventWithGroup[]> => {
   const rows = await db
     .select({ event: events, group: groups })
     .from(events)
@@ -86,7 +89,7 @@ async function fetchTagEvents(tag: string): Promise<EventWithGroup[]> {
       address: r.event.address,
     }),
   }));
-}
+});
 
 export async function generateMetadata({
   params,
@@ -97,7 +100,10 @@ export async function generateMetadata({
   const { tag, meta } = await tagFromSlug(slug);
   if (!tag) return { title: "Tag not found" };
   const display = meta?.display ?? tagDisplayName(tag);
-  const title = meta?.seoTitle ?? `Utah ${display} Events`;
+  const title = stripBrand(meta?.seoTitle ?? `Utah ${display} Events`);
+  /* Same in-person upcoming count the page lists; thin pages stay out of
+     the index (and the sitemap, which counts the same way). */
+  const evts = await fetchTagEvents(tag);
   const description =
     meta?.seoDescription ??
     `Upcoming Utah ${display} events, meetups, conferences, workshops, and developer nights. Curated from Meetup, Eventbrite, Luma, and Silicon Slopes.`;
@@ -105,6 +111,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: `/tag/${slug}` },
+    robots: hubIsIndexable(evts.length) ? undefined : NOINDEX_FOLLOW,
     openGraph: {
       type: "website",
       title,

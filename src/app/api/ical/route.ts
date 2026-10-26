@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { parseFilters } from "@/lib/filters";
 import { queryEvents } from "@/lib/queries";
 import { eventsToIcal } from "@/lib/feeds/ical";
+import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "nodejs";
 
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
   const filters = parseFilters(request.nextUrl.searchParams);
   const events = await queryEvents(filters, 500);
   const host = request.headers.get("host") ?? "utahtechevents.com";
-  const ical = eventsToIcal(events, host);
+  const ical = eventsToIcal(events, host, SITE_URL);
 
   return new Response(ical, {
     status: 200,

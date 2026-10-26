@@ -4,6 +4,7 @@ import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { db, events } from "@/lib/db";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { listPastPeriodSlugs } from "@/lib/period";
+import { DEFAULT_OG_IMAGES } from "@/lib/seo-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
     "Browse what happened, month by month. Past Utah tech meetups, conferences, founder mixers, AI nights, and biotech demos archived for reference.",
   alternates: { canonical: "/archive" },
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     type: "website",
     title: `Archive · ${SITE_NAME}`,
     description: "Past Utah tech events, month by month.",

@@ -7,8 +7,10 @@ import { getEventById } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { EventJsonLd } from "@/components/json-ld";
 import { absoluteUrl } from "@/lib/seo";
+import { isEventIndexable, NOINDEX_FOLLOW, periodSlugFor, tagIsLinkable } from "@/lib/seo-rules";
+import { parsePeriod } from "@/lib/period";
 import { displayTitle } from "@/lib/display";
-import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
+import { eventSlug, extractIdPrefix, looksLikeUuid, toSlug } from "@/lib/slugs";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { mtDate, mtTime } from "@/lib/time";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
@@ -65,19 +67,27 @@ export async function generateMetadata({
      change when the placeholder is later updated by the organizer. */
   const canonical = `/event/${eventSlug(event.title, event.id)}`;
 
+  /* Hidden, pending and placeholder-titled events stay reachable (old
+     links, admin review) but out of the index. */
+  const indexable = isEventIndexable(event);
+
   return {
     title: friendlyTitle,
     description,
     alternates: { canonical },
+    robots: indexable ? undefined : NOINDEX_FOLLOW,
     openGraph: {
       type: "article",
       title: friendlyTitle,
       description,
       url: absoluteUrl(canonical),
-      images: event.imageUrl ? [{ url: event.imageUrl }] : undefined,
+      /* Only set `images` when the event has its own: any `images` key,
+         even undefined, makes Next skip the generated opengraph-image. */
+      ...(event.imageUrl ? { images: [{ url: event.imageUrl }] } : {}),
     },
     twitter: {
-      card: event.imageUrl ? "summary_large_image" : "summary",
+      /* Every event has a large image: its own, or the generated card. */
+      card: "summary_large_image",
       title: friendlyTitle,
       description,
     },
@@ -109,6 +119,10 @@ export default async function EventDetailPage({
   const stratum = stratumForEvent(event.source);
   const colors = STRATUM_CLASSES[stratum];
   const renderTitle = displayTitle(event);
+  const tags = displayTags(event.tags);
+  const tagHref = (t: string): string | null => (tagIsLinkable(t, event) ? `/tag/${toSlug(t)}` : null);
+  const periodSlug = periodSlugFor(start);
+  const periodLabel = parsePeriod(periodSlug)?.display ?? null;
 
   return (
     <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-10">
@@ -151,6 +165,14 @@ export default async function EventDetailPage({
                 {mtTime(start)}
                 {end && ` – ${mtTime(end)}`}
               </div>
+              {periodLabel && (
+              <Link
+                href={`/events/${periodSlug}`}
+                className="mt-1 inline-block text-sm text-ink-soft underline decoration-1 underline-offset-4 hover:text-ink transition-colors"
+              >
+                More Utah tech events in {periodLabel}
+              </Link>
+              )}
             </dd>
 
             {(event.venueName || event.address || event.city) && (
@@ -161,7 +183,16 @@ export default async function EventDetailPage({
                   {event.address && <div className="text-ink-soft">{event.address}</div>}
                   {(event.city || event.state) && (
                     <div className="text-ink-soft">
-                      {[event.city, event.state, event.postalCode].filter(Boolean).join(", ")}
+                      {event.city ? (
+                        <Link
+                          href={`/city/${toSlug(event.city)}`}
+                          className="underline decoration-1 underline-offset-4 hover:text-ink transition-colors"
+                        >
+                          {event.city}
+                        </Link>
+                      ) : null}
+                      {event.city && (event.state || event.postalCode) ? ", " : ""}
+                      {[event.state, event.postalCode].filter(Boolean).join(", ")}
                     </div>
                   )}
                 </dd>
@@ -191,18 +222,24 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {displayTags(event.tags).length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-1.5" role="list">
-              {displayTags(event.tags).map((t) => (
-                <span
-                  key={t}
-                  role="listitem"
-                  className="inline-flex items-center rounded-full bg-paper-deep px-3 py-1 text-xs text-ink-soft"
-                >
-                  {tagDisplayName(t)}
-                </span>
-              ))}
-            </div>
+          {tags.length > 0 && (
+            <ul className="mt-6 flex flex-wrap gap-1.5" aria-label="Tags">
+              {tags.map((t) => {
+                const href = tagHref(t);
+                const chip = "inline-flex items-center rounded-full bg-paper-deep px-3 py-1 text-xs text-ink-soft";
+                return (
+                  <li key={t}>
+                    {href ? (
+                      <Link href={href} className={`${chip} hover:text-ink hover:bg-ink/10 transition-colors`}>
+                        {tagDisplayName(t)}
+                      </Link>
+                    ) : (
+                      <span className={chip}>{tagDisplayName(t)}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           )}
 
           <div className="mt-8 pt-6 border-t border-ink/10 flex flex-wrap items-center gap-3">

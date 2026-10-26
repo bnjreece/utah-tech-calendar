@@ -9,6 +9,7 @@ import { EditorialLinearCard } from "@/components/variant-cards";
 import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { toSlug, eventSlug } from "@/lib/slugs";
+import { hubIsIndexable, NOINDEX_FOLLOW } from "@/lib/seo-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -66,12 +67,13 @@ export async function generateMetadata({
   const title = `Tech Events in ${city}, Utah`;
   const description =
     count > 0
-      ? `${count} upcoming in-person tech events in ${city}, Utah — meetups, conferences, founder mixers, and developer nights. Curated from Meetup, Eventbrite, Luma, and Silicon Slopes.`
+      ? `${count} upcoming in-person tech events in ${city}, Utah: meetups, conferences, founder mixers, and developer nights. Curated from Meetup, Eventbrite, Luma, and Silicon Slopes.`
       : `Upcoming tech events in ${city}, Utah. Meetups, conferences, founder mixers, and developer nights when scheduled.`;
   return {
     title,
     description,
     alternates: { canonical: `/city/${slug}` },
+    robots: hubIsIndexable(count) ? undefined : NOINDEX_FOLLOW,
     openGraph: {
       type: "website",
       title,

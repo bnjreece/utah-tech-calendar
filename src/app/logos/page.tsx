@@ -1,7 +1,8 @@
 import { ALL_LOGOS } from "@/components/logos";
 
 export const metadata = {
-  title: "Logo studies - Utah Tech Calendar",
+  title: "Logo studies",
+  robots: { index: false, follow: false },
 };
 
 const FAVICON_SIZES = [16, 32, 48, 64] as const;

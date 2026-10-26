@@ -3,8 +3,8 @@
    first byte of HTML for crawlers. */
 
 import type { EventWithGroup } from "@/lib/queries";
-import { ORGANIZATION_NAME, SITE_DESCRIPTION, SITE_URL, absoluteUrl } from "@/lib/seo";
-import { displayTitle } from "@/lib/display";
+import { ORGANIZATION_NAME, SITE_DESCRIPTION, SITE_URL } from "@/lib/seo";
+import { buildEventJsonLd } from "@/lib/seo-rules";
 
 interface JsonLdProps {
   data: unknown;
@@ -56,59 +56,11 @@ export function WebSiteJsonLd() {
   return <JsonLd data={data} />;
 }
 
-const SOURCE_TO_ORGANIZER: Record<string, string> = {
-  meetup: "Meetup",
-  luma: "Luma",
-  eventbrite: "Eventbrite",
-  silicon_slopes: "Silicon Slopes",
-  forge_utah: "Forge Utah",
-  substack: "Substack",
-  manual: "Utah Tech Calendar",
-};
-
+/* Event markup comes from lib/seo-rules.ts buildEventJsonLd, which returns
+   null for events Google can't use (online-only, no address, penciled-in,
+   hidden or placeholder-titled); render nothing then. */
 export function EventJsonLd({ event }: { event: EventWithGroup }) {
-  const startISO = new Date(event.startsAt).toISOString();
-  const endISO = event.endsAt ? new Date(event.endsAt).toISOString() : undefined;
-
-  const location = event.isOnline
-    ? {
-        "@type": "VirtualLocation",
-        url: event.link ?? absoluteUrl(`/event/${event.id}`),
-      }
-    : {
-        "@type": "Place",
-        name: event.venueName ?? event.city ?? "Utah",
-        address: {
-          "@type": "PostalAddress",
-          streetAddress: event.address ?? undefined,
-          addressLocality: event.city ?? undefined,
-          addressRegion: event.state ?? "UT",
-          postalCode: event.postalCode ?? undefined,
-          addressCountry: "US",
-        },
-      };
-
-  const organizerName = event.group?.name ?? SOURCE_TO_ORGANIZER[event.source] ?? event.source;
-
-  const data = {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    name: displayTitle(event),
-    description: event.description?.slice(0, 500) ?? undefined,
-    startDate: startISO,
-    endDate: endISO,
-    eventStatus: "https://schema.org/EventScheduled",
-    eventAttendanceMode: event.isOnline
-      ? "https://schema.org/OnlineEventAttendanceMode"
-      : "https://schema.org/OfflineEventAttendanceMode",
-    location,
-    image: event.imageUrl ?? undefined,
-    url: event.link ?? absoluteUrl(`/event/${event.id}`),
-    isAccessibleForFree: !event.isPaid,
-    organizer: {
-      "@type": "Organization",
-      name: organizerName,
-    },
-  };
+  const data = buildEventJsonLd(event);
+  if (!data) return null;
   return <JsonLd data={data} />;
 }

@@ -6,6 +6,7 @@ import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
 import { ForgeCredit } from "@/components/forge-credit";
 import { InfoTip, Term } from "@/components/ui/tooltip";
+import { DEFAULT_OG_IMAGES } from "@/lib/seo-rules";
 
 /* Re-render hourly so the live source count stays accurate without a
    DB hit on every visit. The stat used to be a hardcoded "25+" that
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
     "Every in-person Utah tech event we can find, on one page. AI, fintech, biotech, healthtech, aerospace, cybersecurity, game dev, founders. No signup, no tracking, no profile.",
   alternates: { canonical: "/discover" },
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     type: "website",
     title: `Discover Utah Tech · ${SITE_NAME}`,
     description:

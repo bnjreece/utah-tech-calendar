@@ -1,7 +1,8 @@
 import { ReflectionShimmerLogo } from "@/components/logos";
 
 export const metadata = {
-  title: "Logo size studies - Utah Tech Calendar",
+  title: "Logo size studies",
+  robots: { index: false, follow: false },
 };
 
 interface Treatment {

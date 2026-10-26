@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { getEventById } from "@/lib/queries";
 import { eventsToIcal } from "@/lib/feeds/ical";
+import { SITE_URL } from "@/lib/seo";
 import { eventSlug, extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export async function GET(
   if (!event) return new Response("Not found", { status: 404 });
 
   const host = new URL(req.url).host;
-  const ical = eventsToIcal([event], host);
+  const ical = eventsToIcal([event], host, SITE_URL);
   /* ASCII fallback + RFC 5987 UTF-8 filename so non-ASCII titles render
      correctly when the user saves the file. The slug is already
      lowercase ASCII so the fallback is rarely materially different. */

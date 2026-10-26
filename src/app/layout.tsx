@@ -9,6 +9,9 @@ import { SiteNav } from "@/components/site-nav";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
+import { FEED_ALTERNATE_TYPES, periodSlugFor, TITLE_TEMPLATE } from "@/lib/seo-rules";
+import { parsePeriod } from "@/lib/period";
+import { toSlug } from "@/lib/slugs";
 import "./globals.css";
 
 /* Snapshot at module load (server-only) so we don't re-resolve on
@@ -18,11 +21,34 @@ const FOOTER_VERTICALS = getFeaturedVerticals().map((v) => ({
   display: v.display,
 }));
 
+/* Cities with a steady calendar (hand-picked, like the verticals). Thin
+   city pages are noindex on their own, so a quiet month costs nothing. */
+const FOOTER_CITIES = ["Salt Lake City", "Lehi", "Provo", "Park City", "St. George"].map((c) => ({
+  href: `/city/${toSlug(c)}`,
+  label: c,
+}));
+
+/* This month and next, as /events/<month> links. */
+function footerMonths(now: Date): Array<{ href: string; label: string }> {
+  const out: Array<{ href: string; label: string }> = [];
+  for (let i = 0; i < 2; i++) {
+    const slug = periodSlugFor(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1)));
+    const label = parsePeriod(slug)?.display;
+    if (label) out.push({ href: `/events/${slug}`, label });
+  }
+  return out;
+}
+
+const FOOTER_LINK =
+  "text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  /* Child pages give a bare title; the template adds the brand once.
+     The homepage sets its own absolute title (app/page.tsx). */
   title: {
     default: SITE_NAME,
-    template: `%s · ${SITE_NAME}`,
+    template: TITLE_TEMPLATE,
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
@@ -45,17 +71,15 @@ export const metadata: Metadata = {
     "Ogden tech events",
   ],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
+  /* No canonical here: a root canonical is inherited by every page that
+     doesn't set one (it used to point /submit and /subscribe at "/").
+     Each indexable page sets its own. */
   alternates: {
-    canonical: "/",
-    types: {
-      "application/rss+xml": [{ url: "/api/rss", title: `${SITE_NAME} RSS` }],
-      "text/calendar": [{ url: "/api/ical", title: `${SITE_NAME} iCal` }],
-    },
+    types: FEED_ALTERNATE_TYPES,
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: SITE_URL,
     siteName: SITE_NAME,
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
@@ -124,26 +148,35 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <footer className="site-chrome mt-12 border-t-2 border-ink">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10">
-            {/* Vertical index - internal linking to the curated tag
-                landing pages so Google can crawl them from every
-                surface, and visitors can drill into their corner of
-                the scene without learning the URL structure. */}
-            <div className="pb-8 border-b border-ink/15">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft mb-3">
-                Browse by vertical
-              </p>
-              <div className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em]">
-                {FOOTER_VERTICALS.map((v) => (
-                  <Link
-                    key={v.tag}
-                    href={`/tag/${v.tag}`}
-                    className="text-ink-soft hover:text-ink hover:underline decoration-1 underline-offset-4 transition-colors"
-                  >
-                    {v.display}
-                  </Link>
-                ))}
-              </div>
-            </div>
+            {/* Browse index: internal links to the topic, city and month
+                landing pages so Google can crawl them from every surface,
+                and visitors can drill into their corner of the scene. */}
+            <nav aria-label="Browse" className="pb-8 border-b border-ink/15 flex flex-col gap-5">
+              {[
+                {
+                  label: "Browse by topic",
+                  links: FOOTER_VERTICALS.map((v) => ({ href: `/tag/${v.tag}`, label: v.display })),
+                },
+                { label: "Browse by city", links: FOOTER_CITIES },
+                {
+                  label: "Browse by month",
+                  links: [...footerMonths(new Date()), { href: "/archive", label: "Past months" }],
+                },
+              ].map((row) => (
+                <div key={row.label}>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft mb-3">
+                    {row.label}
+                  </p>
+                  <div className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em]">
+                    {row.links.map((l) => (
+                      <Link key={l.href} href={l.href} className={FOOTER_LINK}>
+                        {l.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </nav>
             <div className="pt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2.5">
                 <ReflectionShimmerLogo

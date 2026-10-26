@@ -1,7 +1,8 @@
 import { ReflectionShimmerLogo } from "@/components/logos";
 
 export const metadata = {
-  title: "Wordmark studies - Utah Tech Calendar",
+  title: "Wordmark studies",
+  robots: { index: false, follow: false },
 };
 
 interface VariantProps {

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { absoluteUrl, SITE_NAME, SITE_DESCRIPTION } from "@/lib/seo";
+import { DEFAULT_OG_IMAGES } from "@/lib/seo-rules";
 
 export const metadata: Metadata = {
   title: "About",
   description: `About ${SITE_NAME}. Why this calendar exists, how events get on the schedule, and how you can contribute.`,
   alternates: { canonical: "/about" },
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     type: "website",
     title: `About · ${SITE_NAME}`,
     description: SITE_DESCRIPTION,

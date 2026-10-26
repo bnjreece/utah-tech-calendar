@@ -10,6 +10,7 @@ import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { eventSlug } from "@/lib/slugs";
 import { parsePeriod } from "@/lib/period";
+import { DEFAULT_OG_IMAGES, hubIsIndexable, NOINDEX_FOLLOW } from "@/lib/seo-rules";
 
 /* ISR: bots crawl every event URL from the sitemap; an hourly cache stops
    each crawl from waking the database. Fresh enough for a 3-hour scrape cadence. */
@@ -50,16 +51,18 @@ export async function generateMetadata({
   const parsed = parsePeriod(slug);
   if (!parsed) return { title: "Period not found" };
   const evts = await fetchPeriodEvents(parsed.from, parsed.to);
-  const title = `Utah Tech Calendar · ${parsed.display}`;
+  const title = `Utah Tech Events in ${parsed.display}`;
   const description =
     evts.length > 0
-      ? `${evts.length} Utah tech events in ${parsed.display} — meetups, conferences, founder mixers, and developer nights across Salt Lake City, Provo, Lehi, Ogden, and Silicon Slopes.`
+      ? `${evts.length} Utah tech events in ${parsed.display}: meetups, conferences, founder mixers, and developer nights across Salt Lake City, Provo, Lehi, Ogden, and Silicon Slopes.`
       : `Upcoming Utah tech events for ${parsed.display}. Meetups, conferences, and workshops when scheduled.`;
   return {
     title,
     description,
     alternates: { canonical: `/events/${slug}` },
+    robots: hubIsIndexable(evts.length) ? undefined : NOINDEX_FOLLOW,
     openGraph: {
+      images: DEFAULT_OG_IMAGES,
       type: "website",
       title,
       description,
@@ -104,7 +107,7 @@ export default async function PeriodPage({
         Archive
       </p>
       <h1 className="mt-3 font-display text-4xl sm:text-5xl tracking-tight italic text-ink">
-        Utah tech events · {parsed.display}
+        Utah tech events in {parsed.display}
       </h1>
       <p className="mt-4 max-w-[62ch] text-pretty text-base sm:text-lg text-ink-soft leading-relaxed">
         {evts.length > 0

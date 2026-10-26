@@ -21,8 +21,8 @@ export async function generateMetadata({
   const title = `${group.name} · Utah tech meetups`;
   const description =
     events.length > 0
-      ? `${events.length} upcoming ${events.length === 1 ? "event" : "events"} from ${group.name} on the Utah Tech Calendar calendar. ${group.description?.replace(/\s+/g, " ").slice(0, 140) ?? ""}`.trim()
-      : `${group.name} on the Utah Tech Calendar calendar. ${group.description?.replace(/\s+/g, " ").slice(0, 200) ?? "Utah-based tech community."}`.trim();
+      ? `${events.length} upcoming ${events.length === 1 ? "event" : "events"} from ${group.name} on Utah Tech Calendar. ${group.description?.replace(/\s+/g, " ").slice(0, 140) ?? ""}`.trim()
+      : `${group.name} on Utah Tech Calendar. ${group.description?.replace(/\s+/g, " ").slice(0, 200) ?? "Utah-based tech community."}`.trim();
   return {
     title,
     description,
@@ -32,7 +32,9 @@ export async function generateMetadata({
       title,
       description,
       url: absoluteUrl(`/group/${slug}`),
-      images: group.imageUrl ? [{ url: group.imageUrl }] : undefined,
+      /* Any `images` key, even undefined, makes Next skip the generated
+         opengraph-image, so only set it when the group has its own. */
+      ...(group.imageUrl ? { images: [{ url: group.imageUrl }] } : {}),
     },
   };
 }
