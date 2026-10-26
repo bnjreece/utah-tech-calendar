@@ -57,8 +57,8 @@ export const STARTUP_SCENE: StartupScene = {
     {
       name: "Third Thursday @ Three Startup Pitch Event",
       cadence: "Monthly, third Thursday, 3:00 to 5:00 PM",
-      where: "Lehi. The exact address is shown after registration; a state article names Kiln Lehi, and the venue has rotated at times (the December 2025 edition was at Pelion in Draper)",
-      blurb: "Monthly pitch event hosted by Ray Smithson of Kinect Capital: several short startup pitches, then networking with founders, mentors and investors.",
+      where: "Lehi. The exact address is shown after registration; recent editions have been at Silicon Slopes HQ and Kiln Lehi",
+      blurb: "Monthly pitch event hosted by Ray Smithson of Kinect Capital: three to five 3-minute pitches, then networking with founders, mentors and investors.",
       url: "https://luma.com/xdarhaso",
       groupSlug: null,
       evidence: "The Luma listing for (Oct 15) is marked past, and a (Nov 19) listing is up; Oct 15 and Nov 19, 2026 are both third Thursdays. Our calendar has siliconslopes.com and Eventbrite listings for Jun 18, Jul 16, Aug 20 and Oct 15, 2026. The startup.utah.gov/business.utah.gov article describes the third-Thursday format. There is no /group page on our site.",
@@ -137,7 +137,7 @@ export const STARTUP_SCENE: StartupScene = {
       where: "Salt Lake City and Point of the Mountain (Lehi and Draper area)",
       blurb: "Free, community-run week of events hosted by startups, investors and local organizations; the 2025 edition had more than 220 events.",
       url: "https://www.utahtechweek.com",
-      evidence: "Wilson Sonsini's Utah Tech Week 2026 listing gives Feb 2 to 7, 2026; the River case study covers the 2025 edition (Jan 27 to Feb 1, 220+ events). utahtechweek.com currently promotes the Oct 26 to 30, 2026 Hard Tech Week collaboration. Our calendar's 'Utah Tech Week 2027' entry (2027-02-01, 'penciled') is not confirmed by any source.",
+      evidence: "Wilson Sonsini's Utah Tech Week 2026 listing gives Feb 2 to 7, 2026; the River case study covers the 2025 edition (Jan 27 to Feb 1, 220+ events). utahtechweek.com currently promotes the Oct 26 to 30, 2026 Hard Tech Week collaboration and says its next calendar drops December 16. Our calendar's 'Utah Tech Week 2027' entry (2027-02-01, 'penciled') is not confirmed by any source.",
       confidence: "medium",
     },
     {
@@ -160,11 +160,11 @@ export const STARTUP_SCENE: StartupScene = {
     },
     {
       name: "Tim Draper Utah Entrepreneur Challenge",
-      when: "Spring finals (2026: April 3). Next finals: March 20, 2027.",
+      when: "Spring finals (2026: March 28). Next finals: March 20, 2027.",
       where: "University of Utah, Salt Lake City",
       blurb: "Statewide student business competition run by the Lassonde Entrepreneur Institute, with $75,000 in cash and prizes split among the top 20 finalist teams.",
       url: "https://lassonde.utah.edu/uec",
-      evidence: "lassonde.utah.edu/uec lists the 2026-2027 final event as March 20, 2027, at the University of Utah. The Lassonde site's events give the 2026 finals and showcase as April 3, 2026.",
+      evidence: "lassonde.utah.edu/uec lists the 2026-2027 final event as March 20, 2027, at the University of Utah. Lassonde's photo gallery gives the 2026 final awards and showcase as March 28, 2026 (an Apr 3 item is the recap video).",
       confidence: "high",
     },
     {
@@ -175,15 +175,6 @@ export const STARTUP_SCENE: StartupScene = {
       url: "https://lassonde.utah.edu/demo",
       evidence: "lassonde.utah.edu/demo lists May 5, 2027, 3 to 5 PM at Lassonde Studios and says 'All are welcome to attend'. The Lassonde homepage reported the 2026 Demo Day on April 29, 2026.",
       confidence: "high",
-    },
-    {
-      name: "One Utah Summit",
-      when: "Late summer (2026: August 4 to 6). Next dates not announced.",
-      where: "Southern Utah University, America First Event Center, Cedar City",
-      blurb: "The governor's annual rural economic summit, covering business growth, workforce, energy and land, with Utah business awards.",
-      url: "https://www.oneutahsummit.utah.gov/",
-      evidence: "oneutahsummit.utah.gov gives Aug 4 to 6, 2026 at SUU's America First Event Center, and KSL and SUU News covered the 2026 summit. It is economic development, not startup-specific. An older state page said it was held in October, so the month has moved.",
-      confidence: "medium",
     },
   ],
 };
