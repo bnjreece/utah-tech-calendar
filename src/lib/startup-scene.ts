@@ -124,7 +124,7 @@ export const STARTUP_SCENE: StartupScene = {
   annual: [
     {
       name: "Hard Tech Week",
-      when: "October. The 2026 edition, the first, runs Oct 26 to 30, with 47G's Zero Gravity Summit on Oct 28 to 29.",
+      when: "First held October 26 to 30, 2026, with 47G's Zero Gravity Summit on Oct 28 to 29. Future dates not announced.",
       where: "Salt Lake City, with events across Utah",
       blurb: "A week of community-hosted events on aerospace, defense, energy, advanced manufacturing and other hard tech, organized by 47G with Utah Tech Week and Silicon Slopes and anchored by 47G's Zero Gravity Summit.",
       url: "https://www.47g.org/hard-tech-week",

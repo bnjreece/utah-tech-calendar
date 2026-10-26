@@ -75,7 +75,7 @@ export default async function StartupEventsPage() {
       <p className="mt-4 max-w-[62ch] text-pretty text-base sm:text-lg text-ink-soft leading-relaxed">
         Upcoming in-person startup events in Utah: pitch nights, founder meetups, investor talks and
         demo days. The list is pulled from Meetup, Luma, Eventbrite, Silicon Slopes and organizer
-        sites. Below it are the regular meetups and the big annual events on the Utah startup calendar.
+        sites. Below it are the regular meetups and the big events on the Utah startup calendar each year.
       </p>
       <p className="mt-5 flex flex-wrap items-baseline gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft tabular-nums">
         {thisWeek > 0 && (
@@ -122,7 +122,7 @@ export default async function StartupEventsPage() {
       <section aria-labelledby="annual-events" className="mt-16">
         <div className="pb-3 border-b-2 border-ink">
           <h2 id="annual-events" className="font-display text-2xl sm:text-3xl tracking-tight italic">
-            Big annual startup events
+            Big startup events through the year
           </h2>
         </div>
         <ul role="list" className="flex flex-col">
@@ -142,7 +142,7 @@ export default async function StartupEventsPage() {
       </section>
 
       <p className="mt-10 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-soft">
-        Meetups and annual events checked {dayKeyDate(STARTUP_SCENE.lastVerified)} ·{" "}
+        Meetups and yearly events checked {dayKeyDate(STARTUP_SCENE.lastVerified)} ·{" "}
         <Link href="/submit" className="hover:text-ink hover:underline decoration-1 underline-offset-4">
           submit an event
         </Link>

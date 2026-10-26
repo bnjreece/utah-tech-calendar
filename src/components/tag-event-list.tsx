@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { EventWithGroup } from "@/lib/queries";
-import { EditorialLinearCard } from "@/components/variant-cards";
+import { DayGroupedEventList } from "@/components/day-grouped-list";
 import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl } from "@/lib/seo";
 import { eventSlug } from "@/lib/slugs";
@@ -51,13 +51,7 @@ export function TagEventList({
       </div>
 
       {events.length > 0 ? (
-        <ul role="list" className="flex flex-col">
-          {events.map((e) => (
-            <li key={e.id}>
-              <EditorialLinearCard event={e} />
-            </li>
-          ))}
-        </ul>
+        <DayGroupedEventList events={events} />
       ) : (
         <div className="py-16 text-center">
           <p className="font-display text-2xl italic text-ink-soft">{emptyLabel}</p>

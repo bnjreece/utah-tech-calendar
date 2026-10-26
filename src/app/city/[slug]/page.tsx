@@ -5,7 +5,7 @@ import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import type { EventWithGroup } from "@/lib/queries";
 import { categorizeRegion } from "@/lib/regions";
-import { EditorialLinearCard } from "@/components/variant-cards";
+import { DayGroupedEventList } from "@/components/day-grouped-list";
 import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { toSlug, eventSlug } from "@/lib/slugs";
@@ -137,13 +137,7 @@ export default async function CityPage({
       </div>
 
       {evts.length > 0 ? (
-        <ul role="list" className="flex flex-col">
-          {evts.map((e) => (
-            <li key={e.id}>
-              <EditorialLinearCard event={e} />
-            </li>
-          ))}
-        </ul>
+        <DayGroupedEventList events={evts} />
       ) : (
         <div className="py-16 text-center">
           <p className="font-display text-2xl italic text-ink-soft">

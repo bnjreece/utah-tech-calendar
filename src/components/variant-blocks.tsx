@@ -101,7 +101,7 @@ interface DayGroup {
   events: EventWithGroup[];
 }
 
-function groupEventsByDay(events: EventWithGroup[]): DayGroup[] {
+export function groupEventsByDay(events: EventWithGroup[]): DayGroup[] {
   const groups = new Map<string, DayGroup>();
   for (const e of events) {
     const d = new Date(e.startsAt);
