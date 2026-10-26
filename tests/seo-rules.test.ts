@@ -107,10 +107,9 @@ test("event JSON-LD points at our page, not the source", () => {
   assert.equal(d.url, `${SITE}/event/cto-breakfast-utah-e62033b0`);
   assert.equal(d["@id"], `${SITE}/event/cto-breakfast-utah-e62033b0#event`);
   assert.equal(d.sameAs, "https://ctobreakfast.com/communities/utah/");
-  const offers = d.offers as Record<string, unknown>;
-  assert.equal(offers.url, "https://ctobreakfast.com/communities/utah/");
-  assert.equal(offers.price, 0);
-  assert.equal(offers.priceCurrency, "USD");
+  /* Price and availability are unknown, so no offers or free claim. */
+  assert.equal(d.offers, undefined);
+  assert.equal(d.isAccessibleForFree, undefined);
   assert.equal(d.description, "Monthly breakfast for technical leaders.");
 });
 
@@ -130,15 +129,14 @@ test("image falls back to the generated OG card", () => {
   assert.deepEqual(buildEventJsonLd(ev({ imageUrl: "https://img.example/x.png" }))!.image, ["https://img.example/x.png"]);
 });
 
-test("location has an address and geo; paid events get an Offer without a price", () => {
+test("location has an address and geo; paid events claim no price either", () => {
   const d = buildEventJsonLd(ev({ isPaid: true }))!;
   const loc = d.location as Record<string, Record<string, unknown>>;
   assert.equal(loc.address.addressLocality, "Salt Lake City");
   assert.equal(loc.address.streetAddress, "123 Main St");
   assert.deepEqual(loc.geo, { "@type": "GeoCoordinates", latitude: 40.7608, longitude: -111.891 });
-  const offers = d.offers as Record<string, unknown>;
-  assert.equal(offers.price, undefined);
-  assert.equal(d.isAccessibleForFree, false);
+  assert.equal(d.offers, undefined);
+  assert.equal(d.isAccessibleForFree, undefined);
 });
 
 test("no JSON-LD for online, tentative, addressless, hidden or placeholder events", () => {

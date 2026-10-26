@@ -158,17 +158,9 @@ export function buildEventJsonLd(e: EventJsonLdInput): Record<string, unknown> |
   }
 
   /* The source page (Meetup, Luma, the organizer's site) is where people
-     RSVP, so it goes in offers.url and sameAs, never in `url`. */
+     RSVP, so it goes in sameAs, never in `url`. No offers block: we don't
+     know price or availability, and Google says not to guess them. */
   const rsvp = clean(e.link);
-  const offers: Record<string, unknown> = {
-    "@type": "Offer",
-    url: rsvp ?? url,
-    availability: "https://schema.org/InStock",
-  };
-  if (!e.isPaid) {
-    offers.price = 0;
-    offers.priceCurrency = "USD";
-  }
 
   const description = clean(e.description)?.slice(0, 500);
 
@@ -185,8 +177,6 @@ export function buildEventJsonLd(e: EventJsonLdInput): Record<string, unknown> |
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     location,
     image: [clean(e.imageUrl) ?? absoluteUrl(`${path}/opengraph-image`)],
-    isAccessibleForFree: !e.isPaid,
-    offers,
     sameAs: rsvp,
     /* A real group only. Source names (Meetup, "recurrence:...", "html")
        are platforms or internal ids, not organizers, so they're omitted. */
