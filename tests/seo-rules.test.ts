@@ -147,8 +147,12 @@ test("no JSON-LD for online, tentative, addressless, hidden or placeholder event
   assert.equal(buildEventJsonLd(ev({ address: null, city: "  " })), null);
   assert.equal(buildEventJsonLd(ev({ status: "hidden" })), null);
   assert.equal(buildEventJsonLd(ev({ title: "TBD" })), null);
-  /* City alone is enough for a PostalAddress. */
-  assert.notEqual(buildEventJsonLd(ev({ address: null, venueName: null })), null);
+  /* A city alone is not a location: a street address is required. */
+  assert.equal(buildEventJsonLd(ev({ address: null })), null);
+  assert.equal(buildEventJsonLd(ev({ address: "  ", venueName: "Kiln" })), null);
+  /* With an address but no venue, the place is named by its address. */
+  const loc = buildEventJsonLd(ev({ venueName: null }))!.location as Record<string, unknown>;
+  assert.equal(loc.name, "123 Main St");
 });
 
 /* ---- sitemap hubs ---- */

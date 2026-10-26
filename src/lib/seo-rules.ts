@@ -115,11 +115,12 @@ export function eventPath(e: { title: string; id: string }): string {
 
 /* Google's event results need a physical place with an address: skip the
    markup for online-only, penciled-in (no real date) and non-indexable
-   events, and for events with neither a street address nor a city. */
+   events, and for events without a street address (a city alone is not
+   a location Google accepts). */
 export function shouldEmitEventJsonLd(e: EventJsonLdInput): boolean {
   if (!isEventIndexable(e)) return false;
   if (e.isOnline || e.isTentative) return false;
-  return Boolean(e.address?.trim() || e.city?.trim());
+  return Boolean(e.address?.trim());
 }
 
 function toNumber(v: string | number | null): number | null {
@@ -143,7 +144,7 @@ export function buildEventJsonLd(e: EventJsonLdInput): Record<string, unknown> |
 
   const location: Record<string, unknown> = {
     "@type": "Place",
-    name: clean(e.venueName) ?? city,
+    name: clean(e.venueName) ?? clean(e.address),
     address: {
       "@type": "PostalAddress",
       streetAddress: clean(e.address),

@@ -4,7 +4,7 @@ import { parseFilters } from "@/lib/filters";
 import { queryEvents } from "@/lib/queries";
 import { EditorialLinearCard } from "@/components/variant-cards";
 import { EmbedLinkTarget } from "@/components/embed-link-target";
-import { SITE_NAME, SITE_URL } from "@/lib/seo";
+import { SITE_URL } from "@/lib/seo";
 
 /* Cache the embed render for 5 minutes - a popular embedder hitting
    us 10k times/day would otherwise pound Neon on every iframe view.
@@ -14,7 +14,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/seo";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: `${SITE_NAME} embed`,
+  title: "Embed",
   robots: { index: false, follow: false },
 };
 
