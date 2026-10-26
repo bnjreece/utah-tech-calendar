@@ -1,22 +1,16 @@
 import type { NextConfig } from "next";
-import { RETIRED_TAG_SEARCH, TAG_ALIASES } from "./src/lib/auto-tag";
+import { tagRedirects } from "./src/lib/tag-routes";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["scraper-kit"],
 
   /* Old tag spellings (lib/auto-tag.ts TAG_ALIASES) 308 to the canonical
-     tag page; a retired tag goes to a homepage search. ?tags= in URLs and
+     tag page, a tag with its own page (founders) 308s there
+     (/tag/founders -> /startup-events), and a retired tag goes to a
+     homepage search. Built in lib/tag-routes.ts. ?tags= in URLs and
      feeds is aliased in lib/filters.ts instead. */
   async redirects() {
-    return Object.entries(TAG_ALIASES).map(([alias, canonical]) => ({
-      source: `/tag/${alias}`,
-      destination: canonical
-        ? `/tag/${canonical}`
-        : RETIRED_TAG_SEARCH[alias]
-          ? `/?q=${encodeURIComponent(RETIRED_TAG_SEARCH[alias])}`
-          : "/",
-      permanent: true,
-    }));
+    return tagRedirects();
   },
 
   /* Clickjacking + iframe policy.

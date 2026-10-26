@@ -12,6 +12,7 @@ import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
 import { FEED_ALTERNATE_TYPES, periodSlugFor, TITLE_TEMPLATE } from "@/lib/seo-rules";
 import { parsePeriod } from "@/lib/period";
 import { toSlug } from "@/lib/slugs";
+import { STARTUP_EVENTS_PATH, tagPath } from "@/lib/tag-routes";
 import "./globals.css";
 
 /* Snapshot at module load (server-only) so we don't re-resolve on
@@ -155,7 +156,12 @@ export default function RootLayout({
               {[
                 {
                   label: "Browse by topic",
-                  links: FOOTER_VERTICALS.map((v) => ({ href: `/tag/${v.tag}`, label: v.display })),
+                  /* Founders lives at /startup-events; it gets the search
+                     words as its anchor text instead of the tag name. */
+                  links: FOOTER_VERTICALS.map((v) => {
+                    const href = tagPath(v.tag);
+                    return { href, label: href === STARTUP_EVENTS_PATH ? "Startup events" : v.display };
+                  }),
                 },
                 { label: "Browse by city", links: FOOTER_CITIES },
                 {

@@ -8,6 +8,7 @@ import { getSpecialWeek, specialWeekTagsFor } from "./special-weeks";
 import { getTagMeta } from "./tag-taxonomy";
 import { absoluteUrl, SITE_NAME } from "./seo";
 import { eventSlug } from "./slugs";
+import { tagPath } from "./tag-routes";
 
 /* A hub page (city, tag, month) with fewer events than this renders for
    visitors but is noindex and stays out of the sitemap. The sitemap and the
@@ -223,6 +224,13 @@ export function countTagHubs(
 /* Keys whose count clears the index threshold, in the map's order. */
 export function indexableHubs(counts: ReadonlyMap<string, number>): string[] {
   return [...counts].filter(([, n]) => hubIsIndexable(n)).map(([k]) => k);
+}
+
+/* Sitemap paths for the tag hubs that clear the index bar, at each tag's
+   landing page (founders -> /startup-events, the rest /tag/<slug>). The
+   pages apply the same bar, so a listed page is never noindex. */
+export function tagHubPaths(counts: ReadonlyMap<string, number>): string[] {
+  return [...new Set(indexableHubs(counts).map(tagPath))];
 }
 
 /* ---- Event page tag links -------------------------------------------- */

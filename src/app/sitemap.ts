@@ -3,7 +3,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { SITE_URL } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
-import { countTagHubs, hubIsIndexable, indexableHubs, isPlaceholderTitle, periodSlugFor } from "@/lib/seo-rules";
+import { countTagHubs, hubIsIndexable, isPlaceholderTitle, periodSlugFor, tagHubPaths } from "@/lib/seo-rules";
 
 /* Dynamic sitemap: the pages worth indexing, and nothing robots.txt blocks.
    - Approved upcoming events with a real title (placeholder and hidden
@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         AND status = 'approved' AND is_online = false AND starts_at >= now()
       GROUP BY city
     `),
-    /* /tag/<tag>: approved, in person, upcoming; counted in JS so old
+    /* /tag/<tag> and /startup-events: approved, in person, upcoming; counted in JS so old
        spellings and special-week titles fold in like the page does. */
     db
       .select({ tags: events.tags, title: events.title, startsAt: events.startsAt })
@@ -82,8 +82,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     add({ url: `${SITE_URL}/city/${toSlug(c.city)}`, changeFrequency: "daily", priority: 0.7 });
   }
 
-  for (const tag of indexableHubs(countTagHubs(tagRows))) {
-    add({ url: `${SITE_URL}/tag/${toSlug(tag)}`, changeFrequency: "daily", priority: 0.7 });
+  /* founders lists at /startup-events, the rest at /tag/<slug>. */
+  for (const path of tagHubPaths(countTagHubs(tagRows))) {
+    add({ url: `${SITE_URL}${path}`, changeFrequency: "daily", priority: 0.7 });
   }
 
   const thisMonth = periodSlugFor(now);

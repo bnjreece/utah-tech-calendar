@@ -11,6 +11,7 @@ import {
 } from "./variant-cards";
 import { DensityToggle, type ScheduleDensity } from "./density-toggle";
 import { mtDate, mtDayKey, mtDayNum, mtMonthKey } from "@/lib/time";
+import { STARTUP_EVENTS_PATH } from "@/lib/tag-routes";
 
 interface VariantProps {
   events: EventWithGroup[];
@@ -138,9 +139,17 @@ export function EditorialLinearBlock({ events, filterBarSlot, viewSlot, feedQuer
         <h1 className="font-display text-3xl sm:text-4xl tracking-tight leading-tight text-ink text-balance">
           Utah tech events
         </h1>
-        <p className="mt-2 font-display text-lg sm:text-xl text-ink-soft text-pretty leading-snug max-w-[60ch] mb-8">
+        <p className="mt-2 font-display text-lg sm:text-xl text-ink-soft text-pretty leading-snug max-w-[60ch]">
           In-person startup, AI, developer and hard tech meetups and conferences across
           Salt Lake City, Lehi, Provo, Ogden and Silicon Slopes.
+        </p>
+        <p className="mt-3 mb-8 font-mono text-[11px] uppercase tracking-[0.18em]">
+          <Link
+            href={STARTUP_EVENTS_PATH}
+            className="text-ink-soft hover:text-sunset-deep underline decoration-1 underline-offset-4 transition-colors"
+          >
+            Utah startup events and meetups →
+          </Link>
         </p>
         {bannerSlot}
         {filterBarSlot}

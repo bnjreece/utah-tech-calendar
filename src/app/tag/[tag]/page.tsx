@@ -1,33 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { cache } from "react";
-import { and, asc, eq, gte, or, sql } from "drizzle-orm";
-import { db, events, groups } from "@/lib/db";
-import { specialWeekMatchSql, type EventWithGroup } from "@/lib/queries";
-import { categorizeRegion } from "@/lib/regions";
-import { EditorialLinearCard } from "@/components/variant-cards";
-import { JsonLd } from "@/components/json-ld";
+import { sql } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { EventItemListJsonLd, TagEventList } from "@/components/tag-event-list";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
-import { toSlug, eventSlug } from "@/lib/slugs";
+import { toSlug } from "@/lib/slugs";
 import { getTagMeta, getAllCanonicalTags, tagDisplayName, type TagMeta } from "@/lib/tag-taxonomy";
 import { getSpecialWeek } from "@/lib/special-weeks";
 import { hubIsIndexable, NOINDEX_FOLLOW, stripBrand } from "@/lib/seo-rules";
-import { canonicalTag, RETIRED_TAG_SEARCH, TAG_ALIASES, tagQueryVariants } from "@/lib/auto-tag";
+import { fetchTagEvents } from "@/lib/tag-events";
+import { tagSlugRedirect } from "@/lib/tag-routes";
 
 export const dynamic = "force-dynamic";
 
 /* An old tag spelling (/tag/startup, /tag/healthtech) moves to its
-   canonical page; a retired tag (/tag/product-management) becomes a
-   homepage search. next.config.ts sends the same 308s before rendering;
-   this covers any spelling that slips past it (e.g. different case). */
+   canonical page, a tag with its own page (/tag/founders) moves there,
+   and a retired tag (/tag/product-management) becomes a homepage search.
+   next.config.ts sends the same 308s before rendering; this covers any
+   spelling that slips past it (e.g. different case). */
 function redirectAlias(slug: string): void {
-  const key = slug.toLowerCase();
-  if (!Object.prototype.hasOwnProperty.call(TAG_ALIASES, key)) return;
-  const canonical = canonicalTag(key);
-  if (canonical) permanentRedirect(`/tag/${toSlug(canonical)}`);
-  const q = RETIRED_TAG_SEARCH[key];
-  permanentRedirect(q ? `/?q=${encodeURIComponent(q)}` : "/");
+  const dest = tagSlugRedirect(slug);
+  if (dest) permanentRedirect(dest);
 }
 
 /* Resolve a URL slug to a canonical tag. Two-pass lookup:
@@ -55,41 +49,6 @@ async function tagFromSlug(slug: string): Promise<{ tag: string; meta: TagMeta |
   }
   return { tag: "", meta: null };
 }
-
-/* cache(): generateMetadata and the page share one query per request. */
-const fetchTagEvents = cache(async (tag: string): Promise<EventWithGroup[]> => {
-  const rows = await db
-    .select({ event: events, group: groups })
-    .from(events)
-    .leftJoin(groups, eq(events.groupId, groups.id))
-    .where(
-      and(
-        eq(events.status, "approved"),
-        eq(events.isOnline, false),
-        gte(events.startsAt, new Date()),
-        or(
-          /* Old spellings too, for rows not yet rewritten. */
-          sql`EXISTS (SELECT 1 FROM unnest(${events.tags}) AS t WHERE lower(t) IN (${sql.join(
-            tagQueryVariants(tag.toLowerCase()).map((v) => sql`${v}`),
-            sql`, `,
-          )}))`,
-          specialWeekMatchSql(tag) ?? sql`false`,
-        ),
-      ),
-    )
-    .orderBy(asc(events.startsAt))
-    .limit(200);
-
-  return rows.map((r) => ({
-    ...r.event,
-    group: r.group,
-    region: categorizeRegion({
-      city: r.event.city,
-      venueName: r.event.venueName,
-      address: r.event.address,
-    }),
-  }));
-});
 
 export async function generateMetadata({
   params,
@@ -132,25 +91,9 @@ export default async function TagPage({
   const evts = await fetchTagEvents(tag);
   const display = meta?.display ?? tagDisplayName(tag);
 
-  /* Only emit ItemList JSON-LD when we have content - Google treats an
-     empty ItemList as a soft-quality signal, so a dry-week vertical
-     page is better off with no structured-data hint than a misleading
-     one claiming "0 items in this list". */
-  const itemList = evts.length > 0 ? {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `Utah ${display} events`,
-    itemListElement: evts.slice(0, 50).map((e, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      url: absoluteUrl(`/event/${eventSlug(e.title, e.id)}`),
-      name: e.title,
-    })),
-  } : null;
-
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-12 theme-editorial">
-      {itemList && <JsonLd data={itemList} />}
+      <EventItemListJsonLd name={`Utah ${display} events`} events={evts} />
 
       <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft">
         <Link href="/" className="hover:text-ink transition-colors">
@@ -190,35 +133,7 @@ export default async function TagPage({
         );
       })()}
 
-      <div className="mt-10 pb-3 border-b-2 border-ink flex items-baseline justify-between gap-4">
-        <h2 className="font-display text-2xl sm:text-3xl tracking-tight italic">
-          The schedule
-        </h2>
-        <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft tabular-nums">
-          {evts.length} entries
-        </span>
-      </div>
-
-      {evts.length > 0 ? (
-        <ul role="list" className="flex flex-col">
-          {evts.map((e) => (
-            <li key={e.id}>
-              <EditorialLinearCard event={e} />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="py-16 text-center">
-          <p className="font-display text-2xl italic text-ink-soft">
-            Nothing tagged {tag} just yet.
-          </p>
-          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">
-            <Link href="/submit" className="hover:text-ink transition-colors hover:underline decoration-1 underline-offset-4">
-              submit an event →
-            </Link>
-          </p>
-        </div>
-      )}
+      <TagEventList events={evts} emptyLabel={`Nothing tagged ${tag} just yet.`} />
     </div>
   );
 }

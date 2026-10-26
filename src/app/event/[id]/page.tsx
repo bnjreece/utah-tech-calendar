@@ -15,6 +15,7 @@ import { AddToCalendar } from "@/components/add-to-calendar";
 import { mtDate, mtTime } from "@/lib/time";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { displayTags, tagDisplayName } from "@/lib/tag-taxonomy";
+import { tagPath } from "@/lib/tag-routes";
 
 /* ISR: bots crawl every event URL from the sitemap; an hourly cache stops
    each crawl from waking the database. Fresh enough for a 3-hour scrape cadence. */
@@ -120,7 +121,7 @@ export default async function EventDetailPage({
   const colors = STRATUM_CLASSES[stratum];
   const renderTitle = displayTitle(event);
   const tags = displayTags(event.tags);
-  const tagHref = (t: string): string | null => (tagIsLinkable(t, event) ? `/tag/${toSlug(t)}` : null);
+  const tagHref = (t: string): string | null => (tagIsLinkable(t, event) ? tagPath(t) : null);
   const periodSlug = periodSlugFor(start);
   const periodLabel = parsePeriod(periodSlug)?.display ?? null;
 

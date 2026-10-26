@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { db, sources } from "@/lib/db";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { getFeaturedVerticals } from "@/lib/tag-taxonomy";
+import { tagPath } from "@/lib/tag-routes";
 import { ForgeCredit } from "@/components/forge-credit";
 import { InfoTip, Term } from "@/components/ui/tooltip";
 import { DEFAULT_OG_IMAGES } from "@/lib/seo-rules";
@@ -290,11 +291,11 @@ export default async function DiscoverPage() {
           {VERTICALS.map((v) => (
             <Link
               key={v.tag}
-              href={`/tag/${v.tag}`}
+              href={tagPath(v.tag)}
               className="group flex flex-col gap-2 rounded-2xl border border-ink/12 bg-paper p-4 transition-colors hover:border-ink/35"
             >
               <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-soft group-hover:text-sunset-deep transition-colors">
-                /tag/{v.tag}
+                {tagPath(v.tag)}
               </span>
               <span
                 className="font-display text-xl italic tracking-tight text-ink leading-tight"

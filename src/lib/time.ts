@@ -89,3 +89,22 @@ export function mtMonthKey(d: Date | string): string {
     month: "2-digit",
   }).format(date);
 }
+
+/* Denver day keys from today through this Sunday (a Monday-to-Sunday
+   week, so on a Sunday it is just today). Steps in 12-hour hops so a
+   23- or 25-hour DST day can't skip or repeat a key. */
+export function mtRestOfWeekKeys(now: Date = new Date()): Set<string> {
+  const keys = new Set<string>();
+  for (let h = 0; h <= 8 * 24; h += 12) {
+    const d = new Date(now.getTime() + h * 3_600_000);
+    keys.add(mtDayKey(d));
+    if (mtDate(d, { weekday: "short" }) === "Sun") break;
+  }
+  return keys;
+}
+
+/* How many of these start between now and the end of Sunday, Denver time. */
+export function countThisWeek(starts: ReadonlyArray<Date | string>, now: Date = new Date()): number {
+  const keys = mtRestOfWeekKeys(now);
+  return starts.filter((s) => new Date(s).getTime() >= now.getTime() && keys.has(mtDayKey(s))).length;
+}
