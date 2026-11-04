@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { publicDataChangedDuringRender } from "@/lib/public-data-invalidate";
 import { and, eq } from "drizzle-orm";
 import { db, pendingSubmissions, events } from "@/lib/db";
 import { verifyToken } from "@/lib/moderation";
@@ -114,6 +115,13 @@ export default async function ModeratePage({
       })
       .returning({ id: events.id });
     publishedEventId = inserted.id;
+    /* Refresh the public dataset (lib/public-data.ts) so the event shows.
+       revalidateTag cannot run during render, so this marks it from
+       after(), RECHECK_DELAY_MS (15 s) after the response, which also
+       covers a refill that was running during the insert
+       (lib/public-data-invalidate.ts). The next scrape cron (within 3 h)
+       also covers it if this ever fails. */
+    publicDataChangedDuringRender();
   }
 
   await recordSubmissionDecision(

@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq, gte, lt } from "drizzle-orm";
-import { db, events, groups } from "@/lib/db";
-import type { EventWithGroup } from "@/lib/queries";
-import { categorizeRegion } from "@/lib/regions";
+import { getEventsInRange, type EventWithGroup } from "@/lib/queries";
 import { DayGroupedEventList } from "@/components/day-grouped-list";
 import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
@@ -12,34 +9,19 @@ import { eventSlug } from "@/lib/slugs";
 import { parsePeriod } from "@/lib/period";
 import { DEFAULT_OG_IMAGES, hubIsIndexable, NOINDEX_FOLLOW } from "@/lib/seo-rules";
 
-/* ISR: bots crawl every event URL from the sitemap; an hourly cache stops
-   each crawl from waking the database. Fresh enough for a 3-hour scrape cadence. */
+/* On-demand ISR: the empty generateStaticParams makes each month a cached
+   page built on first visit (generate-static-params.md); it reads the
+   shared cached dataset, so a render costs no database query. Marked
+   stale by the public-data tag after each scrape. */
 export const revalidate = 3600;
 
-async function fetchPeriodEvents(from: Date, to: Date): Promise<EventWithGroup[]> {
-  const rows = await db
-    .select({ event: events, group: groups })
-    .from(events)
-    .leftJoin(groups, eq(events.groupId, groups.id))
-    .where(
-      and(
-        eq(events.status, "approved"),
-        gte(events.startsAt, from),
-        lt(events.startsAt, to),
-      ),
-    )
-    .orderBy(asc(events.startsAt))
-    .limit(500);
+export async function generateStaticParams() {
+  return [];
+}
 
-  return rows.map((r) => ({
-    ...r.event,
-    group: r.group,
-    region: categorizeRegion({
-      city: r.event.city,
-      venueName: r.event.venueName,
-      address: r.event.address,
-    }),
-  }));
+/* Approved events starting in the month, online included. */
+async function fetchPeriodEvents(from: Date, to: Date): Promise<EventWithGroup[]> {
+  return (await getEventsInRange(from, to)).slice(0, 500);
 }
 
 export async function generateMetadata({

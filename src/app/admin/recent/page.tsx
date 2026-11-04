@@ -2,7 +2,7 @@ import type * as React from "react";
 import { eq, desc, and, gte, or, sql } from "drizzle-orm";
 import { db, events, groups } from "@/lib/db";
 import { rejectEvent, setEventGroup } from "@/lib/admin-actions";
-import { getAllGroups } from "@/lib/queries";
+import { getAllGroups } from "@/lib/admin-groups";
 import { GroupPicker } from "@/components/admin-group-picker";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";

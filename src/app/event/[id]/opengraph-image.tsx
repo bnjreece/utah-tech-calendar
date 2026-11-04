@@ -1,12 +1,9 @@
-/* Per-event Open Graph image. Renders a 1200x630 editorial card at
-   request time and Vercel caches the response, so social shares get a
-   tailored preview without us hand-rolling images. */
+/* Per-event Open Graph image. Renders a 1200x630 editorial card on first
+   request and caches it (ISR), so social shares get a tailored preview
+   without us hand-rolling images. */
 
 import { ImageResponse } from "next/og";
-import { sql } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { getEventById } from "@/lib/queries";
-import { extractIdPrefix, looksLikeUuid } from "@/lib/slugs";
+import { getPublicEventByParam } from "@/lib/queries";
 import { mtDate, mtTime } from "@/lib/time";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 
@@ -14,6 +11,13 @@ export const runtime = "nodejs";
 export const alt = "Utah Tech Calendar";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+/* On-demand ISR like the event page: cached per path, marked stale by
+   the public-data tag, and never a database query. */
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 const PAPER = "#F7F3EA";
 const INK = "#1A1815";
@@ -34,25 +38,13 @@ const SOURCE_COLORS: Record<string, string> = {
 };
 
 
-async function resolveEventId(idParam: string): Promise<string | null> {
-  if (looksLikeUuid(idParam)) return idParam;
-  const prefix = extractIdPrefix(idParam);
-  if (!prefix) return null;
-  const r = await db.execute<{ id: string }>(sql`
-    SELECT id FROM events WHERE id::text ILIKE ${prefix + "%"} LIMIT 1
-  `);
-  const rows = (Array.isArray(r) ? r : r.rows ?? []) as Array<{ id: string }>;
-  return rows[0]?.id ?? null;
-}
-
 export default async function EventOgImage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id: idParam } = await params;
-  const realId = await resolveEventId(idParam);
-  const event = realId ? await getEventById(realId) : null;
+  const event = await getPublicEventByParam(idParam);
 
   const title = event?.title ?? "Utah Tech Calendar";
   const start = event ? new Date(event.startsAt) : null;

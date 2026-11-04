@@ -3,6 +3,9 @@ import { runAllEnabledSources, expirePendingEvents } from "@/lib/scrape-runner";
 import { classifyUnchecked } from "@/lib/classify";
 import { closeStaleSubmissions } from "@/lib/submission-autoclose";
 import { db, adminSettings } from "@/lib/db";
+import { routeDeadline } from "@/lib/deadline";
+import { publicDataChanged } from "@/lib/public-data-invalidate";
+import { RECHECK_DELAY_MS, SCRAPE_CLOSING_RESERVE_MS } from "@/lib/public-data-timing";
 
 /* This cron runs in sfo1 via vercel.json. Eventbrite's IAD CloudFront
    path returned repeated 502s while the same searches succeeded in SFO. */
@@ -30,6 +33,7 @@ export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
+  const deadline = routeDeadline(maxDuration);
   /* Heartbeat - stamp the moment the cron actually started, before any
      fetch can fail. health.ts uses this to surface "the cron stopped
      firing" independently of any individual source's freshness.
@@ -48,13 +52,27 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.warn("[scrape] heartbeat update failed", err);
   }
-  const results = await runAllEnabledSources();
+  let results: Awaited<ReturnType<typeof runAllEnabledSources>>;
+  try {
+    results = await runAllEnabledSources();
+  } catch (err) {
+    /* Sources may already have written events before the throw (the
+       dedup sweep runs last), so the public dataset is still marked
+       stale. Next only flushes the mark for a returned response, so
+       return the 500 instead of rethrowing. */
+    console.error("[scrape] run failed", err);
+    publicDataChanged();
+    return Response.json({ ok: false, error: "scrape run failed" }, { status: 500 });
+  }
   /* Phase 1 (shadow): classify a bounded batch of unclassified upcoming
      events. Decoupled from ingestion so the LLM never slows scraping; the
-     backlog drains a few rows per tick. No-op without ANTHROPIC_API_KEY. */
-  let classify = { scanned: 0, classified: 0, screened: 0, toReview: 0, published: 0 };
+     backlog drains a few rows per tick. No-op without ANTHROPIC_API_KEY.
+     Held to the deadline: a run killed at maxDuration never reaches
+     publicDataChanged() below, which would leave this run's writes off
+     the public pages until the next cron. */
+  let classify = { scanned: 0, classified: 0, screened: 0, toReview: 0, published: 0, deferred: 0 };
   try {
-    classify = await classifyUnchecked(25);
+    classify = await classifyUnchecked(25, { deadline, reserveMs: SCRAPE_CLOSING_RESERVE_MS });
   } catch (err) {
     console.warn("[scrape] classify pass failed", err);
   }
@@ -74,6 +92,18 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.warn("[scrape] submission close pass failed", err);
   }
+  /* Public pages read one cached dataset (lib/public-data.ts). Marking it
+     stale here means the next page view refills it (3 queries) while the
+     database is still awake from this run, and the delayed second mark
+     replaces any refill that read during the run
+     (lib/public-data-invalidate.ts). One call covers the scrape,
+     classify, dedup and expire passes. */
+  if (deadline.remainingMs() < RECHECK_DELAY_MS + 5_000) {
+    console.warn(
+      `[scrape] ${deadline.remainingMs()} ms left: the delayed public-data mark may not run before maxDuration`,
+    );
+  }
+  publicDataChanged();
   return Response.json({
     ok: true,
     count: results.length,

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { sql } from "drizzle-orm";
-import { db } from "@/lib/db";
 import { EventItemListJsonLd, TagEventList } from "@/components/tag-event-list";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { toSlug } from "@/lib/slugs";
@@ -10,9 +8,18 @@ import { getTagMeta, getAllCanonicalTags, tagDisplayName, type TagMeta } from "@
 import { getSpecialWeek } from "@/lib/special-weeks";
 import { hubIsIndexable, NOINDEX_FOLLOW, stripBrand } from "@/lib/seo-rules";
 import { fetchTagEvents } from "@/lib/tag-events";
+import { findUpcomingTagBySlug } from "@/lib/queries";
 import { tagSlugRedirect } from "@/lib/tag-routes";
 
-export const dynamic = "force-dynamic";
+/* On-demand ISR (empty generateStaticParams, generate-static-params.md):
+   each tag is a cached page built on first visit from the shared cached
+   dataset, so no database query. 15 minutes drops started events; the
+   public-data tag marks it stale after each scrape. */
+export const revalidate = 900;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 /* An old tag spelling (/tag/startup, /tag/healthtech) moves to its
    canonical page, a tag with its own page (/tag/founders) moves there,
@@ -38,15 +45,8 @@ async function tagFromSlug(slug: string): Promise<{ tag: string; meta: TagMeta |
   }
   /* A special week's tag resolves before any row is tagged. */
   if (getSpecialWeek(slug)) return { tag: slug, meta: null };
-  const rows = await db.execute<{ tag: string }>(sql`
-    SELECT DISTINCT lower(tag) AS tag
-    FROM events, unnest(tags) AS tag
-    WHERE status = 'approved' AND starts_at >= now()
-  `);
-  const tagList = (Array.isArray(rows) ? rows : rows.rows ?? []) as Array<{ tag: string }>;
-  for (const r of tagList) {
-    if (toSlug(r.tag) === slug) return { tag: r.tag, meta: getTagMeta(r.tag) };
-  }
+  const found = await findUpcomingTagBySlug(slug);
+  if (found) return { tag: found, meta: getTagMeta(found) };
   return { tag: "", meta: null };
 }
 

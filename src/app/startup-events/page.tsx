@@ -11,8 +11,10 @@ import { countThisWeek, mtDate } from "@/lib/time";
 /* The founders tag's landing page (/tag/founders, /tag/startup and
    /tag/founder 308 here; lib/tag-routes.ts). Same list and query as a
    /tag page, plus the regular meetups and annual events that make up the
-   scene (lib/startup-scene.ts). Rendered per request like /tag pages. */
-export const dynamic = "force-dynamic";
+   scene (lib/startup-scene.ts). ISR from the shared cached dataset like
+   /tag pages: no database query, refreshed every 15 minutes and after
+   each scrape (public-data tag). */
+export const revalidate = 900;
 
 const TAG = "founders";
 const TITLE = "Utah Startup Events & Meetups";

@@ -1,5 +1,8 @@
 import { NextRequest } from "next/server";
 import { classifyUnchecked } from "@/lib/classify";
+import { routeDeadline } from "@/lib/deadline";
+import { publicDataChanged } from "@/lib/public-data-invalidate";
+import { CLASSIFY_CLOSING_RESERVE_MS } from "@/lib/public-data-timing";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -36,10 +39,23 @@ export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
+  const deadline = routeDeadline(maxDuration);
   const raw = Number(new URL(request.url).searchParams.get("limit"));
-  /* Bounded so a single invocation stays within maxDuration (each event is
-     one sequential Haiku call). Default 100 ~= a few minutes. */
+  /* Each event is one sequential Haiku call. Default 100 ~= a few
+     minutes; the deadline stops the loop early when calls run slow, and
+     the rest wait for the next run. */
   const limit = Math.min(150, Math.max(1, Number.isFinite(raw) ? raw : 100));
-  const result = await classifyUnchecked(limit);
-  return Response.json({ ok: true, ...result });
+  /* Classification can publish or screen events: refresh the public
+     dataset (lib/public-data-invalidate.ts). Also on failure, since rows
+     classified before the throw are already written. Next only sends the
+     mark for a returned response, so return the 500. */
+  try {
+    const result = await classifyUnchecked(limit, { deadline, reserveMs: CLASSIFY_CLOSING_RESERVE_MS });
+    publicDataChanged();
+    return Response.json({ ok: true, ...result });
+  } catch (err) {
+    console.error("[classify] run failed", err);
+    publicDataChanged();
+    return Response.json({ ok: false, error: "classify run failed" }, { status: 500 });
+  }
 }

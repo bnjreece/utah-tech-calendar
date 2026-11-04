@@ -1,4 +1,5 @@
 import type { sources, AdminSettings } from "./db";
+import { isReduced, isSeverelyReduced, type PayloadReductions } from "./public-events";
 
 /* Shared source-health alert detection. Powers the /admin overview
    page (always shown) and the daily /api/cron/health-alerts email
@@ -12,7 +13,8 @@ export type AlertCategory =
   | "source_error"
   | "source_stale"
   | "cron_down"
-  | "gate_anomaly";
+  | "gate_anomaly"
+  | "public_data_size";
 
 /* Sources newer than this are excluded from the "never scraped" alert.
    They legitimately haven't had a cron tick yet; firing on them creates
@@ -52,6 +54,75 @@ export function detectGateAnomaly(opts: {
     action: "Open /admin/screened",
     category: "gate_anomaly",
     key: "gate_anomaly",
+  };
+}
+
+/* The cached public dataset (lib/public-data.ts) is one data-cache
+   entry, and Next stops caching entries over 2 MB. Above
+   PUBLIC_DATA_MAX_BYTES the refill cuts old data to fit, and when even
+   that is not enough it fails and the stale entry stays. The cron passes
+   the stored entry's size, what was cut, and its age. */
+export const PUBLIC_DATA_MAX_AGE_MS = 9 * 3600_000;
+
+export function detectPublicDataSize(opts: {
+  bytes: number;
+  reduced: PayloadReductions;
+  warnBytes: number;
+  limitBytes: number;
+  /* Time since the entry was refilled. The scrape cron marks it stale
+     every 3 h and the next page view refills it, so an entry older than
+     three cron runs means refills keep failing. */
+  ageMs?: number;
+}): SourceAlert | null {
+  const mb = (n: number) => (n / (1024 * 1024)).toFixed(2);
+  const r = opts.reduced;
+  const stale = opts.ageMs !== undefined && opts.ageMs > PUBLIC_DATA_MAX_AGE_MS;
+  if (stale) {
+    return {
+      level: "urgent",
+      title: `Public data cache has not refilled for ${Math.round((opts.ageMs ?? 0) / 3600_000)} h`,
+      body:
+        "Public pages are showing old data: every refill since then has failed. Check the [public-data] errors in the Vercel logs (a refill over the size limit, a timeout or a database error).",
+      action: "Open /admin/health",
+      category: "public_data_size",
+      key: "public_data_size:stale",
+    };
+  }
+  if (opts.bytes <= opts.warnBytes && !isReduced(r)) return null;
+  const parts: string[] = [];
+  if (r.capped > 0) parts.push(`${r.capped} rows had an oversized field cut`);
+  if (r.pastDescriptions > 0) parts.push(`${r.pastDescriptions} past event descriptions were dropped`);
+  if (r.pastEvents > 0) parts.push(`${r.pastEvents} of the oldest past events were left out`);
+  if (r.upcomingDescriptions > 0) parts.push(`${r.upcomingDescriptions} upcoming event descriptions were dropped`);
+  const severe = isSeverelyReduced(r);
+  return {
+    level: severe || r.pastDescriptions > 0 ? "urgent" : "warn",
+    title: `Public data cache is ${mb(opts.bytes)} MB of ${mb(opts.limitBytes)} MB`,
+    body: parts.length
+      ? `To keep it cacheable: ${parts.join("; ")}. Split or bound the dataset in lib/public-data.ts.`
+      : `It grows with every approved event. Above ${mb(opts.limitBytes)} MB the cache stops working and every page view queries the database. Split or bound the dataset in lib/public-data.ts.`,
+    action: "Open /admin/health",
+    category: "public_data_size",
+    key: severe
+      ? "public_data_size:severe"
+      : r.pastDescriptions > 0
+        ? "public_data_size:trimmed"
+        : r.capped > 0
+          ? "public_data_size:capped"
+          : "public_data_size:warn",
+  };
+}
+
+/* The cron could not read the dataset at all: no entry and the refill
+   failed. Public pages are failing too. */
+export function publicDataUnavailableAlert(err: unknown): SourceAlert {
+  return {
+    level: "urgent",
+    title: "Public data cache is unavailable",
+    body: `Reading the public dataset failed with no cached copy to fall back on, so public pages are erroring. ${String(err).slice(0, 300)}`,
+    action: "Open /admin/health",
+    category: "public_data_size",
+    key: "public_data_size:unavailable",
   };
 }
 

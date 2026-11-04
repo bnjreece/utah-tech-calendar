@@ -7,7 +7,15 @@ import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { eventSlug } from "@/lib/slugs";
 
-export const dynamic = "force-dynamic";
+/* On-demand ISR (empty generateStaticParams, generate-static-params.md):
+   each group is a cached page built on first visit from the shared cached
+   dataset, so no database query. 15 minutes drops started events; the
+   public-data tag marks it stale after each scrape. */
+export const revalidate = 900;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({
   params,

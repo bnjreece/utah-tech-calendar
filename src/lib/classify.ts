@@ -8,6 +8,8 @@ import { decidePending, MAX_PUBLISH_PER_RUN } from "@/lib/autopilot";
 import { applyPendingDecision, loadSourceUrls, pendingFacts } from "@/lib/autopilot-db";
 import { isCertSpam, llmTagsFor } from "@/lib/auto-tag";
 import { appendTagsSql } from "@/lib/tag-merge";
+import { nextCallTimeoutMs, type Deadline } from "@/lib/deadline";
+import { CLASSIFY_CALL_TIMEOUT_MS, CLASSIFY_MIN_CALL_MS } from "@/lib/classify-limits";
 
 /* Phase 1 (shadow) LLM classifier. A cheap Haiku pass that scores a
    scraped event on the same axes our heuristics use, plus a confidence.
@@ -47,13 +49,16 @@ Classify ONE event:
 - confidence: a number 0..1 - your confidence in isTechRelevant and isSpam.
 - reasoning: one short sentence.`;
 
-export async function classifyEvent(input: ClassifyInput): Promise<EventVerdict | null> {
+export async function classifyEvent(
+  input: ClassifyInput,
+  opts: { timeoutMs?: number } = {},
+): Promise<EventVerdict | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   try {
     const { object } = await generateObject({
       model: anthropic(MODEL),
       schema: VerdictSchema,
-      abortSignal: AbortSignal.timeout(20_000),
+      abortSignal: AbortSignal.timeout(Math.min(CLASSIFY_CALL_TIMEOUT_MS, opts.timeoutMs ?? CLASSIFY_CALL_TIMEOUT_MS)),
       system: SYSTEM,
       prompt: `<event>\n${[
         `Title: ${input.title}`,
@@ -97,15 +102,24 @@ export function rowAfterClassify<T extends { tags: string[] | null }>(
 
 export async function classifyUnchecked(
   limit = 25,
+  opts: {
+    /* The route's maxDuration. With it, the loop stops starting calls in
+       time for `reserveMs` of closing work (the caller's invalidation and
+       response), and each call's time limit fits what is left. */
+    deadline?: Deadline;
+    reserveMs?: number;
+  } = {},
 ): Promise<{
   scanned: number;
   classified: number;
   screened: number;
   toReview: number;
   published: number;
+  /* Rows left for the next run because time ran out. */
+  deferred: number;
 }> {
   if (!process.env.ANTHROPIC_API_KEY)
-    return { scanned: 0, classified: 0, screened: 0, toReview: 0, published: 0 };
+    return { scanned: 0, classified: 0, screened: 0, toReview: 0, published: 0, deferred: 0 };
 
   /* Gate config, read once per batch. When disabled the classifier stays
      pure-shadow (writes the verdict, changes no status). */
@@ -177,7 +191,22 @@ export async function classifyUnchecked(
       console.warn("[classify] autopilot routing failed", r.id, err);
     }
   };
-  for (const r of rows) {
+  let deferred = 0;
+  for (const [i, r] of rows.entries()) {
+    /* Out of time: leave the rest unchecked for the next run, so the
+       caller still marks the public data stale before maxDuration. */
+    const callTimeoutMs = opts.deadline
+      ? nextCallTimeoutMs(opts.deadline, {
+          reserveMs: opts.reserveMs ?? 0,
+          maxCallMs: CLASSIFY_CALL_TIMEOUT_MS,
+          minCallMs: CLASSIFY_MIN_CALL_MS,
+        })
+      : CLASSIFY_CALL_TIMEOUT_MS;
+    if (callTimeoutMs === null) {
+      deferred = rows.length - i;
+      console.warn(`[classify] out of time; ${deferred} rows left for the next run`);
+      break;
+    }
     /* Once the publish cap or the breaker is reached, leave pending rows
        unchecked so the next run decides them. Classifying them now would
        store a verdict and turn the hold into a permanent one (the autopilot
@@ -188,7 +217,7 @@ export async function classifyUnchecked(
       (published >= MAX_PUBLISH_PER_RUN || screened >= SCREEN_ABORT_AT)
     )
       continue;
-    const verdict = await classifyEvent(r);
+    const verdict = await classifyEvent(r, { timeoutMs: callTimeoutMs });
     if (!verdict) continue;
     /* The verdict arrives after the row was inserted, so its tags are
        merged here (aliased, allowlisted, cert-spam scrubbed) instead of
@@ -263,5 +292,5 @@ export async function classifyUnchecked(
       `[classify] screen circuit breaker hit at ${screened}; remaining flagged events routed to review`,
     );
   }
-  return { scanned: rows.length, classified, screened, toReview, published };
+  return { scanned: rows.length, classified, screened, toReview, published, deferred };
 }

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { unstable_cache } from "next/cache";
 import { parseFilters, filtersToSearchParams } from "@/lib/filters";
 import {
   queryEvents,
@@ -20,31 +19,9 @@ import { FEED_ALTERNATE_TYPES, HOME_TITLE, NOINDEX_FOLLOW } from "@/lib/seo-rule
 
 export const dynamic = "force-dynamic";
 
-/* The page itself stays dynamic (the density cookie + filter params), but the
-   database work is cached: keyed by the parsed filters, so the default
-   no-filter view - which is nearly all bot and first-visit traffic - serves
-   from cache instead of waking the database on every request. 15 minutes is
-   fresh enough against a 3-hour scrape cadence. */
-const getCachedEvents = unstable_cache(
-  async (filters: ReturnType<typeof parseFilters>) => queryEvents(filters),
-  ["home-events"],
-  { revalidate: 900 },
-);
-
-/* The four count queries are filter-independent, so they cache under one
-   constant key - a crawler hitting unique filter URLs misses only the events
-   query, not all five. */
-const getCachedCounts = unstable_cache(
-  async () =>
-    Promise.all([
-      getCityCounts(),
-      getTagCounts(),
-      getSourceCounts(),
-      getGroupCounts(),
-    ]),
-  ["home-counts"],
-  { revalidate: 900 },
-);
+/* The page stays dynamic (the density cookie + filter params), but it never
+   queries the database: lib/queries.ts filters the shared cached dataset
+   in memory, so any filter URL a crawler invents costs no database work. */
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -106,8 +83,13 @@ export default async function HomePage({
           ? "monthly"
           : "weekly";
 
-  const [events, [cityCounts, tagCounts, sourceCounts, groupCounts]] =
-    await Promise.all([getCachedEvents(filters), getCachedCounts()]);
+  const [events, cityCounts, tagCounts, sourceCounts, groupCounts] = await Promise.all([
+    queryEvents(filters),
+    getCityCounts(),
+    getTagCounts(),
+    getSourceCounts(),
+    getGroupCounts(),
+  ]);
 
   const cities = cityCounts.map((c) => ({ value: c.city, count: c.count }));
   const tags = tagCounts.map((t) => ({ value: t.tag, count: t.count }));
@@ -117,7 +99,7 @@ export default async function HomePage({
   const feedQuery = filtersToSearchParams(filters).toString();
 
   /* Special-week banner + chip, decided per request in Denver days (the
-     page is dynamic; only the queries are cached). */
+     page is dynamic; only the dataset is cached). */
   const weeks = activeSpecialWeeks();
   /* The chip also shows outside the window when a shared link has the
      week's filter on, so it can be turned off. */

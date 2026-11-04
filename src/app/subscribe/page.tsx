@@ -1,6 +1,10 @@
 import { FeedBuilder } from "@/components/feed-builder";
 import { getCityCounts, getTagCounts, getSourceCounts, getGroupCounts } from "@/lib/queries";
 
+/* ISR: the filter counts come from the shared cached dataset (no database
+   query) and refresh every 15 minutes, and after each scrape. */
+export const revalidate = 900;
+
 export const metadata = {
   title: "Subscribe to Utah Tech Events",
   description:

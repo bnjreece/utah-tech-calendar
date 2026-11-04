@@ -1,57 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq, gte, sql } from "drizzle-orm";
-import { db, events, groups } from "@/lib/db";
-import type { EventWithGroup } from "@/lib/queries";
-import { categorizeRegion } from "@/lib/regions";
+import { findCityBySlug, getUpcomingCityEvents } from "@/lib/queries";
 import { DayGroupedEventList } from "@/components/day-grouped-list";
 import { JsonLd } from "@/components/json-ld";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
-import { toSlug, eventSlug } from "@/lib/slugs";
+import { eventSlug } from "@/lib/slugs";
 import { hubIsIndexable, NOINDEX_FOLLOW } from "@/lib/seo-rules";
 
-export const dynamic = "force-dynamic";
+/* On-demand ISR (empty generateStaticParams, generate-static-params.md):
+   each city is a cached page built on first visit from the shared cached
+   dataset, so no database query. 15 minutes drops started events; the
+   public-data tag marks it stale after each scrape. */
+export const revalidate = 900;
 
-/* Look up the canonical city string from a URL slug by scanning every
-   distinct city in the events table. Cheap because the distinct city
-   set is small (~20 rows). Returns null if no city matches. */
-async function cityFromSlug(slug: string): Promise<string | null> {
-  const rows = await db.execute<{ city: string }>(sql`
-    SELECT DISTINCT city FROM events WHERE city IS NOT NULL AND trim(city) <> ''
-  `);
-  const cityList = (Array.isArray(rows) ? rows : rows.rows ?? []) as Array<{ city: string }>;
-  for (const r of cityList) {
-    if (toSlug(r.city) === slug) return r.city;
-  }
-  return null;
+export async function generateStaticParams() {
+  return [];
 }
 
-async function fetchCityEvents(city: string): Promise<EventWithGroup[]> {
-  const rows = await db
-    .select({ event: events, group: groups })
-    .from(events)
-    .leftJoin(groups, eq(events.groupId, groups.id))
-    .where(
-      and(
-        eq(events.status, "approved"),
-        eq(events.isOnline, false),
-        gte(events.startsAt, new Date()),
-        eq(events.city, city),
-      ),
-    )
-    .orderBy(asc(events.startsAt))
-    .limit(200);
-
-  return rows.map((r) => ({
-    ...r.event,
-    group: r.group,
-    region: categorizeRegion({
-      city: r.event.city,
-      venueName: r.event.venueName,
-      address: r.event.address,
-    }),
-  }));
+/* Upcoming in-person events in the city, capped for the page. */
+async function fetchCityEvents(city: string) {
+  return (await getUpcomingCityEvents(city)).slice(0, 200);
 }
 
 export async function generateMetadata({
@@ -60,7 +29,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const city = await cityFromSlug(slug);
+  const city = await findCityBySlug(slug);
   if (!city) return { title: "City not found" };
   const evts = await fetchCityEvents(city);
   const count = evts.length;
@@ -89,7 +58,7 @@ export default async function CityPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const city = await cityFromSlug(slug);
+  const city = await findCityBySlug(slug);
   if (!city) notFound();
 
   const evts = await fetchCityEvents(city);

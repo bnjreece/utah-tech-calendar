@@ -9,21 +9,26 @@
    the share cards stay visually consistent across surfaces. */
 
 import { ImageResponse } from "next/og";
-import { and, eq, gte, sql } from "drizzle-orm";
-import { db, events } from "@/lib/db";
-import { getTagMeta, tagDisplayName } from "@/lib/tag-taxonomy";
-import { canonicalTag, tagQueryVariants } from "@/lib/auto-tag";
+import { fetchTagEvents } from "@/lib/tag-events";
+import { findUpcomingTagBySlug } from "@/lib/queries";
+import { getAllCanonicalTags, getTagMeta, tagDisplayName, type TagMeta } from "@/lib/tag-taxonomy";
 import { toSlug } from "@/lib/slugs";
+import { getSpecialWeek } from "@/lib/special-weeks";
+import { canonicalTag } from "@/lib/auto-tag";
 
 export const runtime = "nodejs";
 export const alt = "Utah Tech Calendar";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 /* Cache the rendered card. Twitter/LinkedIn/Slack hit this URL once
-   per share preview and refresh on their own cadence; a 1h ISR
-   budget keeps Postgres off the share-card hot path while still
-   surfacing event-count changes within a reasonable window. */
+   per share preview and refresh on their own cadence. The empty
+   generateStaticParams makes this real on-demand ISR; the count comes
+   from the shared cached dataset, never a database query. */
 export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 const PAPER = "#F7F3EA";
 const INK = "#1A1815";
@@ -47,21 +52,22 @@ const TAG_ACCENT: Record<string, string> = {
   founders: SUNSET,
 };
 
-async function countUpcoming(tag: string): Promise<number> {
-  const rows = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(events)
-    .where(
-      and(
-        eq(events.status, "approved"),
-        gte(events.startsAt, new Date()),
-        sql`EXISTS (SELECT 1 FROM unnest(${events.tags}) AS t WHERE lower(t) IN (${sql.join(
-          tagQueryVariants(tag.toLowerCase()).map((v) => sql`${v}`),
-          sql`, `,
-        )}))`,
-      ),
-    );
-  return rows[0]?.c ?? 0;
+/* Only tags the site knows get their name on the card: curated or
+   aliased tags, special weeks, and tags on upcoming events (the same
+   lookup the tag page uses). Any other slug gets the generic card, so a
+   made-up URL cannot put arbitrary text on a site-branded image. */
+async function resolveTag(slug: string): Promise<{ tag: string; meta: TagMeta | null } | null> {
+  for (const t of getAllCanonicalTags()) {
+    if (toSlug(t.tag) === slug) return { tag: t.tag, meta: t };
+  }
+  /* An old spelling (/tag/startup) still gets its vertical's card. */
+  const canon = canonicalTag(slug);
+  const curated = canon ? getTagMeta(canon) : null;
+  if (curated) return { tag: curated.tag, meta: curated };
+  if (getSpecialWeek(slug)) return { tag: slug, meta: null };
+  const found = await findUpcomingTagBySlug(slug).catch(() => null);
+  if (found) return { tag: found, meta: getTagMeta(found) };
+  return null;
 }
 
 export default async function TagOgImage({
@@ -70,20 +76,22 @@ export default async function TagOgImage({
   params: Promise<{ tag: string }>;
 }) {
   const { tag: slug } = await params;
-  /* Resolve to the canonical tag string via the taxonomy first; if
-     it's not curated, fall back to the slug itself capitalized. */
-  const meta = getTagMeta(canonicalTag(slug) ?? slug);
-  const display = meta?.display ?? tagDisplayName(canonicalTag(slug) ?? slug);
+  const resolved = await resolveTag(slug);
+  const meta = resolved?.meta ?? null;
+  const display = resolved ? (meta?.display ?? tagDisplayName(resolved.tag)) : "Tech";
   const intro =
     meta?.intro ??
     `Every upcoming in-person Utah ${display} event we can find. Curated, tagged, scannable.`;
-  const accent = TAG_ACCENT[slug] ?? TERRACOTTA;
-  const lookupTag = meta?.tag ?? slug;
-  const count = await countUpcoming(lookupTag).catch(() => 0);
-  /* Slug round-trip check - render the OG even on a "no events yet"
-     dry-week vertical, since the tag landing page renders editorially
-     in that case too. */
-  void toSlug(lookupTag);
+  const accent = (resolved && TAG_ACCENT[slug]) || TERRACOTTA;
+  const pathLabel = resolved ? `/tag/${slug}` : "/tag";
+  /* The same count the tag page lists. A curated vertical renders even
+     on a dry week, since the tag landing page renders editorially in
+     that case too. */
+  const count = resolved
+    ? await fetchTagEvents(resolved.tag)
+        .then((evts) => evts.length)
+        .catch(() => 0)
+    : 0;
 
   return new ImageResponse(
     (
@@ -113,7 +121,7 @@ export default async function TagOgImage({
           }}
         >
           <span>Utah Tech Calendar</span>
-          <span>/tag/{slug}</span>
+          <span>{pathLabel}</span>
         </div>
 
         {/* Centerpiece: vertical name in big italic */}

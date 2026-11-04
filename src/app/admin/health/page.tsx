@@ -10,6 +10,12 @@ import {
   SCRAPER_DOCTOR_WORKFLOW_URL,
 } from "@/lib/self-healing";
 import { getClassifierStats } from "@/lib/classify-stats";
+import { getPublicDataStats } from "@/lib/public-data";
+import {
+  isReduced,
+  PUBLIC_DATA_LIMIT_BYTES,
+  PUBLIC_DATA_WARN_BYTES,
+} from "@/lib/public-events";
 import { InfoTip } from "@/components/ui/tooltip";
 import { StatusTip } from "@/components/tooltips";
 
@@ -62,7 +68,7 @@ function RunDots({ runs }: { runs: SourceHealth["recentRuns"] }) {
 }
 
 export default async function HealthDashboardPage() {
-  const [{ sources, summary, heartbeats }, recentErrors, healing, classifier] =
+  const [{ sources, summary, heartbeats }, recentErrors, healing, classifier, publicData] =
     await Promise.all([
       fetchSourceHealth(),
       fetchRecentErrors(20),
@@ -82,7 +88,15 @@ export default async function HealthDashboardPage() {
           disagreements: [],
         };
       }),
+      /* The cached public dataset (lib/public-data.ts). Never fails the
+         page. */
+      getPublicDataStats().catch((err) => {
+        console.warn("[admin/health] public data stats failed", err);
+        return null;
+      }),
     ]);
+  const publicDataOver =
+    !!publicData && (publicData.bytes > PUBLIC_DATA_WARN_BYTES || isReduced(publicData.reduced));
 
   return (
     <div className="flex flex-col gap-10">
@@ -124,6 +138,36 @@ export default async function HealthDashboardPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Cached public dataset */}
+      <section className="border-t border-ink/15 pt-6">
+        <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-soft mb-4">
+          <span className="inline-flex items-center gap-1">
+            Public data cache
+            <InfoTip label="Every public page reads one cached copy of the approved events. Above 2 MB the cache stops working and every page view queries the database." />
+          </span>
+        </h2>
+        {publicData ? (
+          <p className={`text-sm max-w-[70ch] ${publicDataOver ? "text-sunset-deep" : "text-ink-soft"}`}>
+            {publicData.events} events,{" "}
+            <span className="tabular-nums">
+              {(publicData.bytes / (1024 * 1024)).toFixed(2)} MB of{" "}
+              {(PUBLIC_DATA_LIMIT_BYTES / (1024 * 1024)).toFixed(0)} MB
+            </span>
+            , refilled {fmtRelative(publicData.generatedAt)}
+            {isReduced(publicData.reduced) && (
+              <>
+                . Cut to fit: {publicData.reduced.capped} oversized rows, {publicData.reduced.pastDescriptions} past
+                descriptions, {publicData.reduced.pastEvents} past events, {publicData.reduced.upcomingDescriptions}{" "}
+                upcoming descriptions
+              </>
+            )}
+            {publicDataOver && <>. Split or bound the dataset in lib/public-data.ts</>}.
+          </p>
+        ) : (
+          <p className="text-sm text-ink-soft">Unavailable.</p>
+        )}
       </section>
 
       {/* LLM classifier · shadow mode */}

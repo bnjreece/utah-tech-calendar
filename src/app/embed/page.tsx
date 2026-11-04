@@ -6,11 +6,10 @@ import { EditorialLinearCard } from "@/components/variant-cards";
 import { EmbedLinkTarget } from "@/components/embed-link-target";
 import { SITE_URL } from "@/lib/seo";
 
-/* Cache the embed render for 5 minutes - a popular embedder hitting
-   us 10k times/day would otherwise pound Neon on every iframe view.
-   With revalidate=300 the same filter slice serves from Vercel's
-   edge for 5 min. New events still surface within 5 min of the
-   next scrape; the freshness budget is fine for an embedded widget. */
+/* The page reads searchParams, so it renders per request; revalidate
+   does not cache it. It never queries the database: queryEvents filters
+   the shared cached dataset in memory (lib/queries.ts), so a popular
+   embedder costs function time, not database wakes. */
 export const revalidate = 300;
 
 export const metadata: Metadata = {

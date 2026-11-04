@@ -10,6 +10,26 @@ import { notifySubmitterEvent, notifySubmitterSource } from "@/lib/submitter-fol
 import { absoluteUrl } from "@/lib/seo";
 import { eventSlug, toSlug } from "@/lib/slugs";
 import { finalizeTags } from "@/lib/auto-tag";
+import { publicDataChanged } from "@/lib/public-data-invalidate";
+
+/* Public pages read one cached dataset (lib/public-data.ts). After an
+   admin change to public data, publicDataChanged() marks it stale so the
+   next page view refills it (the view after that shows the change), and
+   marks it again 15 s later in case a refill was already running. See
+   lib/public-data-invalidate.ts for why this is not updateTag. */
+
+/* Runs the writes of an admin action that changes public data (events,
+   groups, enabled sources), then marks the dataset stale. The mark also
+   runs when a later step throws after a write has committed. Called
+   after requireAdmin(), so a request that fails auth never triggers a
+   refill. */
+async function changingPublicData<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } finally {
+    publicDataChanged();
+  }
+}
 
 /* Detect a source-suggestion row (from /api/submit-source) vs an
    event draft (from /api/submit). Source rows carry type:"source"
@@ -80,41 +100,43 @@ export async function saveAdminSettings(input: AdminSettingsInput) {
 
 export async function approveEvent(id: string) {
   const admin = await requireAdmin();
-  const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
-  await db
-    .update(events)
-    .set({ status: "approved", statusLocked: true, updatedAt: new Date() })
-    .where(eq(events.id, id));
-  if (before) {
-    await recordEventDecision(before, "approve", {
-      newStatus: "approved",
-      decidedBy: admin.email,
-      channel: "admin-ui",
-    });
-  }
-  revalidatePath("/admin/review");
-  revalidatePath("/admin/hidden");
-  revalidatePath("/");
+  await changingPublicData(async () => {
+    const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
+    await db
+      .update(events)
+      .set({ status: "approved", statusLocked: true, updatedAt: new Date() })
+      .where(eq(events.id, id));
+    if (before) {
+      await recordEventDecision(before, "approve", {
+        newStatus: "approved",
+        decidedBy: admin.email,
+        channel: "admin-ui",
+      });
+    }
+    revalidatePath("/admin/review");
+    revalidatePath("/admin/hidden");
+  });
 }
 
 export async function rejectEvent(id: string) {
   const admin = await requireAdmin();
-  const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
-  await db
-    .update(events)
-    .set({ status: "hidden", hiddenReason: "manual", statusLocked: true, updatedAt: new Date() })
-    .where(eq(events.id, id));
-  if (before) {
-    await recordEventDecision(before, "reject", {
-      newStatus: "hidden",
-      reason: "manual",
-      decidedBy: admin.email,
-      channel: "admin-ui",
-    });
-  }
-  revalidatePath("/admin/review");
-  revalidatePath("/admin/hidden");
-  revalidatePath("/");
+  await changingPublicData(async () => {
+    const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
+    await db
+      .update(events)
+      .set({ status: "hidden", hiddenReason: "manual", statusLocked: true, updatedAt: new Date() })
+      .where(eq(events.id, id));
+    if (before) {
+      await recordEventDecision(before, "reject", {
+        newStatus: "hidden",
+        reason: "manual",
+        decidedBy: admin.email,
+        channel: "admin-ui",
+      });
+    }
+    revalidatePath("/admin/review");
+    revalidatePath("/admin/hidden");
+  });
 }
 
 /* Approve a /submit-form draft: insert the payload as a fresh
@@ -124,110 +146,111 @@ export async function rejectEvent(id: string) {
    identical results. */
 export async function approveSubmission(id: string) {
   const admin = await requireAdmin();
-  const [submission] = await db
-    .select()
-    .from(pendingSubmissions)
-    .where(eq(pendingSubmissions.id, id))
-    .limit(1);
-  if (!submission || submission.status !== "pending") return;
-  /* Atomically claim the row so two concurrent approvals can't both
-     insert + log. Gating the UPDATE on status='pending' means only the
-     winner proceeds; the event INSERT below is also backstopped by the
-     events(source, external_id) unique index. */
-  const [claimed] = await db
-    .update(pendingSubmissions)
-    .set({ status: "approved", reviewedAt: new Date() })
-    .where(
-      and(eq(pendingSubmissions.id, id), eq(pendingSubmissions.status, "pending")),
-    )
-    .returning({ id: pendingSubmissions.id });
-  if (!claimed) return;
-  /* Source-suggestion rows route to a different approve path - they
-     register as a scrape source row, not an event row. */
-  if (isSourcePayload(submission.payload)) {
-    const sourceUrl = submission.payload.url;
-    const adapter = adapterForUrl(sourceUrl);
-    /* requires_review=true so the FIRST round of scraped events from
-       a newly-registered source go to the queue for admin sign-off
-       before they show up publicly. Admin can toggle this off later
-       once the source's quality is established. */
-    await db.insert(sources).values({
-      adapter,
-      url: sourceUrl,
-      enabled: true,
-      requiresReview: true,
+  await changingPublicData(async () => {
+    const [submission] = await db
+      .select()
+      .from(pendingSubmissions)
+      .where(eq(pendingSubmissions.id, id))
+      .limit(1);
+    if (!submission || submission.status !== "pending") return;
+    /* Atomically claim the row so two concurrent approvals can't both
+       insert + log. Gating the UPDATE on status='pending' means only the
+       winner proceeds; the event INSERT below is also backstopped by the
+       events(source, external_id) unique index. */
+    const [claimed] = await db
+      .update(pendingSubmissions)
+      .set({ status: "approved", reviewedAt: new Date() })
+      .where(
+        and(eq(pendingSubmissions.id, id), eq(pendingSubmissions.status, "pending")),
+      )
+      .returning({ id: pendingSubmissions.id });
+    if (!claimed) return;
+    /* Source-suggestion rows route to a different approve path - they
+       register as a scrape source row, not an event row. */
+    if (isSourcePayload(submission.payload)) {
+      const sourceUrl = submission.payload.url;
+      const adapter = adapterForUrl(sourceUrl);
+      /* requires_review=true so the FIRST round of scraped events from
+         a newly-registered source go to the queue for admin sign-off
+         before they show up publicly. Admin can toggle this off later
+         once the source's quality is established. */
+      await db.insert(sources).values({
+        adapter,
+        url: sourceUrl,
+        enabled: true,
+        requiresReview: true,
+      });
+      await recordSubmissionDecision(submission, "approve", {
+        subjectType: "submission_source",
+        newStatus: "approved",
+        decidedBy: admin.email,
+        channel: "admin-ui",
+      });
+      /* Best-effort - any failure here just logs and continues. */
+      try {
+        await notifySubmitterSource({
+          submitterEmail: submission.submitterEmail,
+          submitterName: submission.submitterName,
+          url: sourceUrl,
+          decision: "approved",
+        });
+      } catch (err) {
+        console.warn("[admin] submitter source approval email failed", err);
+      }
+      revalidatePath("/admin/review");
+      revalidatePath("/admin/sources");
+      return;
+    }
+    const payload = submission.payload as SubmissionPayload;
+    const startsAt = new Date(payload.startsAt);
+    if (Number.isNaN(startsAt.getTime())) return;
+    const endsAt = payload.endsAt ? new Date(payload.endsAt) : null;
+    await db.insert(events).values({
+      title: payload.title,
+      description: payload.description,
+      link: payload.link,
+      source: "manual",
+      externalId: submission.id,
+      startsAt,
+      endsAt: endsAt && !Number.isNaN(endsAt.getTime()) ? endsAt : null,
+      isOnline: payload.isOnline,
+      venueName: payload.venueName,
+      address: payload.address,
+      city: payload.city,
+      state: payload.state ?? "UT",
+      postalCode: payload.postalCode,
+      /* Submitter tags through the same alias map as scraped ones. */
+      tags: payload.tags ? finalizeTags(payload.tags) : payload.tags,
+      status: "approved",
+      /* Human approval - lock it so the LLM gate can't re-screen it. */
+      statusLocked: true,
     });
+    const [inserted] = await db
+      .select({ id: events.id, title: events.title })
+      .from(events)
+      .where(eq(events.externalId, submission.id))
+      .limit(1);
     await recordSubmissionDecision(submission, "approve", {
-      subjectType: "submission_source",
+      subjectType: "submission_event",
       newStatus: "approved",
       decidedBy: admin.email,
       channel: "admin-ui",
     });
-    /* Best-effort - any failure here just logs and continues. */
     try {
-      await notifySubmitterSource({
+      await notifySubmitterEvent({
         submitterEmail: submission.submitterEmail,
         submitterName: submission.submitterName,
-        url: sourceUrl,
+        title: payload.title,
         decision: "approved",
+        publishedUrl: inserted
+          ? absoluteUrl(`/event/${eventSlug(inserted.title, inserted.id)}`)
+          : undefined,
       });
     } catch (err) {
-      console.warn("[admin] submitter source approval email failed", err);
+      console.warn("[admin] submitter event approval email failed", err);
     }
     revalidatePath("/admin/review");
-    revalidatePath("/admin/sources");
-    return;
-  }
-  const payload = submission.payload as SubmissionPayload;
-  const startsAt = new Date(payload.startsAt);
-  if (Number.isNaN(startsAt.getTime())) return;
-  const endsAt = payload.endsAt ? new Date(payload.endsAt) : null;
-  await db.insert(events).values({
-    title: payload.title,
-    description: payload.description,
-    link: payload.link,
-    source: "manual",
-    externalId: submission.id,
-    startsAt,
-    endsAt: endsAt && !Number.isNaN(endsAt.getTime()) ? endsAt : null,
-    isOnline: payload.isOnline,
-    venueName: payload.venueName,
-    address: payload.address,
-    city: payload.city,
-    state: payload.state ?? "UT",
-    postalCode: payload.postalCode,
-    /* Submitter tags through the same alias map as scraped ones. */
-    tags: payload.tags ? finalizeTags(payload.tags) : payload.tags,
-    status: "approved",
-    /* Human approval - lock it so the LLM gate can't re-screen it. */
-    statusLocked: true,
   });
-  const [inserted] = await db
-    .select({ id: events.id, title: events.title })
-    .from(events)
-    .where(eq(events.externalId, submission.id))
-    .limit(1);
-  await recordSubmissionDecision(submission, "approve", {
-    subjectType: "submission_event",
-    newStatus: "approved",
-    decidedBy: admin.email,
-    channel: "admin-ui",
-  });
-  try {
-    await notifySubmitterEvent({
-      submitterEmail: submission.submitterEmail,
-      submitterName: submission.submitterName,
-      title: payload.title,
-      decision: "approved",
-      publishedUrl: inserted
-        ? absoluteUrl(`/event/${eventSlug(inserted.title, inserted.id)}`)
-        : undefined,
-    });
-  } catch (err) {
-    console.warn("[admin] submitter event approval email failed", err);
-  }
-  revalidatePath("/admin/review");
-  revalidatePath("/");
 }
 
 export async function rejectSubmission(id: string) {
@@ -288,21 +311,22 @@ export async function restoreEvent(id: string) {
      re-rejected by admin should read 'manual' not 'craft'). The prior
      hiddenReason is preserved in the ledger snapshot below. */
   const admin = await requireAdmin();
-  const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
-  await db
-    .update(events)
-    .set({ status: "approved", hiddenReason: null, statusLocked: true, updatedAt: new Date() })
-    .where(eq(events.id, id));
-  if (before) {
-    await recordEventDecision(before, "restore", {
-      newStatus: "approved",
-      decidedBy: admin.email,
-      channel: "admin-ui",
-    });
-  }
-  revalidatePath("/admin/review");
-  revalidatePath("/admin/hidden");
-  revalidatePath("/");
+  await changingPublicData(async () => {
+    const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
+    await db
+      .update(events)
+      .set({ status: "approved", hiddenReason: null, statusLocked: true, updatedAt: new Date() })
+      .where(eq(events.id, id));
+    if (before) {
+      await recordEventDecision(before, "restore", {
+        newStatus: "approved",
+        decidedBy: admin.email,
+        channel: "admin-ui",
+      });
+    }
+    revalidatePath("/admin/review");
+    revalidatePath("/admin/hidden");
+  });
 }
 
 /* From /admin/screened: the admin disagrees with an auto-screen and wants
@@ -310,22 +334,23 @@ export async function restoreEvent(id: string) {
    router won't re-screen it. */
 export async function sendEventToReview(id: string) {
   const admin = await requireAdmin();
-  const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
-  await db
-    .update(events)
-    .set({ status: "pending", statusLocked: true, updatedAt: new Date() })
-    .where(eq(events.id, id));
-  if (before) {
-    await recordEventDecision(before, "restore", {
-      newStatus: "pending",
-      reason: "sent-to-review",
-      decidedBy: admin.email,
-      channel: "admin-ui",
-    });
-  }
-  revalidatePath("/admin/screened");
-  revalidatePath("/admin/review");
-  revalidatePath("/");
+  await changingPublicData(async () => {
+    const [before] = await db.select().from(events).where(eq(events.id, id)).limit(1);
+    await db
+      .update(events)
+      .set({ status: "pending", statusLocked: true, updatedAt: new Date() })
+      .where(eq(events.id, id));
+    if (before) {
+      await recordEventDecision(before, "restore", {
+        newStatus: "pending",
+        reason: "sent-to-review",
+        decidedBy: admin.email,
+        channel: "admin-ui",
+      });
+    }
+    revalidatePath("/admin/screened");
+    revalidatePath("/admin/review");
+  });
 }
 
 /* Master kill-switch + confidence bar for the LLM hard-gate. Form-driven:
@@ -359,8 +384,10 @@ export async function saveLlmGate(formData: FormData) {
 
 export async function toggleSourceEnabled(id: string, enabled: boolean) {
   await requireAdmin();
-  await db.update(sources).set({ enabled }).where(eq(sources.id, id));
-  revalidatePath("/admin/sources");
+  await changingPublicData(async () => {
+    await db.update(sources).set({ enabled }).where(eq(sources.id, id));
+    revalidatePath("/admin/sources");
+  });
 }
 
 export async function toggleSourceRequiresReview(
@@ -378,18 +405,21 @@ export async function toggleSourceRequiresReview(
    delete an aggregator/junk group (which ungroups its events + sources
    rather than deleting them). */
 
+/* Group names, filters and pages are public data: the group actions
+   below run inside changingPublicData(). */
 function revalidateGroups() {
   revalidatePath("/admin/groups");
-  revalidatePath("/"); // the Group filter on the home page
 }
 
 export async function renameGroup(formData: FormData) {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  const name = String(formData.get("name") ?? "").trim().slice(0, 120);
-  if (!id || !name) return;
-  await db.update(groups).set({ name }).where(eq(groups.id, id));
-  revalidateGroups();
+  await changingPublicData(async () => {
+    const id = String(formData.get("id") ?? "");
+    const name = String(formData.get("name") ?? "").trim().slice(0, 120);
+    if (!id || !name) return;
+    await db.update(groups).set({ name }).where(eq(groups.id, id));
+    revalidateGroups();
+  });
 }
 
 /* Delete a group WITHOUT deleting its events: null the references on
@@ -397,25 +427,29 @@ export async function renameGroup(formData: FormData) {
    on the calendar, just ungrouped. */
 export async function deleteGroup(formData: FormData) {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  if (!id) return;
-  await db.update(events).set({ groupId: null }).where(eq(events.groupId, id));
-  await db.update(sources).set({ groupId: null }).where(eq(sources.groupId, id));
-  await db.delete(groups).where(eq(groups.id, id));
-  revalidateGroups();
+  await changingPublicData(async () => {
+    const id = String(formData.get("id") ?? "");
+    if (!id) return;
+    await db.update(events).set({ groupId: null }).where(eq(events.groupId, id));
+    await db.update(sources).set({ groupId: null }).where(eq(sources.groupId, id));
+    await db.delete(groups).where(eq(groups.id, id));
+    revalidateGroups();
+  });
 }
 
 /* Merge `fromId` into `intoId`: reassign all its events + sources to
    the target group, then delete the now-empty source group. */
 export async function mergeGroups(formData: FormData) {
   await requireAdmin();
-  const fromId = String(formData.get("fromId") ?? "");
-  const intoId = String(formData.get("intoId") ?? "");
-  if (!fromId || !intoId || fromId === intoId) return;
-  await db.update(events).set({ groupId: intoId }).where(eq(events.groupId, fromId));
-  await db.update(sources).set({ groupId: intoId }).where(eq(sources.groupId, fromId));
-  await db.delete(groups).where(eq(groups.id, fromId));
-  revalidateGroups();
+  await changingPublicData(async () => {
+    const fromId = String(formData.get("fromId") ?? "");
+    const intoId = String(formData.get("intoId") ?? "");
+    if (!fromId || !intoId || fromId === intoId) return;
+    await db.update(events).set({ groupId: intoId }).where(eq(events.groupId, fromId));
+    await db.update(sources).set({ groupId: intoId }).where(eq(sources.groupId, fromId));
+    await db.delete(groups).where(eq(groups.id, fromId));
+    revalidateGroups();
+  });
 }
 
 /* Resolve a group-picker choice to a target group id (or null = none).
@@ -443,15 +477,17 @@ async function resolveGroupChoice(groupId: string, newName: string): Promise<str
    that fixes "new sources have no group". */
 export async function setSourceGroup(formData: FormData) {
   await requireAdmin();
-  const sourceId = String(formData.get("sourceId") ?? "");
-  if (!sourceId) return;
-  const target = await resolveGroupChoice(
-    String(formData.get("groupId") ?? ""),
-    String(formData.get("newGroupName") ?? ""),
-  );
-  await db.update(sources).set({ groupId: target }).where(eq(sources.id, sourceId));
-  revalidatePath("/admin/sources");
-  revalidateGroups();
+  await changingPublicData(async () => {
+    const sourceId = String(formData.get("sourceId") ?? "");
+    if (!sourceId) return;
+    const target = await resolveGroupChoice(
+      String(formData.get("groupId") ?? ""),
+      String(formData.get("newGroupName") ?? ""),
+    );
+    await db.update(sources).set({ groupId: target }).where(eq(sources.id, sourceId));
+    revalidatePath("/admin/sources");
+    revalidateGroups();
+  });
 }
 
 /* Assign a single EVENT to a group and LOCK it so re-scrape won't
@@ -459,13 +495,15 @@ export async function setSourceGroup(formData: FormData) {
    and for one-off overrides of scraped events. */
 export async function setEventGroup(formData: FormData) {
   await requireAdmin();
-  const eventId = String(formData.get("eventId") ?? "");
-  if (!eventId) return;
-  const target = await resolveGroupChoice(
-    String(formData.get("groupId") ?? ""),
-    String(formData.get("newGroupName") ?? ""),
-  );
-  await db.update(events).set({ groupId: target, groupLocked: true }).where(eq(events.id, eventId));
-  revalidatePath("/admin/recent");
-  revalidateGroups();
+  await changingPublicData(async () => {
+    const eventId = String(formData.get("eventId") ?? "");
+    if (!eventId) return;
+    const target = await resolveGroupChoice(
+      String(formData.get("groupId") ?? ""),
+      String(formData.get("newGroupName") ?? ""),
+    );
+    await db.update(events).set({ groupId: target, groupLocked: true }).where(eq(events.id, eventId));
+    revalidatePath("/admin/recent");
+    revalidateGroups();
+  });
 }

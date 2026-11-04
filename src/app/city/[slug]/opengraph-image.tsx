@@ -2,14 +2,18 @@
    event count in the eyebrow so a share link shows scale at a glance. */
 
 import { ImageResponse } from "next/og";
-import { and, eq, gte, sql } from "drizzle-orm";
-import { db, events } from "@/lib/db";
-import { toSlug } from "@/lib/slugs";
+import { findCityBySlug, getUpcomingCityEvents } from "@/lib/queries";
 
 export const runtime = "nodejs";
 export const alt = "Tech events in Utah";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+/* On-demand ISR from the shared cached dataset; no database query. */
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 const PAPER = "#F7F3EA";
 const INK = "#1A1815";
@@ -17,26 +21,9 @@ const INK_SOFT = "#7A6F5F";
 const TERRACOTTA = "#A55F3B";
 
 async function resolveCity(slug: string): Promise<{ city: string; count: number } | null> {
-  const rows = await db.execute<{ city: string }>(sql`
-    SELECT DISTINCT city FROM events WHERE city IS NOT NULL AND trim(city) <> ''
-  `);
-  const list = (Array.isArray(rows) ? rows : rows.rows ?? []) as Array<{ city: string }>;
-  const match = list.find((r) => toSlug(r.city) === slug);
-  if (!match) return null;
-
-  const [counted] = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(events)
-    .where(
-      and(
-        eq(events.status, "approved"),
-        eq(events.isOnline, false),
-        eq(events.city, match.city),
-        gte(events.startsAt, new Date()),
-      ),
-    );
-
-  return { city: match.city, count: counted?.c ?? 0 };
+  const city = await findCityBySlug(slug);
+  if (!city) return null;
+  return { city, count: (await getUpcomingCityEvents(city)).length };
 }
 
 export default async function CityOgImage({

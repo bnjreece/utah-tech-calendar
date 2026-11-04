@@ -4,9 +4,13 @@ import { db, adminSettings, sources, reviewDecisions } from "@/lib/db";
 import {
   detectAlerts,
   detectGateAnomaly,
+  detectPublicDataSize,
   hashAlerts,
+  publicDataUnavailableAlert,
   type SourceAlert,
 } from "@/lib/health";
+import { getPublicDataStats } from "@/lib/public-data";
+import { PUBLIC_DATA_LIMIT_BYTES, PUBLIC_DATA_WARN_BYTES } from "@/lib/public-events";
 import { sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/seo";
 
@@ -193,6 +197,25 @@ export async function GET(request: NextRequest) {
     if (gateAlert) alerts.push(gateAlert);
   } catch (err) {
     console.warn("[health-alerts] gate anomaly check failed", err);
+  }
+
+  /* Size and age of the cached public dataset, so the 2 MB data cache
+     limit is never reached silently and failing refills are noticed.
+     Reads the data cache; refills only if stale, inside this cron's own
+     database wake. */
+  try {
+    const stats = await getPublicDataStats();
+    const sizeAlert = detectPublicDataSize({
+      bytes: stats.bytes,
+      reduced: stats.reduced,
+      warnBytes: PUBLIC_DATA_WARN_BYTES,
+      limitBytes: PUBLIC_DATA_LIMIT_BYTES,
+      ageMs: Date.now() - stats.generatedAt.getTime(),
+    });
+    if (sizeAlert) alerts.push(sizeAlert);
+  } catch (err) {
+    console.warn("[health-alerts] public data check failed", err);
+    alerts.push(publicDataUnavailableAlert(err));
   }
 
   if (alerts.length === 0) {

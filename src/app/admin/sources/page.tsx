@@ -6,7 +6,7 @@ import {
   toggleSourceRequiresReview,
   setSourceGroup,
 } from "@/lib/admin-actions";
-import { getAllGroups } from "@/lib/queries";
+import { getAllGroups } from "@/lib/admin-groups";
 import { GroupPicker } from "@/components/admin-group-picker";
 import { deriveSourceName } from "@/lib/source-name";
 import { InfoTip } from "@/components/ui/tooltip";

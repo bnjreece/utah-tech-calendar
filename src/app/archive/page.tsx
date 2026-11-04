@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, eq, gte, lt, sql } from "drizzle-orm";
-import { db, events } from "@/lib/db";
+import { countEventsInRange } from "@/lib/queries";
 import { absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { listPastPeriodSlugs } from "@/lib/period";
 import { DEFAULT_OG_IMAGES } from "@/lib/seo-rules";
 
-export const dynamic = "force-dynamic";
+/* ISR from the shared cached dataset (no database query). Hourly, so
+   the month list rolls over within an hour of a new month. */
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Archive - past Utah tech events",
@@ -22,28 +23,15 @@ export const metadata: Metadata = {
   },
 };
 
+/* Approved events per UTC month, counted in memory. */
 async function countByPeriod(periods: ReturnType<typeof listPastPeriodSlugs>) {
-  /* One COUNT(*) per month with grouped SQL would be tidier, but with
-     24 months and parameterized ranges this is fine and keeps the
-     query simple. */
-  const counts = await Promise.all(
+  return Promise.all(
     periods.map(async (p) => {
       const from = new Date(Date.UTC(p.year, p.monthIndex, 1));
       const to = new Date(Date.UTC(p.year, p.monthIndex + 1, 1));
-      const rows = await db
-        .select({ c: sql<number>`count(*)::int` })
-        .from(events)
-        .where(
-          and(
-            eq(events.status, "approved"),
-            gte(events.startsAt, from),
-            lt(events.startsAt, to),
-          ),
-        );
-      return { ...p, count: rows[0]?.c ?? 0 };
+      return { ...p, count: await countEventsInRange(from, to) };
     }),
   );
-  return counts;
 }
 
 export default async function ArchivePage() {

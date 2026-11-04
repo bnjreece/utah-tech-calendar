@@ -1,41 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { sql } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { getEventById } from "@/lib/queries";
+import { getPublicEventByParam } from "@/lib/queries";
 import { stratumForEvent, STRATUM_CLASSES } from "@/lib/strata";
 import { EventJsonLd } from "@/components/json-ld";
 import { absoluteUrl } from "@/lib/seo";
 import { isEventIndexable, NOINDEX_FOLLOW, periodSlugFor, tagIsLinkable } from "@/lib/seo-rules";
 import { parsePeriod } from "@/lib/period";
 import { displayTitle } from "@/lib/display";
-import { eventSlug, extractIdPrefix, looksLikeUuid, toSlug } from "@/lib/slugs";
+import { eventSlug, toSlug } from "@/lib/slugs";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { mtDate, mtTime } from "@/lib/time";
 import { sourceLabel as resolveSourceLabel } from "@/lib/filters";
 import { displayTags, tagDisplayName } from "@/lib/tag-taxonomy";
 import { tagPath } from "@/lib/tag-routes";
 
-/* ISR: bots crawl every event URL from the sitemap; an hourly cache stops
-   each crawl from waking the database. Fresh enough for a 3-hour scrape cadence. */
+/* On-demand ISR: an empty generateStaticParams makes each /event/<slug>
+   a cached page built on first visit (generate-static-params.md, "all
+   paths at runtime"); without it the revalidate export does nothing and
+   every crawler hit renders afresh. Pages read the shared cached dataset
+   (lib/public-data.ts), so a render costs no database query, and the
+   public-data tag marks them stale after each scrape. The hourly
+   revalidate refreshes time-based bits such as tag links. */
 export const revalidate = 3600;
 
-/* The route is /event/[id] but `id` is now polymorphic:
-   - a slug-prefix string like "utahjs-meetup-june-abcd1234"
-   - or a raw UUID (legacy URLs from before slugs were a thing)
-   We look up the actual event id, returning the canonical slug form so
-   the caller can either render or redirect. */
-async function resolveEventId(idParam: string): Promise<string | null> {
-  if (looksLikeUuid(idParam)) return idParam;
-  const prefix = extractIdPrefix(idParam);
-  if (!prefix) return null;
-  const r = await db.execute<{ id: string }>(sql`
-    SELECT id FROM events WHERE id::text ILIKE ${prefix + "%"} LIMIT 1
-  `);
-  const rows = (Array.isArray(r) ? r : r.rows ?? []) as Array<{ id: string }>;
-  return rows[0]?.id ?? null;
+export async function generateStaticParams() {
+  return [];
 }
+
+/* The route is /event/[id] but `id` is polymorphic: a slug-prefix string
+   like "utahjs-meetup-june-abcd1234", or a raw UUID (legacy URLs from
+   before slugs). Both resolve in memory; the page redirects to the
+   canonical slug form. */
 
 export async function generateMetadata({
   params,
@@ -43,9 +39,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id: idParam } = await params;
-  const realId = await resolveEventId(idParam);
-  if (!realId) return { title: "Event not found" };
-  const event = await getEventById(realId);
+  const event = await getPublicEventByParam(idParam);
   if (!event) return { title: "Event not found" };
 
   const start = new Date(event.startsAt);
@@ -68,8 +62,8 @@ export async function generateMetadata({
      change when the placeholder is later updated by the organizer. */
   const canonical = `/event/${eventSlug(event.title, event.id)}`;
 
-  /* Hidden, pending and placeholder-titled events stay reachable (old
-     links, admin review) but out of the index. */
+  /* Hidden and pending events are not in the public dataset (they 404).
+     Placeholder-titled events stay reachable but out of the index. */
   const indexable = isEventIndexable(event);
 
   return {
@@ -101,9 +95,7 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: idParam } = await params;
-  const realId = await resolveEventId(idParam);
-  if (!realId) notFound();
-  const event = await getEventById(realId);
+  const event = await getPublicEventByParam(idParam);
   if (!event) notFound();
 
   /* Old UUID URLs redirect to the canonical slug URL so backlinks and
