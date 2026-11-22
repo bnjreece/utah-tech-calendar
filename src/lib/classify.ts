@@ -100,6 +100,31 @@ export function rowAfterClassify<T extends { tags: string[] | null }>(
   return stored ? { ...r, tags: stored.tags } : r;
 }
 
+/* Circuit breaker for one classify run; see classifyUnchecked. */
+export const SCREEN_ABORT_AT = 30;
+
+/* True when a row should be left unscored (llm_checked_at stays NULL) for
+   the next run: a pending row once the publish cap or the breaker is
+   reached, and an approved row the gate may act on once the breaker is
+   reached. Scoring either now would mark it checked without the decision
+   it needs, since a row is only decided right after it is scored. */
+export function leaveUnscored(
+  r: { status: string; statusLocked: boolean; source: string },
+  run: { gateEnabled: boolean; published: number; screened: number },
+): boolean {
+  if (!run.gateEnabled) return false;
+  const tripped = run.screened >= SCREEN_ABORT_AT;
+  if (r.status === "pending") return tripped || run.published >= MAX_PUBLISH_PER_RUN;
+  if (r.status === "approved" && !r.statusLocked && r.source !== "manual") return tripped;
+  return false;
+}
+
+/* True when an autopilot decision did not land and was not a deliberate
+   hold, so the row is requeued (llm_checked_at cleared) for the next run. */
+export function requeueUndecided(o: { landed: boolean; held: boolean }): boolean {
+  return !o.landed && !o.held;
+}
+
 export async function classifyUnchecked(
   limit = 25,
   opts: {
@@ -148,7 +173,6 @@ export async function classifyUnchecked(
      70% of it, so any bar low enough to catch a model regression inside one
      cron tick would also trip on a healthy backlog. A bad run is caught by the
      digest's gate-anomaly check and is restorable from /admin/hidden. */
-  const SCREEN_ABORT_AT = 30;
 
   /* Full rows so a screen decision can write an accurate ledger snapshot. */
   const rows = await db
@@ -171,9 +195,17 @@ export async function classifyUnchecked(
   let published = 0;
   /* Queue autopilot: decide a pending row right after it is scored, while
      `r` is exactly what the model saw (see lib/autopilot.ts for the rules).
-     A failure leaves the row pending, which fails closed (it expires hidden).
-     Autopilot hides count toward the same circuit breaker as gate screens. */
+     Autopilot hides count toward the same circuit breaker as gate screens.
+     A decision that did not land (an error, or a guarded write that matched
+     nothing) clears llm_checked_at again, so the next run re-scores and
+     retries the row instead of leaving it pending until it expires; the
+     clear only touches a row that is still pending and unlocked, so a human
+     decision in between is never undone. A deliberate hold (publishing off,
+     the per-run cap) stays checked: re-scoring it every tick would spend a
+     model call per row per tick while the kill switch is on. */
   const autopilot = async (r: (typeof rows)[number], verdict: EventVerdict) => {
+    let landed = false;
+    let held = false;
     try {
       const facts = await pendingFacts(r);
       const decision = decidePending(r, verdict, {
@@ -183,12 +215,26 @@ export async function classifyUnchecked(
         publishEnabled,
         publishedThisRun: published,
       });
+      held = decision.action === "hold";
       if (await applyPendingDecision(r, verdict, decision, facts.originals)) {
+        landed = true;
         if (decision.action === "hide") screened++;
         else published++;
       }
     } catch (err) {
       console.warn("[classify] autopilot routing failed", r.id, err);
+    }
+    if (requeueUndecided({ landed, held })) {
+      try {
+        await db
+          .update(events)
+          .set({ llmCheckedAt: null })
+          .where(
+            and(eq(events.id, r.id), eq(events.status, "pending"), eq(events.statusLocked, false)),
+          );
+      } catch (err) {
+        console.warn("[classify] could not requeue undecided row", r.id, err);
+      }
     }
   };
   let deferred = 0;
@@ -210,13 +256,10 @@ export async function classifyUnchecked(
     /* Once the publish cap or the breaker is reached, leave pending rows
        unchecked so the next run decides them. Classifying them now would
        store a verdict and turn the hold into a permanent one (the autopilot
-       only acts on a row right after it is scored). */
-    if (
-      gateEnabled &&
-      r.status === "pending" &&
-      (published >= MAX_PUBLISH_PER_RUN || screened >= SCREEN_ABORT_AT)
-    )
-      continue;
+       only acts on a row right after it is scored). Past the breaker the
+       same goes for approved rows the gate may act on: scoring one now
+       would mark it checked without the screen it might need. */
+    if (leaveUnscored(r, { gateEnabled, published, screened })) continue;
     const verdict = await classifyEvent(r, { timeoutMs: callTimeoutMs });
     if (!verdict) continue;
     /* The verdict arrives after the row was inserted, so its tags are
@@ -254,20 +297,32 @@ export async function classifyUnchecked(
       /* Only a confident screen acts. "review" used to demote the row to
          pending for a human; with no human review (2026-11-22) a row from a
          trusted source stays published unless the gate is sure it is junk.
-         Past the circuit breaker nothing more is hidden this run. */
+         Past the circuit breaker these rows are skipped above, unscored. */
       const action = routeVerdict(verdict, threshold, r.title);
-      if (action === "screen" && screened < SCREEN_ABORT_AT) {
-        await db
+      if (action === "screen") {
+        /* Guarded: a human approval (which locks the row) or any other
+           status change since this row was read wins, and is not ledgered
+           as a screen. */
+        const [hid] = await db
           .update(events)
           .set({ status: "hidden", hiddenReason: "llm-screened" })
-          .where(eq(events.id, r.id));
-        await recordEventDecision({ ...r, llmVerdict: verdict }, "hide", {
-          newStatus: "hidden",
-          reason: "llm-screened",
-          decidedBy: "llm",
-          channel: "auto",
-        });
-        screened++;
+          .where(
+            and(
+              eq(events.id, r.id),
+              eq(events.status, "approved"),
+              eq(events.statusLocked, false),
+            ),
+          )
+          .returning({ id: events.id });
+        if (hid) {
+          await recordEventDecision({ ...r, llmVerdict: verdict }, "hide", {
+            newStatus: "hidden",
+            reason: "llm-screened",
+            decidedBy: "llm",
+            channel: "auto",
+          });
+          screened++;
+        }
       }
     } else if (gateEnabled && r.status === "pending" && !r.statusLocked && r.source !== "manual") {
       await autopilot(rowAfterClassify(r, stored), verdict);

@@ -161,6 +161,13 @@ const OTHERS: Array<[Case, Expect]> = [
   [{ title: "Rust Night", source: "luma", url: LUMA, v: [true, false, 0.95, "developer meetup"], desc: 20 }, H("veto:thin")],
   [{ title: "Rust Night", source: "eventbrite", url: EB("ut--salt-lake-city/developer--events"), v: [true, false, 0.95, "developer meetup"], venue: "TBD", desc: 300 }, H("veto:venue")],
   [{ title: "Rust Night", source: "eventbrite", url: EB("ut--salt-lake-city/developer--events"), v: [true, false, 0.95, "developer meetup"], desc: 300 }, H("veto:venue")],
+  /* Surgical tech that is not surgeon training still publishes. */
+  [{ title: "Surgical Robotics Demo Night", source: "eventbrite", url: EB("ut--salt-lake-city/tech--events"), v: [true, false, 0.95, "medtech meetup"], venue: "Some Lab", city: "Salt Lake City" }, PUBLISHED],
+  [{ title: "Instrumented Spinal Surgery (2 Days Wet Lab)", source: "eventbrite", url: EB("ut--salt-lake-city/tech--events"), v: [true, false, 0.9, "medtech training"], venue: "Some Lab", city: "Salt Lake City" }, H("veto:clinical")],
+  [{ title: "Advanced Surgical Skills Hands-On Course", source: "eventbrite", url: EB("ut--salt-lake-city/tech--events"), v: [true, false, 0.9, "medtech training"], venue: "Some Lab", city: "Salt Lake City" }, H("veto:clinical")],
+  /* Three listings in all (two siblings) is a series; two in all is not. */
+  [{ title: "Founder Coffee", source: "luma", url: LUMA, v: [true, false, 0.85, "founder meetup"], venue: "Kiln", desc: 300, ctx: { seriesCount: 2 } }, H("veto:series")],
+  [{ title: "Founder Coffee", source: "luma", url: LUMA, v: [true, false, 0.85, "founder meetup"], venue: "Kiln", desc: 300, ctx: { seriesCount: 1 } }, PUBLISHED],
   /* A weekly meetup: repeating, so 0.90 publishes and 0.89 does not. */
   [{ title: "Weekly AI Power Hour", source: "luma", url: LUMA, v: [true, false, 0.9, "tech community meetup"], venue: "Kiln", desc: 300, ctx: { seriesCount: 4 } }, PUBLISHED],
   [{ title: "Weekly AI Power Hour", source: "luma", url: LUMA, v: [true, false, 0.89, "tech community meetup"], venue: "Kiln", desc: 300, ctx: { seriesCount: 4 } }, H("veto:series")],

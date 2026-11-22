@@ -14,8 +14,9 @@
 -- Expected row counts from read-only SELECTs on 2026-11-22:
 --   1. sources insert: 1 (0 sources match aiutah / cal-AdnG5dtDv1FMLSZ today).
 --      Rerun inserts 0 and passes.
---   2. Carl Case lock: 4 events + 4 ledger rows (all hidden, llm-screened,
---      unlocked, eventbrite, source 3d8d7bad...). Rerun changes 0 and passes.
+--   2. Carl Case lock: 4 pinned events + 4 ledger rows (all hidden,
+--      llm-screened, unlocked, eventbrite, source 3d8d7bad...). Rerun
+--      changes 0 and passes; the postcondition checks all 4 every run.
 --   3. pending re-score: 20 rows (20 pending upcoming, all already checked).
 --      Accepts 0..40 so new inflow before the run does not abort it.
 
@@ -38,8 +39,14 @@ BEGIN
   );
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n NOT IN (0, 1) THEN RAISE EXCEPTION 'ai utah source: expected 0 or 1, got %', n; END IF;
-  IF (SELECT count(*) FROM sources WHERE url = 'https://luma.com/aiutah') <> 1 THEN
-    RAISE EXCEPTION 'ai utah source: expected exactly one row after insert';
+  /* Postcondition: exactly one row for this calendar, and it is the one we
+     want (a pre-existing disabled or review-required row would not pass). */
+  IF (SELECT count(*) FROM sources
+      WHERE url ~* '(lu\.ma|luma\.com)/aiutah/?$' OR url ~ 'cal-AdnG5dtDv1FMLSZ') <> 1
+     OR NOT EXISTS (SELECT 1 FROM sources
+      WHERE (url ~* '(lu\.ma|luma\.com)/aiutah/?$' OR url ~ 'cal-AdnG5dtDv1FMLSZ')
+        AND adapter = 'luma' AND enabled AND requires_review = false) THEN
+    RAISE EXCEPTION 'ai utah source: expected one enabled luma row with requires_review=false';
   END IF;
   RAISE NOTICE 'ai utah source inserted: %', n;
 END $$;
@@ -48,14 +55,22 @@ END $$;
 --    3 is a hide"). The 4 instances are already hidden by the model; locking
 --    them makes it a human decision, so series memory (scrape-runner) hides
 --    every future instance of either title at insert as reason 'series'.
+--    Pinned to the 4 reviewed ids: later 'series' instances are unlocked by
+--    design and must not be swept up by a rerun.
 --    hidden_reason 'manual' + status_locked, ledgered like the admin Hide.
 DO $$
 DECLARE n int;
 BEGIN
   WITH before AS (
     SELECT * FROM events
-    WHERE title ~* '^AI Breakfast with Carl Case'
-      AND source = 'eventbrite' AND status = 'hidden' AND status_locked = false
+    WHERE id IN (
+      '5db7826b-c1a9-4e9c-bda0-8b6923980d81', -- 2026-11-18 AI Breakfast with Carl Case
+      '2bf58ac9-a825-4790-ba72-c1b889ccb8d3', -- 2026-11-25 ...: Build Value, Use AI, Protect Data
+      'a0ce5ba1-fea8-427a-a261-ef97721e5a34', -- 2026-12-09 ...: Build Value, Use AI, Protect Data
+      '70f9a948-2f0b-4142-91b1-bc0520efe4c8'  -- 2027-01-13 ...: Build Value, Use AI, Protect Data
+    )
+      AND title ~* '^AI Breakfast with Carl Case'
+      AND status = 'hidden' AND status_locked = false
     FOR UPDATE
   ), upd AS (
     UPDATE events e
@@ -81,8 +96,17 @@ BEGIN
   )
   SELECT count(*) INTO n FROM led;
   IF n NOT IN (0, 4) THEN RAISE EXCEPTION 'carl case lock: expected 4 (or 0 on rerun), got %', n; END IF;
-  IF EXISTS (SELECT 1 FROM events WHERE title ~* '^AI Breakfast with Carl Case' AND NOT (status = 'hidden' AND status_locked)) THEN
-    RAISE EXCEPTION 'carl case lock: an instance is not hidden+locked';
+  /* Postcondition on each pinned row (a rerun, or a later series instance,
+     cannot change the outcome): hidden, locked, 'manual', with an owner
+     ledger row. */
+  IF (SELECT count(*) FROM events e
+      WHERE e.id IN ('5db7826b-c1a9-4e9c-bda0-8b6923980d81', '2bf58ac9-a825-4790-ba72-c1b889ccb8d3',
+                     'a0ce5ba1-fea8-427a-a261-ef97721e5a34', '70f9a948-2f0b-4142-91b1-bc0520efe4c8')
+        AND e.status = 'hidden' AND e.status_locked AND e.hidden_reason = 'manual'
+        AND EXISTS (SELECT 1 FROM review_decisions r
+                    WHERE r.subject_id = e.id AND r.decided_by = 'b@bnjmn.org'
+                      AND r.reason = 'manual: owner ruled the series a hide (2026-11-22)')) <> 4 THEN
+    RAISE EXCEPTION 'carl case lock: not all 4 pinned rows are hidden+locked+manual with a ledger row';
   END IF;
   RAISE NOTICE 'carl case rows locked: %', n;
 END $$;

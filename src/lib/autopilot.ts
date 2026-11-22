@@ -16,7 +16,8 @@ import type { EventVerdict } from "@/lib/verdict";
      4. kids-audience hide (edtech free-trial funnels look like real classes)
      4b. a "yes" under PUBLISH_BAR is hidden
      5. publish vetoes hide (online, employer/closed tiers, thin, vague
-        Eventbrite venue, clinical training, a repeating listing under 0.90)
+        Eventbrite venue, clinical training, a listing with 3+ copies under
+        0.90)
      6. publish (AUTOPILOT_PUBLISH=on, at most 8 per run). With publishing
         off, or past the cap, the row is held: that is the kill switch, not
         a review queue.
@@ -72,7 +73,8 @@ export const MAX_PUBLISH_PER_RUN = 8;
 export const LOWCONF_YES_BAR = 0.85;
 
 /* Rule 6. A one-off "yes" publishes from here; a listing that repeats (3+
-   copies from one source in 30 days) needs SERIES_PUBLISH_BAR. On the
+   copies from one source in 30 days, so ctx.seriesCount >= 2: the count
+   excludes the row itself) needs SERIES_PUBLISH_BAR. On the
    2026-10-25 ledger a human kept 7 of 10 yeses at 0.85 to 0.89. */
 export const PUBLISH_BAR = LOWCONF_YES_BAR;
 export const SERIES_PUBLISH_BAR = 0.9;
@@ -117,7 +119,8 @@ const KIDS_AUDIENCE_RE =
   /\b(for kids|kids ages|for children|for teens|teens|for parents)\b|\bages?\s*\d+\s*(-|–|to)\s*\d+/i;
 const VAGUE_VENUE_RE = /^\s*$|\b(tbd|tba|to be announced|online|virtual)\b/i;
 /* Surgeon training reads as medtech to the model but is not a community event. */
-const CLINICAL_TRAINING_RE = /\b(wet ?lab|surgery|surgical|cadaver|cme)\b/i;
+const CLINICAL_TRAINING_RE =
+  /\b(wet ?lab|cadaver|cme)\b|\b(surgery|surgical)\b.*\b(training|course|lab|workshop|certification|hands[\s-]?on)\b/i;
 
 export function decidePending(
   row: AutopilotRow,
@@ -165,7 +168,7 @@ export function decidePending(
   const venue = (row.venueName ?? "").trim();
   if ((row.description ?? "").trim().length < 40 && !venue) return hide("veto:thin");
   if (row.source === "eventbrite" && VAGUE_VENUE_RE.test(venue)) return hide("veto:venue");
-  if (ctx.seriesCount >= 3 && conf < SERIES_PUBLISH_BAR) return hide("veto:series");
+  if (ctx.seriesCount >= 2 && conf < SERIES_PUBLISH_BAR) return hide("veto:series");
 
   /* 6. Publish. */
   if (!ctx.publishEnabled) return hold("publish-off");
