@@ -149,6 +149,46 @@ export async function applyPendingDecision(
   return rowsOf(res).length > 0;
 }
 
+/* The classify gate's screen of an APPROVED scraped row, in ONE statement
+   chained to its ledger row like applyPendingDecision. Only matches while
+   the row is still approved, unlocked, scraped, upcoming and unchanged
+   since it was scored (`r` is the row with the tags the classify UPDATE
+   stored), and the gate is still on: a human approval (which locks the
+   row), a rescrape that changed it, or the gate being switched off in the
+   meantime all win. Returns true when the row changed. */
+export async function applyGateScreen(r: EventRow, verdict: EventVerdict): Promise<boolean> {
+  const res = await db.execute(sql`
+    WITH upd AS (
+      UPDATE events
+      SET status = 'hidden', hidden_reason = 'llm-screened', updated_at = now()
+      WHERE id = ${r.id}
+        AND status = 'approved'
+        AND status_locked = false
+        AND source <> 'manual'
+        AND starts_at > now()
+        AND title IS NOT DISTINCT FROM ${r.title}::text
+        AND description IS NOT DISTINCT FROM ${r.description}::text
+        AND venue_name IS NOT DISTINCT FROM ${r.venueName}::text
+        AND city IS NOT DISTINCT FROM ${r.city}::text
+        AND link IS NOT DISTINCT FROM ${r.link}::text
+        AND is_online IS NOT DISTINCT FROM ${r.isOnline}::boolean
+        AND source_id IS NOT DISTINCT FROM ${r.sourceId}::uuid
+        AND to_jsonb(tags) IS NOT DISTINCT FROM ${tagsJson(r.tags)}::text::jsonb
+        AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
+      RETURNING id, source_id, source
+    )
+    INSERT INTO review_decisions
+      (subject_type, subject_id, decision, reason, prior_status, new_status,
+       decided_by, channel, source_id, adapter, llm_verdict, snapshot)
+    SELECT 'scraped_event', upd.id, 'hide', 'llm-screened',
+      'approved', 'hidden', 'llm', 'auto', upd.source_id, upd.source,
+      ${JSON.stringify(verdict)}::jsonb, ${JSON.stringify(eventSnapshot(r))}::jsonb
+    FROM upd
+    RETURNING subject_id
+  `);
+  return rowsOf(res).length > 0;
+}
+
 /* Hide a pending queue twin (lib/queue-twins.ts) in ONE statement, chained
    to its ledger row like applyPendingDecision. Only matches while the row
    is still pending, unlocked, scraped, upcoming and unchanged since it was

@@ -1,11 +1,10 @@
 import { generateObject } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
-import { and, desc, eq, gte, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, ne, notInArray } from "drizzle-orm";
 import { db, events, adminSettings } from "@/lib/db";
-import { recordEventDecision } from "@/lib/review-log";
 import { VerdictSchema, routeVerdict, type EventVerdict } from "@/lib/verdict";
 import { decidePending, MAX_PUBLISH_PER_RUN } from "@/lib/autopilot";
-import { applyPendingDecision, loadSourceUrls, pendingFacts } from "@/lib/autopilot-db";
+import { applyGateScreen, applyPendingDecision, loadSourceUrls, pendingFacts } from "@/lib/autopilot-db";
 import { isCertSpam, llmTagsFor } from "@/lib/auto-tag";
 import { appendTagsSql } from "@/lib/tag-merge";
 import { nextCallTimeoutMs, type Deadline } from "@/lib/deadline";
@@ -119,11 +118,8 @@ export function leaveUnscored(
   return false;
 }
 
-/* True when an autopilot decision did not land and was not a deliberate
-   hold, so the row is requeued (llm_checked_at cleared) for the next run. */
-export function requeueUndecided(o: { landed: boolean; held: boolean }): boolean {
-  return !o.landed && !o.held;
-}
+/* Stored-verdict pass size per run (no model calls; see classifyUnchecked). */
+export const REDECIDE_LIMIT = 50;
 
 export async function classifyUnchecked(
   limit = 25,
@@ -196,16 +192,11 @@ export async function classifyUnchecked(
   /* Queue autopilot: decide a pending row right after it is scored, while
      `r` is exactly what the model saw (see lib/autopilot.ts for the rules).
      Autopilot hides count toward the same circuit breaker as gate screens.
-     A decision that did not land (an error, or a guarded write that matched
-     nothing) clears llm_checked_at again, so the next run re-scores and
-     retries the row instead of leaving it pending until it expires; the
-     clear only touches a row that is still pending and unlocked, so a human
-     decision in between is never undone. A deliberate hold (publishing off,
-     the per-run cap) stays checked: re-scoring it every tick would spend a
-     model call per row per tick while the kill switch is on. */
+     A decision that does not land here (an error, a guarded write that
+     matched nothing, a run cut short between scoring and routing, or a hold
+     while publishing is off) is retried by the stored-verdict pass at the
+     end of every run, so no scored row waits for a human. */
   const autopilot = async (r: (typeof rows)[number], verdict: EventVerdict) => {
-    let landed = false;
-    let held = false;
     try {
       const facts = await pendingFacts(r);
       const decision = decidePending(r, verdict, {
@@ -215,28 +206,15 @@ export async function classifyUnchecked(
         publishEnabled,
         publishedThisRun: published,
       });
-      held = decision.action === "hold";
       if (await applyPendingDecision(r, verdict, decision, facts.originals)) {
-        landed = true;
         if (decision.action === "hide") screened++;
         else published++;
       }
     } catch (err) {
       console.warn("[classify] autopilot routing failed", r.id, err);
     }
-    if (requeueUndecided({ landed, held })) {
-      try {
-        await db
-          .update(events)
-          .set({ llmCheckedAt: null })
-          .where(
-            and(eq(events.id, r.id), eq(events.status, "pending"), eq(events.statusLocked, false)),
-          );
-      } catch (err) {
-        console.warn("[classify] could not requeue undecided row", r.id, err);
-      }
-    }
   };
+  const seen = new Set<string>();
   let deferred = 0;
   for (const [i, r] of rows.entries()) {
     /* Out of time: leave the rest unchecked for the next run, so the
@@ -260,6 +238,7 @@ export async function classifyUnchecked(
        same goes for approved rows the gate may act on: scoring one now
        would mark it checked without the screen it might need. */
     if (leaveUnscored(r, { gateEnabled, published, screened })) continue;
+    seen.add(r.id);
     const verdict = await classifyEvent(r, { timeoutMs: callTimeoutMs });
     if (!verdict) continue;
     /* The verdict arrives after the row was inserted, so its tags are
@@ -300,32 +279,53 @@ export async function classifyUnchecked(
          Past the circuit breaker these rows are skipped above, unscored. */
       const action = routeVerdict(verdict, threshold, r.title);
       if (action === "screen") {
-        /* Guarded: a human approval (which locks the row) or any other
-           status change since this row was read wins, and is not ledgered
-           as a screen. */
-        const [hid] = await db
-          .update(events)
-          .set({ status: "hidden", hiddenReason: "llm-screened" })
-          .where(
-            and(
-              eq(events.id, r.id),
-              eq(events.status, "approved"),
-              eq(events.statusLocked, false),
-            ),
-          )
-          .returning({ id: events.id });
-        if (hid) {
-          await recordEventDecision({ ...r, llmVerdict: verdict }, "hide", {
-            newStatus: "hidden",
-            reason: "llm-screened",
-            decidedBy: "llm",
-            channel: "auto",
-          });
-          screened++;
-        }
+        /* One guarded statement with its ledger row (lib/autopilot-db.ts):
+           a human approval, a rescrape or the gate switching off since this
+           row was read all win. */
+        if (await applyGateScreen(rowAfterClassify(r, stored), verdict)) screened++;
       }
     } else if (gateEnabled && r.status === "pending" && !r.statusLocked && r.source !== "manual") {
       await autopilot(rowAfterClassify(r, stored), verdict);
+    }
+  }
+  /* Stored-verdict pass. Pending rows that were scored (in this run or an
+     earlier one) but are still pending get decidePending again from their
+     saved verdict: no model call, so it cannot run up a bill. Covers a
+     routing error, a guarded write that missed, a run cut short between
+     scoring and routing, and publish-off holds once publishing is back on.
+     A rescrape does not clear a stored verdict anywhere in this pipeline,
+     so the saved verdict is what the rest of the system already trusts.
+     Soonest events first; skipped when out of time, at the publish cap, or
+     past the breaker. */
+  if (gateEnabled && deferred === 0) {
+    const stuck = await db
+      .select()
+      .from(events)
+      .where(
+        and(
+          eq(events.status, "pending"),
+          eq(events.statusLocked, false),
+          ne(events.source, "manual"),
+          gte(events.startsAt, new Date()),
+          isNotNull(events.llmCheckedAt),
+          isNotNull(events.llmVerdict),
+          seen.size > 0 ? notInArray(events.id, [...seen]) : undefined,
+        ),
+      )
+      .orderBy(asc(events.startsAt))
+      .limit(REDECIDE_LIMIT);
+    for (const r of stuck) {
+      if (
+        opts.deadline &&
+        nextCallTimeoutMs(opts.deadline, {
+          reserveMs: opts.reserveMs ?? 0,
+          maxCallMs: CLASSIFY_CALL_TIMEOUT_MS,
+          minCallMs: CLASSIFY_MIN_CALL_MS,
+        }) === null
+      )
+        break;
+      if (leaveUnscored(r, { gateEnabled, published, screened })) break;
+      await autopilot(r, r.llmVerdict as EventVerdict);
     }
   }
   if (screened >= SCREEN_ABORT_AT) {

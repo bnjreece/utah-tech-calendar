@@ -11,7 +11,7 @@ mock.module("@/lib/db", () => ({
   adminSettings: {},
 }));
 
-const { leaveUnscored, requeueUndecided, SCREEN_ABORT_AT } = await import("@/lib/classify");
+const { leaveUnscored, REDECIDE_LIMIT, SCREEN_ABORT_AT } = await import("@/lib/classify");
 const { MAX_PUBLISH_PER_RUN } = await import("@/lib/autopilot");
 
 const pending = { status: "pending", statusLocked: false, source: "eventbrite" };
@@ -44,14 +44,14 @@ describe("leaveUnscored", () => {
   });
 });
 
-describe("requeueUndecided", () => {
-  test("a decision that landed stays checked", () => {
-    expect(requeueUndecided({ landed: true, held: false })).toBe(false);
-  });
-  test("an error or a guarded write that matched nothing is retried next run", () => {
-    expect(requeueUndecided({ landed: false, held: false })).toBe(true);
-  });
-  test("a deliberate hold (publishing off) is not re-scored every tick", () => {
-    expect(requeueUndecided({ landed: false, held: true })).toBe(false);
+describe("stored-verdict pass", () => {
+  test("is bounded per run and never calls the model", async () => {
+    expect(REDECIDE_LIMIT).toBe(50);
+    /* The pass reuses llm_verdict; classify.ts has exactly one model call
+       site (classifyEvent inside the scoring loop). */
+    const src = await Bun.file(new URL("../classify.ts", import.meta.url)).text();
+    const pass = src.slice(src.indexOf("Stored-verdict pass."), src.indexOf("screen circuit breaker hit"));
+    expect(pass).toContain("r.llmVerdict as EventVerdict");
+    expect(pass).not.toContain("classifyEvent(");
   });
 });

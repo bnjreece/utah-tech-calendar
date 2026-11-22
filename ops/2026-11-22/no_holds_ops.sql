@@ -1,12 +1,11 @@
--- No-holds autopilot rollout: add the AI Utah Luma calendar, lock the owner's
--- hide of the "AI Breakfast with Carl Case" series, and send today's pending
--- queue back through the (new) autopilot.
+-- No-holds autopilot rollout: add the AI Utah Luma calendar and lock the
+-- owner's hide of the "AI Breakfast with Carl Case" series. Today's 20
+-- pending rows need no SQL: the new stored-verdict pass in classifyUnchecked
+-- decides every scored pending row on the next cron tick.
 -- PRODUCTION WRITE. Needs independent review before anyone runs it.
 --
--- ORDER: run AFTER feat/autopilot-vertical-publish (no-holds decidePending)
--- is deployed and GET /api/revalidate has been called. Block 3 makes the next
--- classify tick re-score and decide every pending row; on the old code those
--- rows would just be held again.
+-- ORDER: either side of the deploy works; neither block depends on the new
+-- code. Run after the deploy anyway so the change ships as one unit.
 --
 -- Run (one transaction; commits only if every statement succeeds):
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f no_holds_ops.sql
@@ -17,8 +16,6 @@
 --   2. Carl Case lock: 4 pinned events + 4 ledger rows (all hidden,
 --      llm-screened, unlocked, eventbrite, source 3d8d7bad...). Rerun
 --      changes 0 and passes; the postcondition checks all 4 every run.
---   3. pending re-score: 20 rows (20 pending upcoming, all already checked).
---      Accepts 0..40 so new inflow before the run does not abort it.
 
 -- 1. AI Utah (luma.com/aiutah, calendar "AI Utah", cal-AdnG5dtDv1FMLSZ):
 --    monthly Demo Day at Pattern in Lehi; 20 events in its ICS feed, none
@@ -31,6 +28,9 @@
 DO $$
 DECLARE n int;
 BEGIN
+  /* No unique constraint on sources.url: lock out a concurrent run of this
+     file between the existence check and the insert. */
+  LOCK TABLE sources IN SHARE ROW EXCLUSIVE MODE;
   INSERT INTO sources (adapter, url, enabled, requires_review)
   SELECT 'luma', 'https://luma.com/aiutah', true, false
   WHERE NOT EXISTS (
@@ -109,21 +109,4 @@ BEGIN
     RAISE EXCEPTION 'carl case lock: not all 4 pinned rows are hidden+locked+manual with a ledger row';
   END IF;
   RAISE NOTICE 'carl case rows locked: %', n;
-END $$;
-
--- 3. Re-score today's pending queue. classifyUnchecked only decides a
---    pending row right after scoring it, so these 20 (held under the old
---    rules) stay pending forever unless llm_checked_at is cleared. Only
---    pending, unlocked, scraped, upcoming rows: exactly the set the
---    autopilot is allowed to act on. No visibility change here; the next
---    cron tick decides them (replay 2026-11-22: 3 publish, 17 hide).
-DO $$
-DECLARE n int;
-BEGIN
-  UPDATE events SET llm_checked_at = NULL
-  WHERE status = 'pending' AND status_locked = false AND source <> 'manual'
-    AND starts_at > now() AND llm_checked_at IS NOT NULL;
-  GET DIAGNOSTICS n = ROW_COUNT;
-  IF n > 40 THEN RAISE EXCEPTION 'pending re-score: expected about 20, got %', n; END IF;
-  RAISE NOTICE 'pending rows queued for re-score: %', n;
 END $$;

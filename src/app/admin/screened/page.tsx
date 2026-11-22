@@ -62,7 +62,16 @@ export default async function ScreenedEventsPage({
   const page = Math.min(rawPage, totalPages);
 
   const rows = await db
-    .select({ event: events, group: groups })
+    .select({
+      event: events,
+      group: groups,
+      /* The latest hide reason in the ledger ("autopilot:lowconf-yes",
+         "autopilot:veto:online", ...), for the chip. */
+      hideReason: sql<string | null>`(
+        SELECT r.reason FROM review_decisions r
+        WHERE r.subject_id = ${events.id} AND r.decision = 'hide'
+        ORDER BY r.decided_at DESC LIMIT 1)`,
+    })
     .from(events)
     .leftJoin(groups, eq(events.groupId, groups.id))
     .where(where)
@@ -134,13 +143,14 @@ export default async function ScreenedEventsPage({
           </button>
         </form>
         <p className="mt-3 text-[12px] text-ink-soft max-w-[68ch] text-pretty">
-          When on, the classifier auto-hides a flagged event only at confidence
-          ≥ the bar; everything else flagged goes to{" "}
-          <a href="/admin/review" className="underline">review</a>. Off = pure
-          shadow (verdicts logged, nothing hidden). Raise the bar to send more to
-          humans. The queue autopilot also hides a new event the model rates as
-          tech with under 85% confidence; those carry a &ldquo;rated tech, low
-          confidence&rdquo; chip.
+          When on, the classifier hides a published event it flags at
+          confidence ≥ the bar; anything else it flags stays published. Nothing
+          waits for human review (since 2026-11-22): the queue autopilot
+          publishes or hides every new event. Off = pure shadow (verdicts
+          logged, nothing hidden or published automatically). Raise the bar to
+          hide fewer published events. An event the model rated as tech but the
+          autopilot hid carries a chip with the reason (low confidence, or the
+          publish rule it failed).
         </p>
       </section>
 
@@ -178,7 +188,7 @@ export default async function ScreenedEventsPage({
         </p>
       ) : (
         <ul role="list" className="flex flex-col">
-          {rows.map(({ event: e, group: g }) => {
+          {rows.map(({ event: e, group: g, hideReason }) => {
             const colors = STRATUM_CLASSES[stratumForEvent(e.source)];
             const v = (e.llmVerdict ?? {}) as Verdict;
             const conf = typeof v.confidence === "number" ? Math.round(v.confidence * 100) : null;
@@ -199,9 +209,9 @@ export default async function ScreenedEventsPage({
                         {conf !== null ? ` · ${conf}%` : ""}
                       </span>
                     )}
-                    {v.isTechRelevant && !v.isSpam && (
+                    {v.isTechRelevant && !v.isSpam && techHideLabel(hideReason) && (
                       <span className="inline-flex items-center rounded-full bg-ink/[0.06] text-ink px-2 py-0.5 text-[10px] tracking-[0.14em]">
-                        rated tech, low confidence
+                        {techHideLabel(hideReason)}
                       </span>
                     )}
                   </div>
@@ -254,4 +264,15 @@ export default async function ScreenedEventsPage({
       )}
     </div>
   );
+}
+
+/* Chip text for an event the model rated as tech that was hidden anyway,
+   from the ledger reason. Null for reasons that need no chip. */
+function techHideLabel(reason: string | null): string | null {
+  if (!reason) return null;
+  if (reason === "autopilot:lowconf-yes") return "rated tech, low confidence";
+  if (reason === "autopilot:kids-audience") return "rated tech, kids audience";
+  const veto = /^autopilot:veto:(.+)$/.exec(reason);
+  if (veto) return `rated tech, failed publish rule: ${veto[1]}`;
+  return null;
 }
