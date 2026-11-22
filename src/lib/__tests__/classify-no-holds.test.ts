@@ -96,8 +96,10 @@ describe("stored-verdict pass", () => {
     expect(approvedRecovery(spam, row, 0.92)).toBe("screen");
     /* Bar raised above the verdict's confidence. */
     expect(approvedRecovery(spam, row, 0.99)).toBe("none");
-    /* Changed since scoring. */
-    expect(approvedRecovery(spam, { ...row, title: "Rust Night v2" }, 0.92)).toBe("none");
+    /* Changed since scoring (a room number added after an interrupted
+       run): scored again, so the screen is neither lost nor made on the
+       old text. */
+    expect(approvedRecovery(spam, { ...row, description: row.description + " Room 204." }, 0.92)).toBe("rescore");
     /* Scored before fingerprints (went through the old gate). */
     expect(approvedRecovery({ ...spam, inputsHash: undefined }, row, 0.92)).toBe("none");
     /* A yes is never screened. */

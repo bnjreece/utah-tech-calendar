@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
      Held to the deadline: a run killed at maxDuration never reaches
      publicDataChanged() below, which would leave this run's writes off
      the public pages until the next cron. */
-  let classify = { scanned: 0, classified: 0, screened: 0, toReview: 0, published: 0, deferred: 0 };
+  let classify = { scanned: 0, classified: 0, screened: 0, toReview: 0, published: 0, deferred: 0, requeued: 0 };
   try {
     classify = await classifyUnchecked(25, { deadline, reserveMs: SCRAPE_CLOSING_RESERVE_MS });
   } catch (err) {

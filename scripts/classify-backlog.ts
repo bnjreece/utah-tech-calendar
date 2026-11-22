@@ -13,10 +13,13 @@ async function main() {
   }
   let total = 0;
   for (;;) {
-    const { scanned, classified } = await classifyUnchecked(25);
+    const { scanned, classified, requeued } = await classifyUnchecked(25);
     total += classified;
-    console.log(`batch: scanned ${scanned}, classified ${classified} (total ${total})`);
-    if (scanned === 0) break;
+    console.log(`batch: scanned ${scanned}, classified ${classified}, requeued ${requeued} (total ${total})`);
+    /* A run that only requeued rows (stored verdicts sent back to be
+       scored) created work: go round once more to score it. */
+    if (scanned === 0 && requeued === 0) break;
+    if (scanned === 0) continue;
     if (classified === 0) {
       console.warn("batch classified 0 of " + scanned + " - stopping to avoid a loop.");
       break;

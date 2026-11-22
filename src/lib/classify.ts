@@ -160,16 +160,19 @@ export function pendingRecovery(
   return stored?.inputsHash && stored.inputsHash === inputFingerprint(row) ? "decide" : "rescore";
 }
 
-/* Stored-verdict pass, approved row: screen it when the saved verdict, on
-   unchanged inputs, routes to "screen" at today's threshold (a run cut
-   short between scoring and screening). Rows without a fingerprint went
-   through the gate before 2026-11-22 and are left alone. */
+/* Stored-verdict pass, approved row with a flagged saved verdict: screen it
+   when the verdict, on unchanged inputs, routes to "screen" at today's
+   threshold (a run cut short between scoring and screening); score it
+   again when the row changed since (never screen on an old verdict, never
+   lose the screen either). Rows without a fingerprint went through the
+   gate before 2026-11-22 and are left alone. */
 export function approvedRecovery(
   stored: StoredVerdict | null,
   row: Parameters<typeof inputFingerprint>[0],
   threshold: number,
-): "screen" | "none" {
-  if (!stored?.inputsHash || stored.inputsHash !== inputFingerprint(row)) return "none";
+): "screen" | "rescore" | "none" {
+  if (!stored?.inputsHash) return "none";
+  if (stored.inputsHash !== inputFingerprint(row)) return "rescore";
   return routeVerdict(stored, threshold, row.title) === "screen" ? "screen" : "none";
 }
 
@@ -190,9 +193,10 @@ export async function classifyUnchecked(
   published: number;
   /* Rows left for the next run because time ran out. */
   deferred: number;
+  requeued: number;
 }> {
   if (!process.env.ANTHROPIC_API_KEY)
-    return { scanned: 0, classified: 0, screened: 0, toReview: 0, published: 0, deferred: 0 };
+    return { scanned: 0, classified: 0, screened: 0, toReview: 0, published: 0, deferred: 0, requeued: 0 };
 
   /* Gate config, read once per batch. When disabled the classifier stays
      pure-shadow (writes the verdict, changes no status). */
@@ -242,6 +246,8 @@ export async function classifyUnchecked(
   let screened = 0;
   const toReview = 0;
   let published = 0;
+  /* Rows the stored-verdict pass sent back to be scored. */
+  let requeued = 0;
   /* Queue autopilot: decide a pending row right after it is scored, while
      `r` is exactly what the model saw (see lib/autopilot.ts for the rules).
      Autopilot hides count toward the same circuit breaker as gate screens.
@@ -318,6 +324,9 @@ export async function classifyUnchecked(
       .where(
         and(
           eq(events.id, r.id),
+          /* An overlapping run that already scored (and maybe decided) this
+             row wins; this run neither overwrites its verdict nor routes. */
+          isNull(events.llmCheckedAt),
           sql`${events.title} IS NOT DISTINCT FROM ${r.title}::text`,
           sql`${events.description} IS NOT DISTINCT FROM ${r.description}::text`,
           sql`${events.venueName} IS NOT DISTINCT FROM ${r.venueName}::text`,
@@ -396,22 +405,37 @@ export async function classifyUnchecked(
       )
       .orderBy(sql`random()`)
       .limit(REDECIDE_LIMIT);
+    /* Send a row back to be scored, only while it is still in the state
+       this pass read and still carries the verdict it judged. */
+    const requeue = async (r: (typeof stuck)[number], stored: StoredVerdict | null) => {
+      const [hit] = await db
+        .update(events)
+        .set({ llmCheckedAt: null })
+        .where(
+          and(
+            eq(events.id, r.id),
+            eq(events.status, r.status),
+            eq(events.statusLocked, false),
+            sql`(${events.llmVerdict}->>'inputsHash') IS NOT DISTINCT FROM ${stored?.inputsHash ?? null}::text`,
+          ),
+        )
+        .returning({ id: events.id });
+      if (hit) requeued++;
+    };
     for (const r of stuck) {
-      if (outOfTime()) break;
-      if (leaveUnscored(r, { gateEnabled, published, screened })) break;
+      /* The publish cap is enforced per row by decidePending (it holds a
+         publish, which the next run retries); hides and screens go on. */
+      if (outOfTime() || screened >= SCREEN_ABORT_AT) break;
       const stored = r.llmVerdict as StoredVerdict | null;
       try {
         if (r.status === "pending") {
           if (pendingRecovery(stored, r) === "decide") await autopilot(r, stored as EventVerdict);
-          else
-            await db
-              .update(events)
-              .set({ llmCheckedAt: null })
-              .where(
-                and(eq(events.id, r.id), eq(events.status, "pending"), eq(events.statusLocked, false)),
-              );
-        } else if (approvedRecovery(stored, r, threshold) === "screen") {
-          if (await applyGateScreen(r, stored as EventVerdict, threshold)) screened++;
+          else await requeue(r, stored);
+        } else {
+          const action = approvedRecovery(stored, r, threshold);
+          if (action === "screen") {
+            if (await applyGateScreen(r, stored as EventVerdict, threshold)) screened++;
+          } else if (action === "rescore") await requeue(r, stored);
         }
       } catch (err) {
         console.warn("[classify] stored-verdict pass failed", r.id, err);
@@ -423,5 +447,5 @@ export async function classifyUnchecked(
       `[classify] screen circuit breaker hit at ${screened}; remaining flagged events left as they are`,
     );
   }
-  return { scanned: rows.length, classified, screened, toReview, published, deferred };
+  return { scanned: rows.length, classified, screened, toReview, published, deferred, requeued };
 }
