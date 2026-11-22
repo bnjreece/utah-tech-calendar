@@ -1,23 +1,27 @@
-import {
-  CRYPTO_RE,
-  PROTECTED_VERTICAL_RE,
-  routeVerdict,
-  type EventVerdict,
-} from "@/lib/verdict";
+import type { EventVerdict } from "@/lib/verdict";
 
 /* Queue autopilot: decides a PENDING scraped event right after the classifier
-   scores it, so the review queue drains without a human. Pure (no DB): the
-   caller (classifyUnchecked) gathers the DB facts into ctx and applies the
-   result with one guarded write. Rules run in order; the first that fires
-   wins:
+   scores it. Pure (no DB): the caller (classifyUnchecked) gathers the DB
+   facts into ctx and applies the result with one guarded write.
+
+   No human review (owner ruling, 2026-11-22): every eligible row is
+   published or hidden on this pass. Holds were expiring unseen (four human
+   decisions in a month), which lost real events. Hides stay restorable from
+   /admin/hidden and the digest lists the near misses. Rules run in order;
+   the first that fires wins:
      0. eligibility (pending, unlocked, scraped, upcoming)
      1. structural hide (patterns proven to be junk, checked before the model)
      2. duplicate hide (same event already approved, or pending earlier)
-     3. policy holds (crypto, protected verticals, southern/rural Utah)
-     4. auto-reject (a confident "no" from the model)
-     4b. low-confidence yes (a "yes" under LOWCONF_YES_BAR is hidden)
-     5. auto-publish (only with AUTOPILOT_PUBLISH=on, at most 8 per run)
-     6. everything else stays pending; unreviewed rows expire hidden.
+     3. a "no" from the model is hidden, at any confidence
+     4. kids-audience hide (edtech free-trial funnels look like real classes)
+     4b. a "yes" under PUBLISH_BAR is hidden
+     5. publish vetoes hide (online, employer/closed tiers, thin, vague
+        Eventbrite venue, clinical training, a repeating listing under 0.90)
+     6. publish (AUTOPILOT_PUBLISH=on, at most 8 per run). With publishing
+        off, or past the cap, the row is held: that is the kill switch, not
+        a review queue.
+   Crypto, protected verticals (biotech, aerospace, robotics) and southern
+   Utah used to wait for a human; they now follow the same rules.
    Duplicates already sitting in the queue are hidden by the dedup sweep
    (lib/queue-twins.ts), not here. */
 
@@ -67,6 +71,12 @@ export const MAX_PUBLISH_PER_RUN = 8;
    restorable from /admin/hidden and listed in the daily digest. */
 export const LOWCONF_YES_BAR = 0.85;
 
+/* Rule 6. A one-off "yes" publishes from here; a listing that repeats (3+
+   copies from one source in 30 days) needs SERIES_PUBLISH_BAR. On the
+   2026-10-25 ledger a human kept 7 of 10 yeses at 0.85 to 0.89. */
+export const PUBLISH_BAR = LOWCONF_YES_BAR;
+export const SERIES_PUBLISH_BAR = 0.9;
+
 /* Lowercase, drop punctuation and ticket-tier words, so two listings of one
    event ("HackerX - Employer Ticket" and "HackerX") compare equal. */
 const TIER_RE =
@@ -95,23 +105,19 @@ export function structuralHide(row: AutopilotRow, sourceUrl: string | null): str
   return null;
 }
 
-/* Rule 3 widening of the protected verticals, pending rows only (the shared
-   PROTECTED_VERTICAL_RE is unchanged so approved-row routing is unchanged). */
-const PROTECTED_EXTRA_RE = /\b(biolog|iso ?10993|space\b|astronaut|satellite)/;
-const RURAL_CITY_RE =
-  /\b(st\.? ?george|saint george|cedar city|hurricane|logan|washington|ivins|kanab|moab|vernal|price)\b/i;
-
 /* Rule 5 publish vetoes. Employer / recruiter / vendor tiers of a real event
    are not community tickets (salvaged from the parked autoapprove branch). */
 const NOT_COMMUNITY_RE =
   /\b(employer|recruiter|recruiting|sponsor|sponsorship|exhibitor|vendor|hiring[\s-]*partner)[\s-]*(ticket|tickets|pass|passes|admission|booth|table)\b/i;
 const CLOSED_EVENT_RE =
   /\b(members?[\s-]*only|orientation|invite[\s-]*only|invitation only|advisory board|participants?[\s-]*only|board meeting)\b/i;
-/* Events aimed at children (the Moonpreneur free-trial "Robotics/STEM Class
-   for Kids" listings) go to a human; they are never hidden by this. */
+/* Rule 4. Events aimed at children: the Moonpreneur free-trial "Robotics/STEM
+   Class for Kids" listings, which real youth coding classes look like. */
 const KIDS_AUDIENCE_RE =
   /\b(for kids|kids ages|for children|for teens|teens|for parents)\b|\bages?\s*\d+\s*(-|–|to)\s*\d+/i;
 const VAGUE_VENUE_RE = /^\s*$|\b(tbd|tba|to be announced|online|virtual)\b/i;
+/* Surgeon training reads as medtech to the model but is not a community event. */
+const CLINICAL_TRAINING_RE = /\b(wet ?lab|surgery|surgical|cadaver|cme)\b/i;
 
 export function decidePending(
   row: AutopilotRow,
@@ -119,6 +125,11 @@ export function decidePending(
   ctx: AutopilotCtx,
 ): AutopilotDecision {
   const hold = (why: string): AutopilotDecision => ({ action: "hold", reason: `hold:${why}` });
+  const hide = (why: string): AutopilotDecision => ({
+    action: "hide",
+    reason: `autopilot:${why}`,
+    hiddenReason: "llm-screened",
+  });
 
   /* 0. Eligibility. The caller also checks llm_gate_enabled. */
   if (
@@ -134,57 +145,29 @@ export function decidePending(
   if (struct)
     return { action: "hide", reason: `autopilot:struct:${struct}`, hiddenReason: "spam" };
 
-  /* 2. Duplicate hide. Runs before the crypto hold (spec order, accepted on
-     purpose): a crypto cross-post is hidden only because an approved or
-     earlier pending twin of it exists, so nothing reaches the public
-     calendar without a human, and the hide is restorable on /admin/hidden. */
+  /* 2. Duplicate hide. */
   if (ctx.duplicate)
     return { action: "hide", reason: "autopilot:dup", hiddenReason: "cross-post" };
 
-  /* 3. Policy holds. */
+  /* 3. The model's "no". */
   const conf = Number(v.confidence) || 0;
-  const hay = `${(v.category || "").toLowerCase()} ${row.title}`.toLowerCase();
-  const saysNo = !v.isTechRelevant || v.isSpam;
-  /* Crypto is checked on the model's tags and the row's tags too: listings
-     from the crypto sources ("Primitive", "The Capital Room") often do not
-     say crypto in the title or category. */
-  const cryptoHay =
-    `${hay} ${(v.suggestedTags ?? []).join(" ")} ${(row.tags ?? []).join(" ")}`.toLowerCase();
-  if (CRYPTO_RE.test(cryptoHay)) return hold("crypto");
-  if (saysNo && (PROTECTED_VERTICAL_RE.test(hay) || PROTECTED_EXTRA_RE.test(hay)))
-    return hold("protected");
-  if (saysNo && conf < 0.95 && row.city && RURAL_CITY_RE.test(row.city)) return hold("rural");
-  /* Kids events always go to a human: real youth coding classes are
-     protected from auto-hide, and paid edtech free-trial funnels look like
-     them, so neither side is safe to automate. */
-  if (KIDS_AUDIENCE_RE.test(row.title)) return hold("kids-audience");
+  if (!v.isTechRelevant || v.isSpam) return hide("screen");
 
-  /* 4. Auto-reject. Eventbrite's keyword searches are the noisiest source,
-     so its bar is lower (0.85) than everyone else's (0.90). */
-  const bar = row.source === "eventbrite" ? 0.85 : 0.9;
-  const route = routeVerdict(v, bar, row.title);
-  if (route === "screen")
-    return { action: "hide", reason: "autopilot:screen", hiddenReason: "llm-screened" };
+  /* 4. Kids audience (a "yes" the model gives a free-trial funnel). */
+  if (KIDS_AUDIENCE_RE.test(row.title)) return hide("kids-audience");
+  if (conf < PUBLISH_BAR) return hide("lowconf-yes");
 
-  /* 4b. Low-confidence yes. Runs after the policy holds, so crypto and
-     kids events still reach a human. The protected-vertical and rural holds
-     above only cover a "no", so they are repeated here for an unsure "yes":
-     those events go to a human rather than being hidden. */
-  if (!saysNo && conf < LOWCONF_YES_BAR) {
-    if (PROTECTED_VERTICAL_RE.test(hay) || PROTECTED_EXTRA_RE.test(hay)) return hold("protected");
-    if (row.city && RURAL_CITY_RE.test(row.city)) return hold("rural");
-    return { action: "hide", reason: "autopilot:lowconf-yes", hiddenReason: "llm-screened" };
-  }
-
-  /* 5. Auto-publish. */
-  if (route !== "keep" || conf < 0.9) return hold("unsure");
-  if (v.isOnline || row.isOnline) return hold("online");
+  /* 5. Publish vetoes. */
+  if (v.isOnline || row.isOnline) return hide("veto:online");
   if (NOT_COMMUNITY_RE.test(row.title) || CLOSED_EVENT_RE.test(row.title))
-    return hold("not-community");
+    return hide("veto:not-community");
+  if (CLINICAL_TRAINING_RE.test(row.title)) return hide("veto:clinical");
   const venue = (row.venueName ?? "").trim();
-  if ((row.description ?? "").trim().length < 40 && !venue) return hold("thin");
-  if (row.source === "eventbrite" && VAGUE_VENUE_RE.test(venue)) return hold("venue");
-  if (ctx.seriesCount >= 3) return hold("series");
+  if ((row.description ?? "").trim().length < 40 && !venue) return hide("veto:thin");
+  if (row.source === "eventbrite" && VAGUE_VENUE_RE.test(venue)) return hide("veto:venue");
+  if (ctx.seriesCount >= 3 && conf < SERIES_PUBLISH_BAR) return hide("veto:series");
+
+  /* 6. Publish. */
   if (!ctx.publishEnabled) return hold("publish-off");
   if (ctx.publishedThisRun >= MAX_PUBLISH_PER_RUN) return hold("publish-cap");
   return { action: "publish", reason: "autopilot:publish" };

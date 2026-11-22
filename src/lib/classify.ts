@@ -140,8 +140,8 @@ export async function classifyUnchecked(
 
   /* Circuit breaker: a healthy gate screens a small minority. If one run
      hard-screens past this many, a prompt/model regression is likely - stop
-     auto-hiding for the rest of the run and route remaining flagged events to
-     human review instead (fail safe + visible, not a silent mass-hide).
+     auto-hiding for the rest of the run (approved rows stay approved, pending
+     rows stay unchecked for the next run; visible, not a silent mass-hide).
      Note: the scrape cron classifies 25 rows a tick, so this only trips on a
      larger manual /api/cron/classify run. It is deliberately not lowered for
      the autopilot: re-scoring the pending backlog is expected to hide about
@@ -167,7 +167,7 @@ export async function classifyUnchecked(
 
   let classified = 0;
   let screened = 0;
-  let toReview = 0;
+  const toReview = 0;
   let published = 0;
   /* Queue autopilot: decide a pending row right after it is scored, while
      `r` is exactly what the model saw (see lib/autopilot.ts for the rules).
@@ -251,11 +251,12 @@ export async function classifyUnchecked(
       !r.statusLocked &&
       r.source !== "manual"
     ) {
-      let action = routeVerdict(verdict, threshold, r.title);
-      /* Circuit breaker tripped - downgrade further screens to review. */
-      if (action === "screen" && screened >= SCREEN_ABORT_AT) action = "review";
-
-      if (action === "screen") {
+      /* Only a confident screen acts. "review" used to demote the row to
+         pending for a human; with no human review (2026-11-22) a row from a
+         trusted source stays published unless the gate is sure it is junk.
+         Past the circuit breaker nothing more is hidden this run. */
+      const action = routeVerdict(verdict, threshold, r.title);
+      if (action === "screen" && screened < SCREEN_ABORT_AT) {
         await db
           .update(events)
           .set({ status: "hidden", hiddenReason: "llm-screened" })
@@ -267,21 +268,6 @@ export async function classifyUnchecked(
           channel: "auto",
         });
         screened++;
-      } else if (action === "review") {
-        await db
-          .update(events)
-          .set({ status: "pending" })
-          .where(eq(events.id, r.id));
-        /* Log the demotion too, so the ledger has every gate action. */
-        await recordEventDecision({ ...r, llmVerdict: verdict }, "review", {
-          newStatus: "pending",
-          reason: "llm-review",
-          decidedBy: "llm",
-          channel: "auto",
-        });
-        toReview++;
-        /* A demoted row came from a trusted source and the gate chose a
-           human for it on purpose, so the autopilot leaves it alone. */
       }
     } else if (gateEnabled && r.status === "pending" && !r.statusLocked && r.source !== "manual") {
       await autopilot(rowAfterClassify(r, stored), verdict);
@@ -289,7 +275,7 @@ export async function classifyUnchecked(
   }
   if (screened >= SCREEN_ABORT_AT) {
     console.warn(
-      `[classify] screen circuit breaker hit at ${screened}; remaining flagged events routed to review`,
+      `[classify] screen circuit breaker hit at ${screened}; remaining flagged events left as they are`,
     );
   }
   return { scanned: rows.length, classified, screened, toReview, published, deferred };

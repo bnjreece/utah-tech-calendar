@@ -3,6 +3,8 @@ import {
   decidePending,
   LOWCONF_YES_BAR,
   normalizeEventTitle,
+  PUBLISH_BAR,
+  SERIES_PUBLISH_BAR,
   submissionPastDated,
   type AutopilotCtx,
   type AutopilotDecision,
@@ -102,60 +104,69 @@ describe("decidePending: publishes", () => {
   });
 });
 
-type Expect = [action: "hide" | "hold", reason: string, hiddenReason?: string];
+type Expect = [action: "hide" | "hold" | "publish", reason: string, hiddenReason?: string];
+const H = (why: string): Expect => ["hide", `autopilot:${why}`, "llm-screened"];
+const PUBLISHED: Expect = ["publish", "autopilot:publish"];
+/* No human review since 2026-11-22: every row below used to be held and is
+   now published or hidden. */
 const OTHERS: Array<[Case, Expect]> = [
   /* Employer tiers never publish; the twin listing of the same date is a dup. */
-  [{ title: "HackerX - Utah County - Employer Ticket - 12/14", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.92, "developer meetup"], venue: "Provo", city: "Provo", desc: 47 }, ["hold", "hold:not-community"]],
+  [{ title: "HackerX - Utah County - Employer Ticket - 12/14", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.92, "developer meetup"], venue: "Provo", city: "Provo", desc: 47 }, H("veto:not-community")],
   [{ title: "HackerX - Utah County - Employer Ticket - 12/14", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.85, "tech recruiting event"], venue: "Utah County", city: "Utah County", desc: 47, isOnline: true, ctx: { duplicate: true } }, ["hide", "autopilot:dup", "cross-post"]],
-  [{ title: "Women in Tech 2026 - Salt Lake City Employer Ticket", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.85, "tech conference"], venue: "Nice", city: "Sandy", desc: 59 }, ["hold", "hold:unsure"]],
-  [{ title: "Women in Tech 2026 - Salt Lake City Employer Ticket", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.95, "tech conference"], venue: "Nice", city: "Sandy", desc: 59 }, ["hold", "hold:not-community"]],
-  /* The 14-copy daily Pitch Lunch: low confidence holds; even a confident
-     copy is a series, not a publish. */
-  [{ title: "\"STARTUP-INVESTOR PITCH LUNCH\" -  FUNDRAISING PROGRAM IN SILICON VALLEY", source: "eventbrite", url: EB("ut--park-city/tech--events"), v: [true, false, 0.85, "startup event"], venue: "Park City" }, ["hold", "hold:unsure"]],
-  [{ title: "\"STARTUP-INVESTOR PITCH LUNCH\" -  FUNDRAISING PROGRAM IN SILICON VALLEY", source: "eventbrite", url: EB("ut--park-city/tech--events"), v: [true, false, 0.92, "startup event"], venue: "Park City", ctx: { seriesCount: 13 } }, ["hold", "hold:series"]],
-  /* Crypto always stays human. */
-  [{ title: "UVU 2026 Bitcoin Conference: Saturday October 31st", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.95, "conference"], venue: "Fulton Library", city: "Orem" }, ["hold", "hold:crypto"]],
-  [{ title: "SLC XPR Community Activation", source: "luma", url: "https://lu.ma/utahcrypto", v: [true, false, 0.85, "web3 community meetup"], venue: "Publik Coffee Roasters", city: "Salt Lake City", desc: 578 }, ["hold", "hold:crypto"]],
-  /* Crypto-source listings whose titles do not say crypto: caught by tags. */
-  [{ title: "Primitive", source: "luma", url: "https://lu.ma/utahcrypto", v: [true, false, 0.95, "conference"], venue: "Utah, USA", desc: 710, tags: ["fintech", "blockchain"], suggestedTags: ["crypto", "blockchain", "web3", "solana"] }, ["hold", "hold:crypto"]],
-  [{ title: "The Capital Room", source: "luma", url: "https://www.meetup.com/utahcrypto/", v: [true, false, 0.92, "tech community networking"], desc: 613, tags: ["product-management", "meetup", "fintech", "blockchain"], suggestedTags: ["fintech", "blockchain", "web3"] }, ["hold", "hold:crypto"]],
-  [{ title: "The Capital Room", source: "luma", url: "https://www.meetup.com/utahcrypto/", v: [true, false, 0.92, "tech community networking"], desc: 613, tags: ["blockchain"] }, ["hold", "hold:crypto"]],
-  /* Kids-audience listings (Moonpreneur free trials) go to a human. */
-  [{ title: "Free In-person Robotics Class in Orem, UT  for Kids Ages 7-14 Yrs", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.92, "youth STEM/robotics education"], venue: "TownePlace Suites by Marriott 873 N 1200 W, Orem, UT 84057, United States", city: "Orem", desc: 102 }, ["hold", "hold:kids-audience"]],
-  [{ title: "Free In-person STEM Activities for Kids in  Sandy, UT (7-14 Yrs)", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.92, "kids STEM education"], venue: "Best Western Plus Cotton Tree Inn", city: "Sandy", desc: 95 }, ["hold", "hold:kids-audience"]],
-  [{ title: "Free In-person STEM Activities for Kids in  Sandy, UT (7-14 Yrs)", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [false, false, 0.95, "not-tech"], venue: "Best Western Plus Cotton Tree Inn", city: "Sandy", desc: 95 }, ["hold", "hold:protected"]],
-  /* Astra round 1: a kids class flagged as spam must still reach a human. */
-  [{ title: "Free Python Class for Kids Ages 7-14", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [false, true, 0.95, "cert-spam"], venue: "Some Library", city: "Orem" }, ["hold", "hold:kids-audience"]],
-  /* Protected verticals with a no/spam verdict stay human. */
-  [{ title: "The Biological Evaluation Puzzle: Building a Complete ISO 10993 Strategy Webinar Series: Part 7", source: "html", url: "https://bioutah.growthzoneapp.com/communityeventscalendar", v: [true, true, 0.85, "cert-spam", true], city: "Salt Lake City", desc: 251, isOnline: true }, ["hold", "hold:protected"]],
-  [{ title: "Satellite Constellations Office Hours", source: "eventbrite", url: EB("ut--salt-lake-city/tech--events"), v: [false, false, 0.95, "not-tech"], venue: "Some Hall", city: "Salt Lake City" }, ["hold", "hold:protected"]],
-  /* Southern Utah "no" below 0.95 stays human. */
-  [{ title: "BUILDING DEPTH 5x5 - JAN 29-30, 2027  (St. George, UTAH) General Admission", source: "eventbrite", url: EB("ut--st-george/startup--events"), v: [false, true, 0.9, "business-spam"], venue: "Best Western Plus Abbey Inn", city: "St. George" }, ["hold", "hold:rural"]],
+  [{ title: "Women in Tech 2026 - Salt Lake City Employer Ticket", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.85, "tech conference"], venue: "Nice", city: "Sandy", desc: 59 }, H("veto:not-community")],
+  [{ title: "Women in Tech 2026 - Salt Lake City Employer Ticket", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.95, "tech conference"], venue: "Nice", city: "Sandy", desc: 59 }, H("veto:not-community")],
+  /* The daily Pitch Lunch (14 copies): a repeating listing needs 0.90. In
+     production it never reaches the queue: series memory hides each new copy
+     at insert, inheriting the locked human reject. */
+  [{ title: "\"STARTUP-INVESTOR PITCH LUNCH\" -  FUNDRAISING PROGRAM IN SILICON VALLEY", source: "eventbrite", url: EB("ut--park-city/tech--events"), v: [true, false, 0.85, "startup event"], venue: "Park City", ctx: { seriesCount: 13 } }, H("veto:series")],
+  [{ title: "\"STARTUP-INVESTOR PITCH LUNCH\" -  FUNDRAISING PROGRAM IN SILICON VALLEY", source: "eventbrite", url: EB("ut--park-city/tech--events"), v: [true, false, 0.75, "startup event"], venue: "Park City", ctx: { seriesCount: 13 } }, H("lowconf-yes")],
+  /* Crypto follows the same rules as everything else. */
+  [{ title: "UVU 2026 Bitcoin Conference: Saturday October 31st", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.95, "conference"], venue: "Fulton Library", city: "Orem" }, PUBLISHED],
+  [{ title: "SLC XPR Community Activation", source: "luma", url: "https://lu.ma/utahcrypto", v: [true, false, 0.85, "web3 community meetup"], venue: "Publik Coffee Roasters", city: "Salt Lake City", desc: 578 }, PUBLISHED],
+  [{ title: "SLC XPR Community Activation", source: "luma", url: "https://lu.ma/utahcrypto", v: [true, false, 0.75, "web3 community meetup"], venue: "Publik Coffee Roasters", city: "Salt Lake City", desc: 578 }, H("lowconf-yes")],
+  [{ title: "Primitive", source: "luma", url: "https://lu.ma/utahcrypto", v: [true, false, 0.95, "conference"], venue: "Utah, USA", desc: 710, tags: ["fintech", "blockchain"], suggestedTags: ["crypto", "blockchain", "web3", "solana"] }, PUBLISHED],
+  [{ title: "ShillFest", source: "luma", url: "https://lu.ma/utahcrypto", v: [false, true, 0.9, "spam"], venue: "Utah, USA", desc: 710, tags: ["blockchain"] }, H("screen")],
+  /* Kids-audience listings (Moonpreneur free trials) are hidden. */
+  [{ title: "Free In-person Robotics Class in Orem, UT  for Kids Ages 7-14 Yrs", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.92, "youth STEM/robotics education"], venue: "TownePlace Suites by Marriott 873 N 1200 W, Orem, UT 84057, United States", city: "Orem", desc: 102 }, H("kids-audience")],
+  [{ title: "Free In-person STEM Activities for Kids in  Sandy, UT (7-14 Yrs)", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [false, false, 0.95, "not-tech"], venue: "Best Western Plus Cotton Tree Inn", city: "Sandy", desc: 95 }, H("screen")],
+  [{ title: "Free Python Class for Kids Ages 7-14", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [false, true, 0.95, "cert-spam"], venue: "Some Library", city: "Orem" }, H("screen")],
+  [{ title: "Free Python Class for Kids Ages 7-14", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [true, false, 0.95, "youth coding class"], venue: "Some Library", city: "Orem" }, H("kids-audience")],
+  /* Protected verticals and southern Utah: a "no" is a hide like any other. */
+  [{ title: "The Biological Evaluation Puzzle: Building a Complete ISO 10993 Strategy Webinar Series: Part 7", source: "html", url: "https://bioutah.growthzoneapp.com/communityeventscalendar", v: [true, true, 0.85, "cert-spam", true], city: "Salt Lake City", desc: 251, isOnline: true }, H("screen")],
+  [{ title: "Satellite Constellations Office Hours", source: "eventbrite", url: EB("ut--salt-lake-city/tech--events"), v: [false, false, 0.95, "not-tech"], venue: "Some Hall", city: "Salt Lake City" }, H("screen")],
+  [{ title: "BUILDING DEPTH 5x5 - JAN 29-30, 2027  (St. George, UTAH) General Admission", source: "eventbrite", url: EB("ut--st-george/startup--events"), v: [false, true, 0.9, "business-spam"], venue: "Best Western Plus Abbey Inn", city: "St. George" }, H("screen")],
+  [{ title: "CMI | Bench to Bedside: Networking with Experts Event #1", source: "eventbrite", url: EB("ut--salt-lake-city/startup--events"), v: [true, false, 0.85, "medtech networking event"], venue: "Sorenson Arts & Education Complex", city: "Salt Lake City" }, PUBLISHED],
+  /* Surgeon training reads as medtech but is not a community event. */
+  [{ title: "Ramus Anatomic Plate (RAP) Wet Lab", source: "eventbrite", url: EB("ut--salt-lake-city/tech--events"), v: [true, false, 0.85, "medtech training"], venue: "Some Lab", city: "Salt Lake City" }, H("veto:clinical")],
   /* Structural hides fire before the model's verdict is trusted. */
   [{ title: "Pregame Sideline Experience (Baylor)", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [false, false, 0.95, "not-tech"], venue: "LaVell Edwards Stadium (LES)", city: "Provo" }, ["hide", "autopilot:struct:byu-athletics", "spam"]],
   [{ title: "Tech and Business Networking | Elevating Your Potential - SLC", source: "eventbrite", url: EB("ut--provo/tech--events"), v: [false, true, 0.92, "networking-spam"], venue: "Zest Kitchen & Bar", city: "Salt Lake City" }, ["hide", "autopilot:struct:elevating", "spam"]],
   [{ title: "Blockchain and Business Networking | Elevating Your Potential - SLC", source: "eventbrite", url: EB("ut--park-city/tech--events"), v: [false, true, 0.92, "networking-spam"], venue: "Zest Kitchen & Bar", city: "Salt Lake City" }, ["hide", "autopilot:struct:elevating", "spam"]],
   [{ title: "Artificial Intelligence and Automation | Utah", source: "eventbrite", url: EB("ut--park-city/tech--events"), v: [false, true, 0.92, "cert-spam"], venue: "For venue details reach us at info@learnerring.com", city: "Utah" }, ["hide", "autopilot:struct:venue-mill", "spam"]],
-  /* Auto-reject: Eventbrite at 0.85, everyone else at 0.90. */
-  [{ title: "Employee Experience in the Age of AI", source: "eventbrite", url: EB("ut--salt-lake-city/ai--events"), v: [false, true, 0.85, "networking-spam"], venue: "Armanino Salt Lake City", city: "Salt Lake City" }, ["hide", "autopilot:screen", "llm-screened"]],
-  [{ title: "3-day C-IED Train-the-Trainer Course", source: "eventbrite", url: EB("ut--salt-lake-city/cyber-security--events"), v: [false, true, 0.95, "cert-spam"], venue: "South Jordan Fire Station #64", city: "South Jordan" }, ["hide", "autopilot:screen", "llm-screened"]],
-  [{ title: "Invite Only: Media Roundtable", source: "luma", url: "https://lu.ma/47G_Utah", v: [false, true, 0.85, "networking-spam"], desc: 168 }, ["hold", "hold:unsure"]],
-  [{ title: "Invite Only: Media Roundtable", source: "luma", url: "https://lu.ma/47G_Utah", v: [false, true, 0.87, "networking-spam"], desc: 168 }, ["hold", "hold:unsure"]],
-  [{ title: "Utah's Statewide Virtual Job Fair", source: "silicon_slopes", url: "https://www.siliconslopes.com/c/events", v: [false, false, 0.85, "not-tech", true], desc: 253, isOnline: true }, ["hold", "hold:unsure"]],
+  /* A "no" is hidden at any confidence. */
+  [{ title: "Employee Experience in the Age of AI", source: "eventbrite", url: EB("ut--salt-lake-city/ai--events"), v: [false, true, 0.85, "networking-spam"], venue: "Armanino Salt Lake City", city: "Salt Lake City" }, H("screen")],
+  [{ title: "3-day C-IED Train-the-Trainer Course", source: "eventbrite", url: EB("ut--salt-lake-city/cyber-security--events"), v: [false, true, 0.95, "cert-spam"], venue: "South Jordan Fire Station #64", city: "South Jordan" }, H("screen")],
+  [{ title: "Invite Only: Media Roundtable", source: "luma", url: "https://lu.ma/47G_Utah", v: [false, true, 0.85, "networking-spam"], desc: 168 }, H("screen")],
+  [{ title: "Utah's Statewide Virtual Job Fair", source: "silicon_slopes", url: "https://www.siliconslopes.com/c/events", v: [false, false, 0.85, "not-tech", true], desc: 253, isOnline: true }, H("screen")],
+  [{ title: "Thrive Tribe Monthly Meeting", source: "eventbrite", url: EB("ut--salt-lake-city/startup--events"), v: [false, false, 0.7, "not-tech"], venue: "Topgolf", city: "Midvale" }, H("screen")],
   /* Known wrong hide in the judged replay; restorable from /admin/hidden. */
-  [{ title: "Saturday Workshop: Speaker Building", source: "eventbrite", url: EB("ut--salt-lake-city/developer--events"), v: [false, false, 0.95, "not-tech"], venue: "3848 S W Temple St suite 102", city: "South Salt Lake", desc: 74 }, ["hide", "autopilot:screen", "llm-screened"]],
-  /* Unsure tech rows wait for a human. */
-  [{ title: "TECHSPO Salt Lake City 2027 Technology Expo (Internet ~ AdTech ~ MarTech)", source: "eventbrite", url: EB("ut--park-city/tech--events"), v: [true, false, 0.85, "technology conference"], venue: "Hilton Salt Lake City Center", city: "Salt Lake City" }, ["hold", "hold:unsure"]],
-  [{ title: "IMPACT Fall Book Club", source: "luma", url: LUMA, v: [true, false, 0.85, "tech community social"], city: "Salt Lake City", desc: 972 }, ["hold", "hold:unsure"]],
+  [{ title: "Saturday Workshop: Speaker Building", source: "eventbrite", url: EB("ut--salt-lake-city/developer--events"), v: [false, false, 0.95, "not-tech"], venue: "3848 S W Temple St suite 102", city: "South Salt Lake", desc: 74 }, H("screen")],
+  /* A yes from 0.85 publishes. */
+  [{ title: "TECHSPO Salt Lake City 2027 Technology Expo (Internet ~ AdTech ~ MarTech)", source: "eventbrite", url: EB("ut--park-city/tech--events"), v: [true, false, 0.85, "technology conference"], venue: "Hilton Salt Lake City Center", city: "Salt Lake City" }, PUBLISHED],
+  [{ title: "IMPACT Fall Book Club", source: "luma", url: LUMA, v: [true, false, 0.85, "tech community social"], city: "Salt Lake City", desc: 972 }, PUBLISHED],
+  [{ title: "2026 Mountain West Foundation Final Pitch Competition Luncheon", source: "eventbrite", url: EB("ut--salt-lake-city/startup--events"), v: [true, false, 0.85, "startup pitch event"], venue: "7167 Center Park Dr", city: "West Jordan" }, PUBLISHED],
   /* Publish vetoes on otherwise confident tech rows. */
-  [{ title: "Founders Advisory Board Orientation", source: "luma", url: LUMA, v: [true, false, 0.95, "founder meetup"], venue: "Kiln", desc: 300 }, ["hold", "hold:not-community"]],
-  [{ title: "Rust Night", source: "luma", url: LUMA, v: [true, false, 0.95, "developer meetup", true], desc: 300 }, ["hold", "hold:online"]],
-  [{ title: "Rust Night", source: "luma", url: LUMA, v: [true, false, 0.95, "developer meetup"], desc: 20 }, ["hold", "hold:thin"]],
-  [{ title: "Rust Night", source: "eventbrite", url: EB("ut--salt-lake-city/developer--events"), v: [true, false, 0.95, "developer meetup"], venue: "TBD", desc: 300 }, ["hold", "hold:venue"]],
-  [{ title: "Rust Night", source: "eventbrite", url: EB("ut--salt-lake-city/developer--events"), v: [true, false, 0.95, "developer meetup"], desc: 300 }, ["hold", "hold:venue"]],
+  [{ title: "Founders Advisory Board Orientation", source: "luma", url: LUMA, v: [true, false, 0.95, "founder meetup"], venue: "Kiln", desc: 300 }, H("veto:not-community")],
+  [{ title: "Rust Night", source: "luma", url: LUMA, v: [true, false, 0.95, "developer meetup", true], desc: 300 }, H("veto:online")],
+  [{ title: "Rust Night", source: "luma", url: LUMA, v: [true, false, 0.95, "developer meetup"], desc: 20 }, H("veto:thin")],
+  [{ title: "Rust Night", source: "eventbrite", url: EB("ut--salt-lake-city/developer--events"), v: [true, false, 0.95, "developer meetup"], venue: "TBD", desc: 300 }, H("veto:venue")],
+  [{ title: "Rust Night", source: "eventbrite", url: EB("ut--salt-lake-city/developer--events"), v: [true, false, 0.95, "developer meetup"], desc: 300 }, H("veto:venue")],
+  /* A weekly meetup: repeating, so 0.90 publishes and 0.89 does not. */
+  [{ title: "Weekly AI Power Hour", source: "luma", url: LUMA, v: [true, false, 0.9, "tech community meetup"], venue: "Kiln", desc: 300, ctx: { seriesCount: 4 } }, PUBLISHED],
+  [{ title: "Weekly AI Power Hour", source: "luma", url: LUMA, v: [true, false, 0.89, "tech community meetup"], venue: "Kiln", desc: 300, ctx: { seriesCount: 4 } }, H("veto:series")],
 ];
 
-describe("decidePending: hides and holds", () => {
+describe("decidePending: every row is published or hidden", () => {
   for (const [c, [action, reason, hiddenReason]] of OTHERS) {
     test(`${c.title} -> ${reason}`, () => {
       const d = run(c);
@@ -205,27 +216,32 @@ describe("decidePending: low-confidence yes", () => {
     expect(run(tech(0.8, { source: "luma", url: LUMA }))).toEqual(LOW);
   });
 
-  test("a yes at or over the bar is untouched", () => {
-    expect(run(tech(0.85))).toEqual({ action: "hold", reason: "hold:unsure" });
-    expect(run(tech(0.89))).toEqual({ action: "hold", reason: "hold:unsure" });
+  test("a yes at or over the bar publishes", () => {
+    expect(PUBLISH_BAR).toBe(0.85);
+    expect(SERIES_PUBLISH_BAR).toBe(0.9);
+    expect(run(tech(0.85)).action).toBe("publish");
+    expect(run(tech(0.89)).action).toBe("publish");
     expect(run(tech(0.9)).action).toBe("publish");
   });
 
-  test("a no under the bar is not a yes: it still waits for a human", () => {
-    expect(run(tech(0.75, { v: [true, true, 0.75, "networking-spam"] }))).toEqual({ action: "hold", reason: "hold:unsure" });
-    expect(run(tech(0.72, { v: [false, false, 0.72, "not-tech"] }))).toEqual({ action: "hold", reason: "hold:unsure" });
+  test("a no is hidden at any confidence", () => {
+    expect(run(tech(0.75, { v: [true, true, 0.75, "networking-spam"] }))).toEqual({ action: "hide", reason: "autopilot:screen", hiddenReason: "llm-screened" });
+    expect(run(tech(0.72, { v: [false, false, 0.72, "not-tech"] }))).toEqual({ action: "hide", reason: "autopilot:screen", hiddenReason: "llm-screened" });
   });
 
-  test("policy holds still win", () => {
-    /* Crypto (title, category, model tags, row tags). */
-    expect(run(tech(0.75, { title: "SLC XPR Community Activation", v: [true, false, 0.75, "web3 community meetup"], source: "luma", url: "https://lu.ma/utahcrypto" }))).toEqual({ action: "hold", reason: "hold:crypto" });
-    expect(run(tech(0.75, { tags: ["blockchain"] }))).toEqual({ action: "hold", reason: "hold:crypto" });
-    /* Kids. */
-    expect(run(tech(0.7, { title: "Free Robotics Class for Kids Ages 7-14" }))).toEqual({ action: "hold", reason: "hold:kids-audience" });
-    /* Protected verticals and rural Utah, for an unsure yes too. */
-    expect(run(tech(0.7, { title: "BioUtah Member Mixer" }))).toEqual({ action: "hold", reason: "hold:protected" });
-    expect(run(tech(0.7, { title: "Satellite Builders Night" }))).toEqual({ action: "hold", reason: "hold:protected" });
-    expect(run(tech(0.7, { city: "St. George" }))).toEqual({ action: "hold", reason: "hold:rural" });
+  test("nothing waits for a human", () => {
+    /* Crypto, protected verticals and southern Utah used to be held. */
+    expect(run(tech(0.75, { tags: ["blockchain"] }))).toEqual(LOW);
+    expect(run(tech(0.7, { title: "BioUtah Member Mixer" }))).toEqual(LOW);
+    expect(run(tech(0.7, { city: "St. George" }))).toEqual(LOW);
+    expect(run(tech(0.9, { title: "BioUtah Member Mixer" })).action).toBe("publish");
+    expect(run(tech(0.9, { city: "St. George" })).action).toBe("publish");
+    expect(run(tech(0.9, { title: "Free Robotics Class for Kids Ages 7-14" }))).toEqual({ action: "hide", reason: "autopilot:kids-audience", hiddenReason: "llm-screened" });
+  });
+
+  test("only the kill switch and the per-run cap hold a row", () => {
+    expect(run(tech(0.95), { publishEnabled: false })).toEqual({ action: "hold", reason: "hold:publish-off" });
+    expect(run(tech(0.95), { publishedThisRun: 8 })).toEqual({ action: "hold", reason: "hold:publish-cap" });
   });
 
   test("structural and duplicate hides keep their own reasons", () => {
