@@ -359,7 +359,7 @@ export function buildQueueDigestEmail(
   if (autoHiddenCount > 0) {
     textLines.push(`HIDDEN AUTOMATICALLY (last 24h): ${autoHiddenCount}`);
     if (snapshot.autoHiddenNearMisses.length > 0) {
-      textLines.push("Near misses (85 to 89% sure):");
+      textLines.push("Near misses (model screens under 90% and publish-rule hides):");
       snapshot.autoHiddenNearMisses.forEach(pushScreened);
     }
     if (snapshot.autoHiddenLowConfYes.length > 0) {
@@ -479,7 +479,7 @@ export function buildQueueDigestEmail(
     autoHiddenCount > 0
       ? sectionHeader("Hidden automatically · 24h", autoHiddenCount, INK_SOFT) +
         (snapshot.autoHiddenNearMisses.length > 0
-          ? noteRow("Near misses, 85 to 89% sure:") +
+          ? noteRow("Near misses, model screens under 90% and publish-rule hides:") +
             snapshot.autoHiddenNearMisses.map(renderScreenedRow).join("")
           : "") +
         (snapshot.autoHiddenLowConfYes.length > 0

@@ -21,9 +21,8 @@ async function main() {
     /* Keep going while a batch did anything (a requeue creates work to
        score; a publish-capped batch leaves the rest for the next one). */
     const progressed = classified + requeued + published + screened > 0;
-    if (!progressed) break;
-    if (scanned > 0 && classified === 0 && requeued === 0) {
-      console.warn("batch classified 0 of " + scanned + " - stopping to avoid a loop.");
+    if (!progressed) {
+      if (scanned > 0) console.warn("batch classified 0 of " + scanned + " - stopping to avoid a loop.");
       break;
     }
   }
