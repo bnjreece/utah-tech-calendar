@@ -1,6 +1,7 @@
 import { generateObject } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
-import { and, asc, desc, eq, gte, isNotNull, isNull, ne, notInArray } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { and, desc, eq, gte, isNotNull, isNull, ne, notInArray, or, sql } from "drizzle-orm";
 import { db, events, adminSettings } from "@/lib/db";
 import { VerdictSchema, routeVerdict, type EventVerdict } from "@/lib/verdict";
 import { decidePending, MAX_PUBLISH_PER_RUN } from "@/lib/autopilot";
@@ -121,6 +122,57 @@ export function leaveUnscored(
 /* Stored-verdict pass size per run (no model calls; see classifyUnchecked). */
 export const REDECIDE_LIMIT = 50;
 
+/* A fingerprint of exactly what classifyEvent shows the model, stored with
+   the verdict (llm_verdict.inputsHash) so a later pass can tell whether the
+   row changed since it was scored. */
+export function inputFingerprint(r: {
+  title: string;
+  description: string | null;
+  venueName: string | null;
+  city: string | null;
+  source: string | null;
+  link: string | null;
+}): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify([
+        r.title,
+        r.description ? String(r.description).slice(0, 800) : null,
+        r.venueName ?? null,
+        r.city ?? null,
+        r.source ?? null,
+        r.link ?? null,
+      ]),
+    )
+    .digest("hex")
+    .slice(0, 32);
+}
+
+type StoredVerdict = EventVerdict & { inputsHash?: string };
+
+/* Stored-verdict pass, pending row: decide it from the saved verdict only
+   when the row is unchanged since scoring; otherwise (or with no
+   fingerprint, from before 2026-11-22) send it back to be scored again. */
+export function pendingRecovery(
+  stored: StoredVerdict | null,
+  row: Parameters<typeof inputFingerprint>[0],
+): "decide" | "rescore" {
+  return stored?.inputsHash && stored.inputsHash === inputFingerprint(row) ? "decide" : "rescore";
+}
+
+/* Stored-verdict pass, approved row: screen it when the saved verdict, on
+   unchanged inputs, routes to "screen" at today's threshold (a run cut
+   short between scoring and screening). Rows without a fingerprint went
+   through the gate before 2026-11-22 and are left alone. */
+export function approvedRecovery(
+  stored: StoredVerdict | null,
+  row: Parameters<typeof inputFingerprint>[0],
+  threshold: number,
+): "screen" | "none" {
+  if (!stored?.inputsHash || stored.inputsHash !== inputFingerprint(row)) return "none";
+  return routeVerdict(stored, threshold, row.title) === "screen" ? "screen" : "none";
+}
+
 export async function classifyUnchecked(
   limit = 25,
   opts: {
@@ -183,7 +235,8 @@ export async function classifyUnchecked(
 
   /* Autopilot publishing ships off; AUTOPILOT_PUBLISH=on enables it. */
   const publishEnabled = process.env.AUTOPILOT_PUBLISH === "on";
-  const sourceUrls = gateEnabled && rows.length > 0 ? await loadSourceUrls() : null;
+  /* Loaded on first use, by either pass (structural vetoes need it). */
+  let sourceUrls: Map<string, string> | null = null;
 
   let classified = 0;
   let screened = 0;
@@ -198,10 +251,11 @@ export async function classifyUnchecked(
      end of every run, so no scored row waits for a human. */
   const autopilot = async (r: (typeof rows)[number], verdict: EventVerdict) => {
     try {
+      sourceUrls ??= await loadSourceUrls();
       const facts = await pendingFacts(r);
       const decision = decidePending(r, verdict, {
         now: new Date(),
-        sourceUrl: (r.sourceId && sourceUrls?.get(r.sourceId)) || null,
+        sourceUrl: (r.sourceId && sourceUrls.get(r.sourceId)) || null,
         ...facts,
         publishEnabled,
         publishedThisRun: published,
@@ -252,15 +306,28 @@ export async function classifyUnchecked(
        compare-and-set against, the tags as they are after this append,
        not the pre-append copy in `r` (else every appended tag makes its
        CAS miss and the row silently stays pending). */
+    /* Guarded on the inputs the model saw: a rescrape that changed the row
+       mid-call leaves it unscored, so the next run scores the new text. */
     const [stored] = await db
       .update(events)
       .set({
-        llmVerdict: verdict,
+        llmVerdict: { ...verdict, inputsHash: inputFingerprint(r) },
         llmCheckedAt: new Date(),
         ...(llmTags.length > 0 ? { tags: appendTagsSql(llmTags) } : {}),
       })
-      .where(eq(events.id, r.id))
+      .where(
+        and(
+          eq(events.id, r.id),
+          sql`${events.title} IS NOT DISTINCT FROM ${r.title}::text`,
+          sql`${events.description} IS NOT DISTINCT FROM ${r.description}::text`,
+          sql`${events.venueName} IS NOT DISTINCT FROM ${r.venueName}::text`,
+          sql`${events.city} IS NOT DISTINCT FROM ${r.city}::text`,
+          sql`${events.source} IS NOT DISTINCT FROM ${r.source}::text`,
+          sql`${events.link} IS NOT DISTINCT FROM ${r.link}::text`,
+        ),
+      )
       .returning({ tags: events.tags });
+    if (!stored) continue;
     classified++;
 
     /* Routing (gated autonomy): only act on an auto-approved, unlocked,
@@ -282,50 +349,73 @@ export async function classifyUnchecked(
         /* One guarded statement with its ledger row (lib/autopilot-db.ts):
            a human approval, a rescrape or the gate switching off since this
            row was read all win. */
-        if (await applyGateScreen(rowAfterClassify(r, stored), verdict)) screened++;
+        if (await applyGateScreen(rowAfterClassify(r, stored), verdict, threshold)) screened++;
       }
     } else if (gateEnabled && r.status === "pending" && !r.statusLocked && r.source !== "manual") {
       await autopilot(rowAfterClassify(r, stored), verdict);
     }
   }
-  /* Stored-verdict pass. Pending rows that were scored (in this run or an
-     earlier one) but are still pending get decidePending again from their
-     saved verdict: no model call, so it cannot run up a bill. Covers a
-     routing error, a guarded write that missed, a run cut short between
-     scoring and routing, and publish-off holds once publishing is back on.
-     A rescrape does not clear a stored verdict anywhere in this pipeline,
-     so the saved verdict is what the rest of the system already trusts.
-     Soonest events first; skipped when out of time, at the publish cap, or
-     past the breaker. */
+  /* Stored-verdict pass (no model calls, so it cannot run up a bill).
+     Pending rows that were scored but are still pending get decidePending
+     again from their saved verdict, when the row is unchanged since it was
+     scored; a changed row is sent back to be scored. Approved rows whose
+     saved verdict says screen get screened. Covers a routing error, a
+     guarded write that missed, a run cut short between scoring and routing,
+     and publish-off holds once publishing is back on. A random sample of
+     REDECIDE_LIMIT a run, so rows that keep holding (publishing off) or
+     failing cannot starve the rest. Skipped when out of time, and stops at
+     the publish cap or the breaker. */
   if (gateEnabled && deferred === 0) {
+    const outOfTime = () =>
+      !!opts.deadline &&
+      nextCallTimeoutMs(opts.deadline, {
+        reserveMs: opts.reserveMs ?? 0,
+        maxCallMs: CLASSIFY_CALL_TIMEOUT_MS,
+        minCallMs: CLASSIFY_MIN_CALL_MS,
+      }) === null;
     const stuck = await db
       .select()
       .from(events)
       .where(
         and(
-          eq(events.status, "pending"),
           eq(events.statusLocked, false),
           ne(events.source, "manual"),
           gte(events.startsAt, new Date()),
           isNotNull(events.llmCheckedAt),
           isNotNull(events.llmVerdict),
+          or(
+            eq(events.status, "pending"),
+            and(
+              eq(events.status, "approved"),
+              sql`(${events.llmVerdict}->>'isSpam' = 'true' OR ${events.llmVerdict}->>'isTechRelevant' = 'false')`,
+              sql`(${events.llmVerdict}->>'inputsHash') IS NOT NULL`,
+            ),
+          ),
           seen.size > 0 ? notInArray(events.id, [...seen]) : undefined,
         ),
       )
-      .orderBy(asc(events.startsAt))
+      .orderBy(sql`random()`)
       .limit(REDECIDE_LIMIT);
     for (const r of stuck) {
-      if (
-        opts.deadline &&
-        nextCallTimeoutMs(opts.deadline, {
-          reserveMs: opts.reserveMs ?? 0,
-          maxCallMs: CLASSIFY_CALL_TIMEOUT_MS,
-          minCallMs: CLASSIFY_MIN_CALL_MS,
-        }) === null
-      )
-        break;
+      if (outOfTime()) break;
       if (leaveUnscored(r, { gateEnabled, published, screened })) break;
-      await autopilot(r, r.llmVerdict as EventVerdict);
+      const stored = r.llmVerdict as StoredVerdict | null;
+      try {
+        if (r.status === "pending") {
+          if (pendingRecovery(stored, r) === "decide") await autopilot(r, stored as EventVerdict);
+          else
+            await db
+              .update(events)
+              .set({ llmCheckedAt: null })
+              .where(
+                and(eq(events.id, r.id), eq(events.status, "pending"), eq(events.statusLocked, false)),
+              );
+        } else if (approvedRecovery(stored, r, threshold) === "screen") {
+          if (await applyGateScreen(r, stored as EventVerdict, threshold)) screened++;
+        }
+      } catch (err) {
+        console.warn("[classify] stored-verdict pass failed", r.id, err);
+      }
     }
   }
   if (screened >= SCREEN_ABORT_AT) {

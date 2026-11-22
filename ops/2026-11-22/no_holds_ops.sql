@@ -1,7 +1,8 @@
 -- No-holds autopilot rollout: add the AI Utah Luma calendar and lock the
 -- owner's hide of the "AI Breakfast with Carl Case" series. Today's 20
--- pending rows need no SQL: the new stored-verdict pass in classifyUnchecked
--- decides every scored pending row on the next cron tick.
+-- pending rows need no SQL: their verdicts predate input fingerprints, so
+-- the new stored-verdict pass in classifyUnchecked sends them back to be
+-- scored, and each is decided right after scoring (about 20 model calls).
 -- PRODUCTION WRITE. Needs independent review before anyone runs it.
 --
 -- ORDER: either side of the deploy works; neither block depends on the new

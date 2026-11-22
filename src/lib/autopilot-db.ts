@@ -156,7 +156,16 @@ export async function applyPendingDecision(
    stored), and the gate is still on: a human approval (which locks the
    row), a rescrape that changed it, or the gate being switched off in the
    meantime all win. Returns true when the row changed. */
-export async function applyGateScreen(r: EventRow, verdict: EventVerdict): Promise<boolean> {
+export async function applyGateScreen(
+  r: EventRow,
+  verdict: EventVerdict,
+  threshold: number,
+): Promise<boolean> {
+  /* The confidence is rechecked against the live bar (raised mid-run wins)
+     as well as the bar this run read. The ledger snapshot is built from the
+     locked row the UPDATE returns, not from the earlier read. */
+  const conf = Number(verdict.confidence) || 0;
+  if (conf < threshold) return false;
   const res = await db.execute(sql`
     WITH upd AS (
       UPDATE events
@@ -174,15 +183,24 @@ export async function applyGateScreen(r: EventRow, verdict: EventVerdict): Promi
         AND is_online IS NOT DISTINCT FROM ${r.isOnline}::boolean
         AND source_id IS NOT DISTINCT FROM ${r.sourceId}::uuid
         AND to_jsonb(tags) IS NOT DISTINCT FROM ${tagsJson(r.tags)}::text::jsonb
-        AND EXISTS (SELECT 1 FROM admin_settings WHERE id = 1 AND llm_gate_enabled)
-      RETURNING id, source_id, source
+        AND EXISTS (
+          SELECT 1 FROM admin_settings
+          WHERE id = 1 AND llm_gate_enabled AND ${conf}::numeric >= llm_gate_threshold)
+      RETURNING id, source_id, source, title, description, link, venue_name,
+        address, city, is_online, tags, is_conference, is_paid
     )
     INSERT INTO review_decisions
       (subject_type, subject_id, decision, reason, prior_status, new_status,
        decided_by, channel, source_id, adapter, llm_verdict, snapshot)
     SELECT 'scraped_event', upd.id, 'hide', 'llm-screened',
       'approved', 'hidden', 'llm', 'auto', upd.source_id, upd.source,
-      ${JSON.stringify(verdict)}::jsonb, ${JSON.stringify(eventSnapshot(r))}::jsonb
+      ${JSON.stringify(verdict)}::jsonb,
+      jsonb_build_object(
+        'title', upd.title, 'description', upd.description, 'link', upd.link,
+        'source', upd.source, 'venueName', upd.venue_name, 'address', upd.address,
+        'city', upd.city, 'isOnline', upd.is_online, 'tags', to_jsonb(upd.tags),
+        'flags', jsonb_build_object('isConference', upd.is_conference,
+          'isPaid', upd.is_paid, 'hiddenReason', NULL))
     FROM upd
     RETURNING subject_id
   `);

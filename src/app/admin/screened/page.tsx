@@ -123,7 +123,7 @@ export default async function ScreenedEventsPage({
           <label className="flex flex-col gap-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-soft">
             <span className="inline-flex items-center gap-1">
               Confidence bar
-              <InfoTip label="The minimum model confidence to auto-hide; below this, flagged events go to review instead." />
+              <InfoTip label="The minimum model confidence to hide a flagged published event; below this, it stays published. New events are decided by the queue autopilot." />
             </span>
             <input
               type="number"

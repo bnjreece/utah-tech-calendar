@@ -11,7 +11,7 @@ mock.module("@/lib/db", () => ({
   adminSettings: {},
 }));
 
-const { leaveUnscored, REDECIDE_LIMIT, SCREEN_ABORT_AT } = await import("@/lib/classify");
+const { approvedRecovery, inputFingerprint, leaveUnscored, pendingRecovery, REDECIDE_LIMIT, SCREEN_ABORT_AT } = await import("@/lib/classify");
 const { MAX_PUBLISH_PER_RUN } = await import("@/lib/autopilot");
 
 const pending = { status: "pending", statusLocked: false, source: "eventbrite" };
@@ -44,14 +44,63 @@ describe("leaveUnscored", () => {
   });
 });
 
+const row = {
+  title: "Rust Night",
+  description: "Monthly Rust meetup with two talks.",
+  venueName: "Kiln",
+  city: "Lehi",
+  source: "luma",
+  link: "https://lu.ma/rust",
+};
+const verdict = (over: Record<string, unknown> = {}) => ({
+  isTechRelevant: true,
+  isSpam: false,
+  isOnline: false,
+  isPaid: false,
+  category: "developer meetup",
+  suggestedTags: [],
+  confidence: 0.95,
+  reasoning: "",
+  inputsHash: inputFingerprint(row),
+  ...over,
+});
+
 describe("stored-verdict pass", () => {
-  test("is bounded per run and never calls the model", async () => {
-    expect(REDECIDE_LIMIT).toBe(50);
-    /* The pass reuses llm_verdict; classify.ts has exactly one model call
-       site (classifyEvent inside the scoring loop). */
-    const src = await Bun.file(new URL("../classify.ts", import.meta.url)).text();
-    const pass = src.slice(src.indexOf("Stored-verdict pass."), src.indexOf("screen circuit breaker hit"));
-    expect(pass).toContain("r.llmVerdict as EventVerdict");
-    expect(pass).not.toContain("classifyEvent(");
+  test("is bounded per run", () => expect(REDECIDE_LIMIT).toBe(50));
+
+  test("the fingerprint covers what the model sees, and only that", () => {
+    expect(inputFingerprint(row)).toBe(inputFingerprint({ ...row }));
+    for (const k of ["title", "description", "venueName", "city", "source", "link"] as const)
+      expect(inputFingerprint({ ...row, [k]: "changed" })).not.toBe(inputFingerprint(row));
+    /* The model sees the first 800 characters of the description. */
+    const long = "x".repeat(800);
+    expect(inputFingerprint({ ...row, description: long + "a" })).toBe(inputFingerprint({ ...row, description: long + "b" }));
+  });
+
+  test("a pending row unchanged since scoring is decided from its saved verdict (publish-off recovery, interrupted run)", () => {
+    expect(pendingRecovery(verdict(), row)).toBe("decide");
+  });
+
+  test("a pending row that changed since scoring is scored again, never decided on the old verdict", () => {
+    expect(pendingRecovery(verdict(), { ...row, title: "Rust Night: sales demo" })).toBe("rescore");
+    expect(pendingRecovery(verdict(), { ...row, description: "Buy our CRM." })).toBe("rescore");
+  });
+
+  test("a verdict stored before fingerprints existed is scored again", () => {
+    expect(pendingRecovery(verdict({ inputsHash: undefined }), row)).toBe("rescore");
+    expect(pendingRecovery(null, row)).toBe("rescore");
+  });
+
+  test("an approved row is screened from its saved verdict only on unchanged inputs and at today's bar", () => {
+    const spam = verdict({ isSpam: true, isTechRelevant: false, category: "cert-spam", confidence: 0.95 });
+    expect(approvedRecovery(spam, row, 0.92)).toBe("screen");
+    /* Bar raised above the verdict's confidence. */
+    expect(approvedRecovery(spam, row, 0.99)).toBe("none");
+    /* Changed since scoring. */
+    expect(approvedRecovery(spam, { ...row, title: "Rust Night v2" }, 0.92)).toBe("none");
+    /* Scored before fingerprints (went through the old gate). */
+    expect(approvedRecovery({ ...spam, inputsHash: undefined }, row, 0.92)).toBe("none");
+    /* A yes is never screened. */
+    expect(approvedRecovery(verdict(), row, 0.92)).toBe("none");
   });
 });
