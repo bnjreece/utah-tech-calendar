@@ -55,8 +55,8 @@ export interface QueueSnapshot {
      scorer auto-killed, with a path to restore. */
   screenedToday: ScreenedEventRow[];
   /* Queue autopilot activity (decided_by='autopilot' ledger rows) in the
-     same ~26h window: what it published, how many it hid, and the hides it
-     was least sure of (85 to 89% confidence) for a spot check. */
+     same ~26h window: what it published, how many it hid, and the hides
+     worth a spot check (model "no" under 90%, and publish-rule hides). */
   autoPublished: ScreenedEventRow[];
   autoHiddenCount: number;
   autoHiddenNearMisses: ScreenedEventRow[];
@@ -126,8 +126,25 @@ export async function fetchQueueSnapshot(): Promise<QueueSnapshot> {
   const autoRows = rowsOf<ScreenedDbRow & { decision: string; reason: string | null }>(autoRes);
   const autoPublished = toScreenedRows(autoRows.filter((r) => r.decision === "approve"));
   const autoHidden = toScreenedRows(autoRows.filter((r) => r.decision === "hide"));
+  /* With no human review (2026-11-22) a "no" hides at any confidence, and
+     a confident "yes" can still be hidden by a publish rule, so both get a
+     spot check: model hides under 90%, and every publish-rule hide. */
+  const ruleHideIds = new Set(
+    autoRows
+      .filter(
+        (r) =>
+          r.decision === "hide" &&
+          (r.reason?.startsWith("autopilot:veto:") || r.reason === "autopilot:kids-audience"),
+      )
+      .map((r) => r.id),
+  );
+  const screenIds = new Set(
+    autoRows.filter((r) => r.decision === "hide" && r.reason === "autopilot:screen").map((r) => r.id),
+  );
   const autoHiddenNearMisses = autoHidden.filter(
-    (r) => r.confidence != null && r.confidence >= 0.85 && r.confidence < 0.9,
+    (r) =>
+      ruleHideIds.has(r.id) ||
+      (screenIds.has(r.id) && r.confidence != null && r.confidence < 0.9),
   );
   const autoHiddenLowConfYes = toScreenedRows(
     autoRows.filter((r) => r.decision === "hide" && r.reason === "autopilot:lowconf-yes"),
